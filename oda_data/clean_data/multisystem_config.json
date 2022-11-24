@@ -1,0 +1,166 @@
+{
+  "year": {
+    "type": "Int16",
+    "keep": true
+  },
+  "donor_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "donor_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "agency_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "region_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "usd_commitment": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_commitment_defl": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_extended": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_extended_defl": {
+    "type": "float",
+    "keep": true
+  },
+  "flow_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "flow_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "aid_t": {
+    "type": "Int32",
+    "keep": true
+  },
+  "aid_t_description_e": {
+    "type": "string",
+    "keep": true
+  },
+  "aid_to_or_thru": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_code": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_reported_name_e": {
+    "type": "string",
+    "keep": true
+  },
+  "channel_category": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_category_name": {
+    "type": "category",
+    "keep": true
+  },
+  "recipient_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "recipient_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "purposecode": {
+    "type": "Int32",
+    "keep": true
+  },
+  "purposename_e": {
+    "type": "category",
+    "keep": true
+  },
+  "sector": {
+    "type": "Int32",
+    "keep": true
+  },
+  "sector_name_e": {
+    "type": "category",
+    "keep": true
+  },
+  "geography": {
+    "type": "string",
+    "keep": false
+  },
+  "project_title": {
+    "type": "string",
+    "keep": false
+  },
+  "long_description": {
+    "type": "string",
+    "keep": false
+  },
+  "crsid": {
+    "type": "string",
+    "keep": true
+  },
+  "project_number": {
+    "type": "string",
+    "keep": false
+  },
+  "short_description": {
+    "type": "string",
+    "keep": false
+  },
+  "gender": {
+    "type": "category",
+    "keep": false
+  },
+  "environment": {
+    "type": "category",
+    "keep": false
+  },
+  "freestanding_technical_cooperation": {
+    "type": "category",
+    "keep": false
+  },
+  "programme_based_approaches": {
+    "type": "category",
+    "keep": false
+  },
+  "investment_project": {
+    "type": "category",
+    "keep": false
+  },
+  "biodiversity": {
+    "type": "category",
+    "keep": false
+  },
+  "climate_mitigation": {
+    "type": "category",
+    "keep": false
+  },
+  "climate_adaptation": {
+    "type": "category",
+    "keep": false
+  },
+  "desertification": {
+    "type": "category",
+    "keep": false
+  },
+  "income_group_name_e": {
+    "type": "category",
+    "keep": false
+  }
+}

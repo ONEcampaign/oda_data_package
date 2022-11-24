@@ -1,0 +1,557 @@
+{
+  "total_oda_flow_net": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1010,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11010,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_bilateral_flow_net": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1015,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_bilateral_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11015,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_multilateral_flow_net": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2000,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_multilateral_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 12000,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_flow_gross": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1010,
+      "flows_code": 1120,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_flow_commitments": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1010,
+      "flows_code": 1150,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_grants_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1010,
+      "flows_code": 1121,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_grants_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11016,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_non_grants_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1010,
+      "flows_code": 1122,
+      "amounttype_code": "A"
+    }
+  },
+  "total_oda_non_grants_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11017,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "gni": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "oda_gni_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "od_gni_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11002,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "total_in_donor_students_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1500,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "total_in_donor_students_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1500,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "scholarships_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1510,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "scholarships_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1510,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "imputed_students_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1520,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "imputed_students_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1520,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "debt_relief_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1600,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "debt_relief_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1600,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "idrc_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1820,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "idrc_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1820,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "eu_core_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2102,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    }
+  },
+  "eu_core_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2102,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_psi_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11030,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "total_psi_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11030,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "institutional_psi_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11023,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "institutional_psi_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11023,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "instrument_psi_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11024,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "instrument_psi_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 11024,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    }
+  },
+  "recipient_imputed_multi_flow_net": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 106,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_bilateral_flow_net": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 206,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_bilateral_flow_gross": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 240,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_loans_flow_gross": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 204,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_loans_flow_net": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 218,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_interest_received_flow": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 209,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_humanitarian_flow": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 216,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_grants_flow": {
+    "source": "dac2a",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 201,
+      "datatype_code": "A"
+    }
+  },
+  "recipient_total_flow_net": {
+    "source": "dac2a",
+    "type": "one",
+    "indicators": [
+      "recipient_imputed_multi_flow_net",
+      "recipient_bilateral_flow_net"
+    ],
+    "group_by": [
+      "donor_code",
+      "donor",
+      "recipient_code",
+      "recipient",
+      "year",
+      "indicator"
+    ]
+  },
+  "crs_bilateral_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_significant_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "1"
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_principal_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "2"
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_not_targeted_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "0"
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_not_screened_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "99"
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_allocable_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ]
+    },
+    "value_column": "usd_disbursement"
+  },
+  "crs_gender_allocable_total_flow_disbursement_gross": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_gender_allocable_flow_gross"
+    ],
+    "group_by": [
+      "donor_code",
+      "donor_name",
+      "recipient_code",
+      "recipient_name",
+      "year",
+      "purpose_code",
+      "purpose_name",
+      "sector_code",
+      "sector_name"
+    ]
+  },
+  "crs_gender_total_flow_gross": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_gender_significant_flow_disbursement_gross",
+      "crs_gender_principal_flow_gross"
+    ],
+    "group_by": [
+      "donor_code",
+      "donor_name",
+      "recipient_code",
+      "recipient_name",
+      "purpose_code",
+      "purpose_name",
+      "sector_code",
+      "sector_name",
+      "year",
+      "indicator"
+    ]
+  },
+  "crs_bilateral_total_flow_gross_by_purpose": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_bilateral_flow_disbursement_gross"
+    ],
+    "group_by": [
+      "donor_code",
+      "donor_name",
+      "agency_code",
+      "recipient_code",
+      "recipient_name",
+      "purpose_code",
+      "purpose_name",
+      "year",
+      "indicator"
+    ]
+  },
+  "multisystem_multilateral_contributions_disbursement_gross": {
+    "source": "multisystem",
+    "type": "dac",
+    "filters": {
+      "aid_to_or_thru": [
+        "Core contributions to"
+      ]
+    },
+    "value_column": "usd_extended"
+  },
+  "multisystem_multilateral_contributions_commitments_gross": {
+    "source": "multisystem",
+    "type": "dac",
+    "filters": {
+      "aid_to_or_thru": [
+        "Core contributions to"
+      ]
+    },
+    "value_column": "usd_commitment"
+  }
+}

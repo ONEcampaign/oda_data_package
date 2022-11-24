@@ -1,0 +1,58 @@
+{
+  "recipient_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "recipient": {
+    "type": "category",
+    "keep": true
+  },
+  "donor_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "donor": {
+    "type": "category",
+    "keep": true
+  },
+  "part_code": {
+    "type": "category",
+    "keep": false
+  },
+  "part": {
+    "type": "category",
+    "keep": false
+  },
+  "aidtype_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "aid_type": {
+    "type": "category",
+    "keep": true
+  },
+  "datatype_code": {
+    "type": "category",
+    "keep": true
+  },
+  "amount_type": {
+    "type": "category",
+    "keep": true
+  },
+  "time_code": {
+    "type": "int",
+    "keep": false
+  },
+  "year": {
+    "type": "Int16",
+    "keep": true
+  },
+  "value": {
+    "type": "float",
+    "keep": true
+  },
+  "flags": {
+    "type": "string",
+    "keep": false
+  }
+}
