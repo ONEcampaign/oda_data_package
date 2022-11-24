@@ -8,7 +8,6 @@ class OdaPATHS:
     scripts = project / "oda_data"
     raw_data = scripts / ".raw_data"
     pydeflate = raw_data / ".pydeflate"
-    logs = scripts / ".logs"
     indicators = scripts / "indicators"
     cleaning_config = scripts / "clean_data"
     sectors = indicators / "sectors"
