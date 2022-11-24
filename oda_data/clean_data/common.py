@@ -3,9 +3,8 @@ import pathlib
 from functools import partial
 
 import pandas as pd
-from pydeflate import exchange, deflate, set_pydeflate_path
+from pydeflate import exchange, deflate
 
-from oda_data import config
 from oda_data.logger import logger
 
 
@@ -87,9 +86,6 @@ def clean_raw_df(
 
     return df
 
-
-# Set the path for the pydeflate package to store its raw data
-set_pydeflate_path(config.OdaPATHS.raw_data)
 
 # Create a helper function to consistently exchange data
 dac_exchange = partial(

@@ -1,16 +1,16 @@
 [tool.poetry]
 name = "oda_data"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Jorge Rivera <jorge.rivera@one.org>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 pandas = "^1.5.2"
-pydeflate = "^1.2.3"
 bblocks = "^0.4.1"
 requests = "^2.28.1"
 beautifulsoup4 = "^4.11.1"
+pydeflate = "^1.2.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
