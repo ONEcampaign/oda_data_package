@@ -6,7 +6,7 @@ class OdaPATHS:
 
     project = Path(__file__).resolve().parent.parent
     scripts = project / "oda_data"
-    raw_data = scripts / ".raw_data"
+    raw_data = scripts / "raw_data"
     pydeflate = raw_data / ".pydeflate"
     indicators = scripts / "indicators"
     cleaning_config = scripts / "clean_data"

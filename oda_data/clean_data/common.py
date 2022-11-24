@@ -89,7 +89,8 @@ def clean_raw_df(
 
 
 # Set the path for the pydeflate package to store its raw data
-set_pydeflate_path(config.OdaPATHS.pydeflate)
+global OdaPATHS
+set_pydeflate_path(OdaPATHS.pydeflate)
 
 # Create a helper function to consistently exchange data
 dac_exchange = partial(
