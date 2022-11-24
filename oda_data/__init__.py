@@ -15,4 +15,3 @@ def set_data_path(path):
     global OdaPATHS
 
     OdaPATHS.raw_data = Path(path).resolve()
-    OdaPATHS.pydeflate = Path(path).resolve() / ".pydeflate"
