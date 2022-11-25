@@ -7,11 +7,11 @@ SRC = oda_data tests
 # check formatting before lint, since an autoformat might fix linting issues
 test-default: check-formatting unittest
 
-check-formatting-default: .venv
+check-formatting: .venv
 	@echo '==> Checking formatting'
 	@poetry run black --check $(SRC)
 
-unittest-default: .venv
+unittest: .venv
 	@echo '==> Running unit tests'
 	@PYTHONPATH=. poetry run pytest
 
