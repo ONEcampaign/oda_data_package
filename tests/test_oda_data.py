@@ -2,5 +2,5 @@ from oda_data import __version__
 
 
 def test_version():
-    current_version = "0.1.5"
+    current_version = "0.1.6"
     assert __version__ == current_version
