@@ -1,8 +1,19 @@
 [tool.poetry]
 name = "oda_data"
 version = "0.1.5"
-description = ""
+description = "A python package to work with Official Development Assistance data from the OECD DAC."
+readme = "README.md"
 authors = ["Jorge Rivera <jorge.rivera@one.org>"]
+packages = [{ include = "oda_data" }]
+classifiers = ["Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+]
+[project.urls]
+"Homepage" = "https://github.com/ONEcampaign/oda_data_package"
+"Bug Tracker" = "https://github.com/ONEcampaign/oda_data_package/issues"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -13,7 +24,10 @@ beautifulsoup4 = "^4.11.1"
 pydeflate = "^1.2.4"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+black = "^22.10.0"
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
+bump2version = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
