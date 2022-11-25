@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        python-versions: ["3.10"]
+        python-versions: [ "3.10" ]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -35,7 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
 
-      - Install packages
+      - name: Install packages
       - run: |
           poetry install
 
