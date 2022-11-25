@@ -23,6 +23,8 @@ jobs:
         run: |
           echo ::set-output name=current_version::${GITHUB_REF#refs/tags/v}
         shell: bash
+      - name: Get version from tag (new)
+        run: echo "{current_version}={${GITHUB_REF#refs/tags/v}}" >> $GITHUB_OUTPUT
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
