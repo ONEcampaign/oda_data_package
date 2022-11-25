@@ -1,8 +1,3 @@
-[![pypi](https://img.shields.io/pypi/v/oda_data.svg)](https://pypi.org/project/oda_data/)
-[![python](https://img.shields.io/pypi/pyversions/oda_data.svg)](https://pypi.org/project/oda_data/)
-[![codecov](https://codecov.io/gh/ONEcampaign/oda_data_package/branch/main/graph/badge.svg?token=G8N8BWWPL8)](https://codecov.io/gh/ONEcampaign/oda_data_package)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
 # ODA Data Scripts
 
 This folder contains all the scripts required to download, read, and analyse the DAC ODA data.
@@ -49,7 +44,7 @@ This would result in the following dataframe:
 To view the full list of available indicators, you can call `.get_available_indicators()`.
 
 ```python
-from oda_data.oda_data import ODAData
+from oda_data import ODAData
 
 # create object
 data = ODAData()
