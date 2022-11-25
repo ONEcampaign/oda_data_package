@@ -1,0 +1,26 @@
+DONOR	Donor	PART	Part	AIDTYPE	Aid type	FLOWS	Fund flows	AMOUNTTYPE	Amount type	TIME	Year	Value
+20006	"Non-DAC Countries, Total"	1	1 : Part I - Developing Countries	1010	I. Official Development Assistance (ODA) (I.A + I.B)	1120	Gross Disbursements	A	Current Prices (USD millions)	1974	1974	4316.02
+2	Belgium	1	1 : Part I - Developing Countries	1010	I. Official Development Assistance (ODA) (I.A + I.B)	1120	Gross Disbursements	A	Current Prices (USD millions)	1990	1990	907.49
+12	United Kingdom	1	1 : Part I - Developing Countries	2102	I.B.1.2. EU institutions	1120	Gross Disbursements	A	Current Prices (USD millions)	1998	1998	842.71
+7	Netherlands	1	1 : Part I - Developing Countries	1310	I.A.3.1. Investment projects	1120	Gross Disbursements	A	Current Prices (USD millions)	1999	1999	427.57
+6	Italy	1	1 : Part I - Developing Countries	1820	I.A.8.2. Refugees in donor countries	1120	Gross Disbursements	A	Current Prices (USD millions)	2003	2003	43.8
+1	Austria	1	1 : Part I - Developing Countries	1904	I.A. Memo: ODA channelled through multilateral organisations	1120	Gross Disbursements	A	Current Prices (USD millions)	2017	2017	108.56
+76	Poland	1	1 : Part I - Developing Countries	1015	I.A. Bilateral Official Development Assistance by types of aid (1+2+3+4+5+6+7+8+9+10)	1120	Gross Disbursements	N	National currency (millions)	1999	1999	58.118104
+576	United Arab Emirates	1	1 : Part I - Developing Countries	207	VI.1. Total participation in peacebuilding operations (incl. non-ODA)	1120	Gross Disbursements	N	National currency (millions)	2018	2018	362.19453
+20006	"Non-DAC Countries, Total"	1	1 : Part I - Developing Countries	2107	I.B.1.7. Montreal Protocol	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2004	2004	0.069242
+820	New Zealand	1	1 : Part I - Developing Countries	1213	I.A.2.1.c. Core support to Public-Private Partnerships (including networks)	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2012	2012	0.169696
+83	Latvia	1	1 : Part I - Developing Countries	1220	I.A.2.2. Specific-purpose programmes & funds managed by int'l org.	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2017	2017	2.443325
+801	Australia	1	1 : Part I - Developing Countries	1800	I.A.8. Other in-donor expenditures	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2017	2017	0.124498
+76	Poland	1	1 : Part I - Developing Countries	2107	I.B.1.7. Montreal Protocol	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2017	2017	1.58057
+4	France	1	1 : Part I - Developing Countries	1010	I. Official Development Assistance (ODA) (I.A + I.B)	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	1989	1989	10417.89897
+20006	"Non-DAC Countries, Total"	1	1 : Part I - Developing Countries	2108	I.B.1.8. Other agencies	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	1995	1995	63.299675
+20002	"Multilaterals, Total"	1	1 : Part I - Developing Countries	1800	I.A.8. Other in-donor expenditures	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	1996	1996	4.66492
+1	Austria	1	1 : Part I - Developing Countries	1800	I.A.8. Other in-donor expenditures	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2003	2003	53.70642
+301	Canada	1	1 : Part I - Developing Countries	2000	I.B. Multilateral Official Development Assistance (capital subscriptions are included with grants)	1120	Gross Disbursements	A	Current Prices (USD millions)	1975	1975	267.72
+20002	"Multilaterals, Total"	1	1 : Part I - Developing Countries	1700	I.A.7. Administrative costs not included elsewhere	1120	Gross Disbursements	A	Current Prices (USD millions)	1979	1979	40.37
+566	Saudi Arabia	1	1 : Part I - Developing Countries	2105	I.B.1.5. Regional development banks	1120	Gross Disbursements	A	Current Prices (USD millions)	1985	1985	13.23
+12	United Kingdom	1	1 : Part I - Developing Countries	1210	"I.A.2.1. Core support to NGOs, other priv. bodies, PPPs & research institutes"	1120	Gross Disbursements	A	Current Prices (USD millions)	1996	1996	74.93
+20002	"Multilaterals, Total"	1	1 : Part I - Developing Countries	1902	I.A. Memo: Free-standing technical co-operation (FTC)	1120	Gross Disbursements	A	Current Prices (USD millions)	1996	1996	226.11
+18	Finland	1	1 : Part I - Developing Countries	1100	I.A.1. Budget support	1120	Gross Disbursements	A	Current Prices (USD millions)	2011	2011	69.3053
+561	Qatar	1	1 : Part I - Developing Countries	2108	I.B.1.8. Other agencies	1120	Gross Disbursements	N	National currency (millions)	2020	2020	21.84
+7	Netherlands	1	1 : Part I - Developing Countries	2107	I.B.1.7. Montreal Protocol	1120	Gross Disbursements	D	Constant Prices (2020 USD millions)	2010	2010	2.821586

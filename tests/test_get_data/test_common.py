@@ -1,12 +1,13 @@
 import io
 import zipfile
 
-import pytest
-
-from oda_data.get_data import common
-from oda_data import config
-import requests
 import pandas as pd
+import pytest
+import requests
+from bs4 import BeautifulSoup
+
+from oda_data import config
+from oda_data.get_data import common
 
 
 def test__checktype():
@@ -89,3 +90,17 @@ def test_read_zip_content():
     )
 
     assert isinstance(result, pd.DataFrame)
+
+
+def test__links_dict():
+    with open(config.OdaPATHS.test_files / "response_multi", "r") as f:
+        response = f.read()
+
+    soup = BeautifulSoup(response, "html.parser")
+    results_set = soup.find_all("a")
+
+    links = common._links_dict(results_set)
+
+    assert isinstance(links, dict)
+    assert len(links) == 21
+    assert links.get(2021) is not None
