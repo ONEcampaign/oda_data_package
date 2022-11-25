@@ -11,6 +11,8 @@ class OdaPATHS:
     indicators = scripts / "indicators"
     cleaning_config = scripts / "clean_data"
     sectors = indicators / "sectors"
+    tests = project / "tests"
+    test_files = tests / "files"
 
 
 # ------------------------------ Key URLs ------------------------------ #
