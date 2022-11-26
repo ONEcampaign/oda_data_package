@@ -369,9 +369,9 @@
     ],
     "group_by": [
       "donor_code",
-      "donor",
+      "donor_name",
       "recipient_code",
-      "recipient",
+      "recipient_name",
       "year",
       "indicator"
     ]
