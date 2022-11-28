@@ -23,3 +23,5 @@ CRS_URL: str = f"{BASE_URL}CRS1"
 TABLE1_URL: str = f"{BASE_URL}TABLE1"
 TABLE2A_URL: str = f"{BASE_URL}TABLE2A"
 MULTISYSTEM_URL: str = f"{BASE_URL}MULTISYSTEM"
+
+CODES_URL: str = "https://webfs.oecd.org/crs-iati-xml/Lookup/DAC-CRS-CODES.xml"
