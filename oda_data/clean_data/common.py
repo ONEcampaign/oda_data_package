@@ -83,7 +83,6 @@ def clean_raw_df(
     except TypeError:
         df = df.astype(dtypes, errors="ignore")
 
-
     # Optionally keep only the columns that are in the settings file
     if small_version:
         df = df.filter(keep_cols, axis=1)
