@@ -3,6 +3,7 @@ import io
 import pathlib
 import zipfile as zf
 
+import bs4
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -102,25 +103,31 @@ def extract_file_link_single(url: str) -> str:
     return f"https://stats.oecd.org/FileView2.aspx?IDFile={link}"
 
 
-def extract_file_link_multiple(url: str) -> dict[int, str]:
-    """Parse the OECD website to find the download links for all years"""
-
+def _fetch_page_multiple_links(url: str) -> bs4.ResultSet:
     # Get page data
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
-    links = soup.find_all("a")
+    return soup.find_all("a")
 
+
+def _links_dict(results_set: bs4.ResultSet) -> dict[int, str]:
     # empty dictionary to hold files
     links_dict = {}
 
     # build links
-    for _ in links:
+    for _ in results_set:
         link = _.attrs["onclick"][15:-3].replace("_", "-")
         url = f"https://stats.oecd.org/FileView2.aspx?IDFile={link}"
         year = int(_.text[4:8])
         links_dict[year] = url
 
     return links_dict
+
+
+def extract_file_link_multiple(url: str) -> dict[int, str]:
+    """Parse the OECD website to find the download links for all years"""
+    results_set = _fetch_page_multiple_links(url)
+    return _links_dict(results_set)
 
 
 def download_single_table(

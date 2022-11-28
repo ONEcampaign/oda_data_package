@@ -52,11 +52,11 @@ def _validate_columns(df: pd.DataFrame, dtypes: dict) -> dict:
 
     for col in df.columns:
         if col not in dtypes.keys():
-            logger.warn(f"Column {col} not in dtypes dictionary")
+            logger.warning(f"Column {col} not in dtypes dictionary")
 
     for col in dtypes.keys():
         if col not in df.columns:
-            logger.warn(f"Column {col} not in DataFrame")
+            logger.warning(f"Column {col} not in DataFrame")
         else:
             clean_types[col] = dtypes[col]
 
@@ -78,7 +78,10 @@ def clean_raw_df(
     dtypes = _validate_columns(df, dtypes)
 
     # convert the columns to the correct type
-    df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
+    try:
+        df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
+    except TypeError:
+        df = df.astype(dtypes, errors="ignore")
 
     # Optionally keep only the columns that are in the settings file
     if small_version:
