@@ -1,8 +1,7 @@
 # Changes to the oda_data package
 
-## [0.1.8] Unreleased
+## [0.1.9] Unreleased
 
-2022-11-25 (Date of Last Commit)
 
 ### Changed
 * ...
@@ -19,6 +18,11 @@
 ### Breaking changes
 * ...
 
+## [0.1.8] 2022-11-29
+
+### Added
+* More comprehensive tests of all core functionalities
+* A tool to extract CRS codes from the DAC CRS code list
 
 ## [0.1.7] 2022-11-24
 This version mainly tweaks the file structure.
