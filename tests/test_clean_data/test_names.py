@@ -1,7 +1,7 @@
 import pandas as pd
 
-from oda_data.clean_data.names import add_name
-
+from oda_data.clean_data import names
+import lxml.etree as et
 
 from oda_data import set_data_path
 from oda_data import config
@@ -19,7 +19,7 @@ def test_add_name():
         }
     )
 
-    result = add_name(test_df, "donor_code")
+    result = names.add_name(test_df, "donor_code")
 
     assert all(
         result.donor_name.values
@@ -29,7 +29,7 @@ def test_add_name():
         ]
     )
 
-    result = add_name(test_df, ["donor_code", "agency_code"])
+    result = names.add_name(test_df, ["donor_code", "agency_code"])
 
     assert all(
         result.agency_name.values
@@ -38,3 +38,18 @@ def test_add_name():
             "Department for International Development",
         ]
     )
+
+
+def test_read_crs_codes():
+
+    with open(config.OdaPATHS.test_files / "crs_codes_raw", "rb") as f:
+        raw_data = f.read()
+
+    data = et.XML(raw_data)
+
+    result = names._extract_crs_elements(data)
+
+    expected = names.read_crs_codes()
+
+    assert set(result) == set(expected)
+    assert result == expected
