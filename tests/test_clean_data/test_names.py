@@ -1,7 +1,7 @@
 import pandas as pd
 
 from oda_data.clean_data import names
-import xml.etree.ElementTree as et
+import lxml.etree as et
 
 from oda_data import set_data_path
 from oda_data import config
@@ -42,13 +42,14 @@ def test_add_name():
 
 def test_read_crs_codes():
 
-    with open(config.OdaPATHS.raw_data / "crs_codes_raw", "rb") as f:
+    with open(config.OdaPATHS.test_files / "crs_codes_raw", "rb") as f:
         raw_data = f.read()
 
     data = et.XML(raw_data)
 
-    result = names._extract_crs_codes(data)
+    result = names._extract_crs_elements(data)
 
     expected = names.read_crs_codes()
 
+    assert set(result) == set(expected)
     assert result == expected
