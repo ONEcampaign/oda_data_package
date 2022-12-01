@@ -152,6 +152,15 @@
       "amounttype_code": "A"
     }
   },
+  "total_in_donor_students_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_in_donor_students_ge",
+      "secondary": "total_in_donor_students_flow",
+      "new": "total_in_donor_students_ge_linked"
+    }
+  },
   "scholarships_flow": {
     "source": "dac1",
     "type": "dac",
@@ -170,6 +179,15 @@
       "amounttype_code": "A"
     }
   },
+  "scholarships_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "scholarships_ge",
+      "secondary": "scholarships_flow",
+      "new": "scholarships_ge_linked"
+    }
+  },
   "imputed_students_flow": {
     "source": "dac1",
     "type": "dac",
@@ -186,6 +204,15 @@
       "aidtype_code": 1520,
       "flows_code": 1160,
       "amounttype_code": "A"
+    }
+  },
+  "imputed_students_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "imputed_students_ge",
+      "secondary": "imputed_students_flow",
+      "new": "imputed_students_ge_linked"
     }
   },
   "debt_relief_flow": {
@@ -224,6 +251,15 @@
       "amounttype_code": "A"
     }
   },
+  "idrc_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "idrc_ge",
+      "secondary": "idrc_flow",
+      "new": "idrc_ge_linked"
+    }
+  },
   "eu_core_flow": {
     "source": "dac1",
     "type": "dac",
@@ -240,6 +276,15 @@
       "aidtype_code": 2102,
       "flows_code": 1160,
       "amounttype_code": "A"
+    }
+  },
+  "eu_core_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "eu_core_ge",
+      "secondary": "eu_core_flow",
+      "new": "eu_core_ge_linked"
     }
   },
   "total_psi_flow": {
@@ -260,6 +305,15 @@
       "amounttype_code": "A"
     }
   },
+  "total_psi_flow_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_psi_flow",
+      "secondary": "total_psi_ge",
+      "new": "total_psi_flow_linked"
+    }
+  },
   "institutional_psi_flow": {
     "source": "dac1",
     "type": "dac",
@@ -278,6 +332,15 @@
       "amounttype_code": "A"
     }
   },
+  "institutional_psi_flow_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "institutional_psi_flow",
+      "secondary": "institutional_psi_ge",
+      "new": "institutional_psi_flow_linked"
+    }
+  },
   "instrument_psi_flow": {
     "source": "dac1",
     "type": "dac",
@@ -294,6 +357,15 @@
       "aidtype_code": 11024,
       "flows_code": 1160,
       "amounttype_code": "A"
+    }
+  },
+  "instrument_psi_flow_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "instrument_psi_flow",
+      "secondary": "instrument_psi_ge",
+      "new": "instrument_psi_flow_linked"
     }
   },
   "recipient_imputed_multi_flow_net": {
@@ -368,12 +440,7 @@
       "recipient_bilateral_flow_net"
     ],
     "group_by": [
-      "donor_code",
-      "donor_name",
-      "recipient_code",
-      "recipient_name",
-      "year",
-      "indicator"
+      "aidtype_code"
     ]
   },
   "crs_bilateral_flow_disbursement_gross": {
@@ -482,18 +549,11 @@
     "source": "crs",
     "type": "one",
     "indicators": [
-      "crs_gender_allocable_flow_gross"
+      "crs_gender_allocable_flow_disbursement_gross"
     ],
     "group_by": [
-      "donor_code",
-      "donor_name",
-      "recipient_code",
-      "recipient_name",
-      "year",
-      "purpose_code",
-      "purpose_name",
-      "sector_code",
-      "sector_name"
+      "category",
+      "aid_t"
     ]
   },
   "crs_gender_total_flow_gross": {
@@ -504,16 +564,8 @@
       "crs_gender_principal_flow_gross"
     ],
     "group_by": [
-      "donor_code",
-      "donor_name",
-      "recipient_code",
-      "recipient_name",
-      "purpose_code",
-      "purpose_name",
-      "sector_code",
-      "sector_name",
-      "year",
-      "indicator"
+      "category",
+      "aid_t"
     ]
   },
   "crs_bilateral_total_flow_gross_by_purpose": {
@@ -523,15 +575,8 @@
       "crs_bilateral_flow_disbursement_gross"
     ],
     "group_by": [
-      "donor_code",
-      "donor_name",
-      "agency_code",
-      "recipient_code",
-      "recipient_name",
-      "purpose_code",
-      "purpose_name",
-      "year",
-      "indicator"
+      "category",
+      "aid_t"
     ]
   },
   "multisystem_multilateral_contributions_disbursement_gross": {

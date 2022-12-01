@@ -4,10 +4,15 @@
 
 
 ### Changed
-* ...
+* Changed how indicators are grouped when requesting a 'one' indicator.
+instead of returning fewer columns than the raw indicators, it will return the
+same columns, excluding the ones that make up the requested indicator
 
 ### Added
-* ...
+* The ability to request a 'one_linked' indicator. These indicators are composed of a main indicator
+which is _completed_ by a fallback indicator, when the values are missing. For example, In-Donor Refugee Costs
+should be the same in Grant Equivalents or Flows. If the values are missing in the former, they are filled by the latter.
+
 
 ### Fixed
 * ...

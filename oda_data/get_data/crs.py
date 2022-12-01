@@ -59,7 +59,7 @@ def download_crs(years: int | list | range, small_version: bool = False) -> None
         _save(
             df=df,
             year=year,
-            config_file_path=config.OdaPATHS.cleaning_config / "crs_config.json",
+            config_file_path=config.OdaPATHS.settings / "crs_config.json",
             save_path=config.OdaPATHS.raw_data,
             small_version=small_version,
         )

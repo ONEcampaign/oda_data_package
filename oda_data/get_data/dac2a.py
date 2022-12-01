@@ -12,6 +12,6 @@ def download_dac2a(small_version: bool = False) -> None:
         raw_file_name="Table2a_Data.csv",
         output_file_name="table2a_raw",
         save_path=config.OdaPATHS.raw_data,
-        config_file_path=config.OdaPATHS.cleaning_config / "dac2a_config.json",
+        config_file_path=config.OdaPATHS.settings / "dac2a_config.json",
         small_version=small_version,
     )

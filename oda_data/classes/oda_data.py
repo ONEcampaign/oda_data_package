@@ -7,6 +7,7 @@ import pandas as pd
 from oda_data import config
 from oda_data.clean_data import common as clean
 from oda_data.get_data.common import check_integers
+from oda_data.indicators.linked_indicators import linked_indicator
 from oda_data.logger import logger
 from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
 
@@ -26,11 +27,11 @@ CURRENCIES: dict[str, str] = {
 
 
 def _load_indicators() -> dict[str, dict]:
-    return clean.read_settings(config.OdaPATHS.indicators / "indicators.json")
+    return clean.read_settings(config.OdaPATHS.settings / "indicators.json")
 
 
 def _key_cols() -> dict[str, dict | list]:
-    return clean.read_settings(config.OdaPATHS.cleaning_config / "key_columns.json")
+    return clean.read_settings(config.OdaPATHS.settings / "key_columns.json")
 
 
 @dataclass
@@ -118,18 +119,17 @@ class ODAData:
         # Column settings
         column_settings = _key_cols()
 
+        # columns to keep
+        keep = column_settings[self._indicators_json[indicator]["source"]]["keep"]
+
+        # columns names
+        names = column_settings[self._indicators_json[indicator]["source"]]["rename"]
+
         # Filter the data, keep only the important columns, assign the indicator name
         return (
             data_.query(query)
-            .filter(
-                column_settings[self._indicators_json[indicator]["source"]]["keep"],
-                axis=1,
-            )
-            .rename(
-                columns=column_settings[self._indicators_json[indicator]["source"]][
-                    "rename"
-                ]
-            )
+            .filter(keep, axis=1)
+            .rename(columns=names)
             .assign(indicator=indicator)
             .reset_index(drop=True)
         )
@@ -140,21 +140,49 @@ class ODAData:
         # Required indicators
         required_indicators: list = self._indicators_json[indicator]["indicators"]
 
+        # Columns which should be ignored when grouping
+        exclude_from_group = self._indicators_json[indicator]["group_by"] + ["value"]
+
+        # combined data
+        combined: pd.DataFrame = pd.concat(
+            [
+                self._filter_indicator_data(indicator)
+                for indicator in required_indicators
+            ],
+            ignore_index=True,
+        )
+
         # Group by columns
-        group_by_cols: list = self._indicators_json[indicator]["group_by"]
+        group_cols = [col for col in combined.columns if col not in exclude_from_group]
 
         return (
-            pd.concat(
-                [
-                    self._filter_indicator_data(indicator)
-                    for indicator in required_indicators
-                ],
-                ignore_index=True,
-            )
-            .assign(indicator=indicator)
-            .groupby(group_by_cols, observed=True)
+            combined.assign(indicator=indicator)
+            .groupby(group_cols, observed=True)
             .sum(numeric_only=True)
             .reset_index()
+        )
+
+    def _build_linked_indicator(self, indicator: str) -> pd.DataFrame:
+
+        # Components dict
+        components: dict = self._indicators_json[indicator]["components"]
+        # Required indicators
+        required_indicators: list = [components["main"], components["secondary"]]
+
+        # Create a combined DataFrame
+        combined: pd.DataFrame = pd.concat(
+            [
+                self._filter_indicator_data(indicator)
+                for indicator in required_indicators
+            ],
+            ignore_index=True,
+        )
+
+        return linked_indicator(
+            data=combined,
+            main_indicator=components["main"],
+            fallback_indicator=components["secondary"],
+            indicator_name=components["new"],
         )
 
     def _convert_units(self, indicator: str) -> None:
@@ -204,6 +232,10 @@ class ODAData:
             self.indicators_data[indicator] = self._filter_indicator_data(indicator)
         elif ind_type == "one":
             self.indicators_data[indicator] = self._build_one_indicator(indicator)
+        elif ind_type == "one_linked":
+            self.indicators_data[indicator] = self._build_linked_indicator(indicator)
+        elif ind_type == "one_research":
+            raise NotImplementedError()
 
         # Convert the units if necessary
         self._convert_units(indicator)
