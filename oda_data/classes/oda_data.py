@@ -27,11 +27,11 @@ CURRENCIES: dict[str, str] = {
 
 
 def _load_indicators() -> dict[str, dict]:
-    return clean.read_settings(config.OdaPATHS.indicators / "indicators.json")
+    return clean.read_settings(config.OdaPATHS.settings / "indicators.json")
 
 
 def _key_cols() -> dict[str, dict | list]:
-    return clean.read_settings(config.OdaPATHS.cleaning_config / "key_columns.json")
+    return clean.read_settings(config.OdaPATHS.settings / "key_columns.json")
 
 
 @dataclass

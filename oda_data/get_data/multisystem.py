@@ -12,6 +12,6 @@ def download_multisystem(small_version: bool = False) -> None:
         raw_file_name="MultiSystem entire dataset.txt",
         output_file_name="multisystem_raw",
         save_path=config.OdaPATHS.raw_data,
-        config_file_path=config.OdaPATHS.cleaning_config / "multisystem_config.json",
+        config_file_path=config.OdaPATHS.settings / "multisystem_config.json",
         small_version=small_version,
     )

@@ -17,7 +17,7 @@ def test__download():
 
     crs._save(
         df,
-        config_file_path=path.cleaning_config / "crs_config.json",
+        config_file_path=path.settings / "crs_config.json",
         save_path=path.test_files,
         year=2019,
         small_version=True,

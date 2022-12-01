@@ -1,0 +1,81 @@
+{
+  "dac1": {
+    "keep": [
+      "donor_code",
+      "donor",
+      "year",
+      "value"
+    ],
+    "rename": {
+      "donor": "donor_name"
+    }
+  },
+  "dac2a": {
+    "keep": [
+      "donor_code",
+      "donor",
+      "recipient_code",
+      "recipient",
+      "year",
+      "value"
+    ],
+    "rename": {
+      "donor_code": "donor_code",
+      "donor": "donor_name",
+      "recipient": "recipient_name"
+    }
+  },
+  "crs": {
+    "keep": [
+      "donor_code",
+      "donor_name",
+      "agency_code",
+      "agency_name",
+      "recipient_code",
+      "recipient_name",
+      "year",
+      "flow_code",
+      "category",
+      "finance_t",
+      "aid_t",
+      "purpose_code",
+      "purpose_name",
+      "sector_code",
+      "sector_name",
+      "gender",
+      "environment",
+      "nutrition",
+      "biodiversity",
+      "climate_mitigation",
+      "climate_adaptation",
+      "desertification",
+      "value"
+    ],
+    "rename": {
+    }
+  },
+  "multisystem": {
+    "keep": [
+      "year",
+      "donor_code",
+      "donor_name_e",
+      "usd_commitment",
+      "usd_extended",
+      "flow_code",
+      "flow_name_e",
+      "aid_t",
+      "aid_to_or_thru",
+      "channel_code",
+      "channel_name_e",
+      "recipient_code",
+      "recipient_name_e",
+      "value"
+    ],
+    "rename": {
+      "donor_name_e": "donor_name",
+      "flow_name_e": "flow_name",
+      "channel_name_e": "channel_name",
+      "recipient_name_e": "recipient_name"
+    }
+  }
+}
