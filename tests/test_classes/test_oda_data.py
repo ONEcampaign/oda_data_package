@@ -77,3 +77,8 @@ def test_odadata():
     # log availabe indicators
     oda = ODAData(years=2019)
     oda.available_indicators()
+
+    # load a linked indicator
+    oda = ODAData(years=2019).load_indicator("total_in_donor_students_ge_linked")
+
+    assert oda.get_data().indicator.unique()[0] == "total_in_donor_students_ge_linked"

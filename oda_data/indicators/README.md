@@ -2,7 +2,7 @@
 
 This module contains configuration files and scripts to produce a series of frequently-used indicators.
 
-## [indicators.json](indicators.json)
+## [indicators.json](../settings/indicators.json)
 This json file contains settings used to filter the different DAC databases and provide a dataframe with a 
 specific indicator.
 
