@@ -1,0 +1,58 @@
+{
+  "donor_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "donor": {
+    "type": "category",
+    "keep": true
+  },
+  "part_code": {
+    "type": "category",
+    "keep": false
+  },
+  "part": {
+    "type": "category",
+    "keep": false
+  },
+  "aidtype_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "aid_type": {
+    "type": "category",
+    "keep": true
+  },
+  "flows_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "fund_flows": {
+    "type": "category",
+    "keep": true
+  },
+  "amounttype_code": {
+    "type": "category",
+    "keep": true
+  },
+  "amount_type": {
+    "type": "category",
+    "keep": true
+  },
+  "time_code": {
+    "type": "category",
+    "keep": false
+  },
+  "year": {
+    "type": "Int16",
+    "keep": true
+  },
+  "value": {
+    "type": "float",
+    "keep": true
+  },
+  "flags": {
+    "type": "string",
+    "keep": false
+  }
+}

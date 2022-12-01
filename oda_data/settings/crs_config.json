@@ -1,0 +1,402 @@
+{
+  "year": {
+    "type": "Int16",
+    "keep": true
+  },
+  "donor_code": {
+    "type": "Int16",
+    "keep": true
+  },
+  "donor_name": {
+    "type": "category",
+    "keep": true
+  },
+  "agency_code": {
+    "type": "Int16",
+    "keep": true
+  },
+  "agency_name": {
+    "type": "category",
+    "keep": true
+  },
+  "crs_id": {
+    "type": "string",
+    "keep": false
+  },
+  "project_number": {
+    "type": "string",
+    "keep": false
+  },
+  "initial_report": {
+    "type": "string",
+    "keep": false
+  },
+  "recipient_code": {
+    "type": "Int16",
+    "keep": true
+  },
+  "recipient_name": {
+    "type": "category",
+    "keep": true
+  },
+  "region_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "region_name": {
+    "type": "category",
+    "keep": true
+  },
+  "incomegroup_code": {
+    "type": "Int32",
+    "keep": false
+  },
+  "incomegroup_name": {
+    "type": "category",
+    "keep": false
+  },
+  "flow_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "flow_name": {
+    "type": "category",
+    "keep": true
+  },
+  "bi_multi": {
+    "type": "category",
+    "keep": false
+  },
+  "category": {
+    "type": "Int16",
+    "keep": true
+  },
+  "finance_t": {
+    "type": "Int32",
+    "keep": true
+  },
+  "aid_t": {
+    "type": "category",
+    "keep": true
+  },
+  "usd_commitment": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_disbursement": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_received": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_commitment_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_disbursement_defl": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_received_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_adjustment": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_adjustment_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_amount_untied": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_amount_partial_tied": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_amount_tied": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_amount_untied_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_amount_partial_tied_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_amounttied_defl": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_irtc": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_irtc_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "usd_expert_commitment": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_expert_extended": {
+    "type": "float",
+    "keep": false
+  },
+  "usd_export_credit": {
+    "type": "float",
+    "keep": false
+  },
+  "currency_code": {
+    "type": "category",
+    "keep": true
+  },
+  "commitment_national": {
+    "type": "float",
+    "keep": true
+  },
+  "disbursement_national": {
+    "type": "float",
+    "keep": true
+  },
+  "grant_equiv": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_grant_equiv": {
+    "type": "float",
+    "keep": true
+  },
+  "short_description": {
+    "type": "string",
+    "keep": false
+  },
+  "project_title": {
+    "type": "string",
+    "keep": true
+  },
+  "purpose_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "purpose_name": {
+    "type": "category",
+    "keep": true
+  },
+  "sector_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "sector_name": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_code": {
+    "type": "Int32",
+    "keep": true
+  },
+  "channel_name": {
+    "type": "category",
+    "keep": true
+  },
+  "channel_reported_name": {
+    "type": "string",
+    "keep": false
+  },
+  "parent_channel_code": {
+    "type": "category",
+    "keep": false
+  },
+  "geography": {
+    "type": "string",
+    "keep": false
+  },
+  "ldcflag": {
+    "type": "category",
+    "keep": true
+  },
+  "ldcflag_name": {
+    "type": "category",
+    "keep": true
+  },
+  "expected_start_date": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "expected_completion_date": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "completion_date": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "long_description": {
+    "type": "string",
+    "keep": false
+  },
+  "sdgfocus": {
+    "type": "category",
+    "keep": true
+  },
+  "keywords": {
+    "type": "string",
+    "keep": true
+  },
+  "gender": {
+    "type": "category",
+    "keep": true
+  },
+  "environment": {
+    "type": "category",
+    "keep": true
+  },
+  "pdgg": {
+    "type": "category",
+    "keep": false
+  },
+  "pdgg_code": {
+    "type": "category",
+    "keep": false
+  },
+  "trade": {
+    "type": "category",
+    "keep": false
+  },
+  "rmnch": {
+    "type": "category",
+    "keep": false
+  },
+  "rmnch_code": {
+    "type": "category",
+    "keep": false
+  },
+  "drr": {
+    "type": "category",
+    "keep": false
+  },
+  "drr_code": {
+    "type": "category",
+    "keep": false
+  },
+  "disability": {
+    "type": "category",
+    "keep": false
+  },
+  "ftc": {
+    "type": "category",
+    "keep": false
+  },
+  "ftc_code": {
+    "type": "category",
+    "keep": false
+  },
+  "nutrition": {
+    "type": "category",
+    "keep": true
+  },
+  "pba": {
+    "type": "category",
+    "keep": false
+  },
+  "pba_code": {
+    "type": "category",
+    "keep": false
+  },
+  "investment_project": {
+    "type": "category",
+    "keep": false
+  },
+  "assoc_finance": {
+    "type": "string",
+    "keep": false
+  },
+  "biodiversity": {
+    "type": "category",
+    "keep": true
+  },
+  "climate_mitigation": {
+    "type": "category",
+    "keep": true
+  },
+  "climate_adaptation": {
+    "type": "category",
+    "keep": true
+  },
+  "desertification": {
+    "type": "category",
+    "keep": true
+  },
+  "commitment_date": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "type_repayment": {
+    "type": "category",
+    "keep": true
+  },
+  "number_repayment": {
+    "type": "category",
+    "keep": true
+  },
+  "interest1": {
+    "type": "string",
+    "keep": true
+  },
+  "interest2": {
+    "type": "string",
+    "keep": true
+  },
+  "repaydate1": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "repaydate2": {
+    "type": "datetime64[ns]",
+    "keep": true
+  },
+  "usd_interest": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_outstanding": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_arrears_principal": {
+    "type": "float",
+    "keep": true
+  },
+  "usd_arrears_interest": {
+    "type": "float",
+    "keep": true
+  },
+  "capital_expend": {
+    "type": "float",
+    "keep": true
+  },
+  "psiflag": {
+    "type": "category",
+    "keep": true
+  },
+  "psiadd_type": {
+    "type": "category",
+    "keep": true
+  },
+  "psiadd_assess": {
+    "type": "category",
+    "keep": true
+  },
+  "psiadd_dev_obj": {
+    "type": "category",
+    "keep": true
+  }
+}
