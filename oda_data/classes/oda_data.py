@@ -34,6 +34,27 @@ def _key_cols() -> dict[str, dict | list]:
     return clean.read_settings(config.OdaPATHS.settings / "key_columns.json")
 
 
+def _group_output(df: pd.DataFrame, idx_cols: list) -> pd.DataFrame:
+    """Group output by idx_cols and sum all other columns."""
+
+    # Warn if some index columns aren't present in the data
+    missing_cols = [col for col in idx_cols if col not in df.columns]
+    if len(missing_cols) > 0:
+        logger.warning(f"The following columns are not available: {missing_cols}")
+
+    # Check that value wasn't included
+    idx_cols = [c for c in idx_cols if c != "value"]
+
+    # Ensure that columns actually exist in the dataframe
+    cols = [c for c in df.columns if c in idx_cols]
+
+    return (
+        df.filter(cols + ["value"], axis=1)
+        .groupby(cols, as_index=False, observed=True)["value"]
+        .sum()
+    )
+
+
 @dataclass
 class ODAData:
     years: list | int | range = field(default_factory=list)
@@ -68,6 +89,13 @@ class ODAData:
             raise ValueError(f"Base year can only be specified if prices are constant")
         if self.base_year is None and self.prices == "constant":
             raise ValueError(f"Base year must be specified for constant prices")
+
+        # set defaults for output settings
+        self._output_config: dict = {
+            "output_cols": None,
+            "simplify_output": False,
+            "add_names": False,
+        }
 
     def _load_raw_data(self, indicator: str) -> None:
         """Loads the data for the specified indicator, if the data is not
@@ -210,6 +238,22 @@ class ODAData:
         indicators = "\n".join(self._indicators_json)
         logger.info(f"Available indicators:\n{indicators}")
 
+    def simplify_output_df(self, columns_to_keep: list) -> None:
+        """Simplifies the output DataFrame by summarising the data and removing
+        the columns which are not needed.
+
+        Args:
+            columns_to_keep: the list of columns that should be kept in the output.
+            Note that this function performs a `.groupby()` using this list"""
+
+        # Store the list of columns as an instance variable
+        self._output_config["output_cols"] = columns_to_keep
+        # Store the 'request' to simply output as an instance variable
+        self._output_config["simplify_output"] = True
+
+    def add_names(self) -> None:
+        raise NotImplementedError
+
     def load_indicator(self, indicator: str) -> ODAData:
         """Loads data for the specified indicator. Any parameters specified for
         the object (years, donors, prices, etc.) are applied to the data.
@@ -269,4 +313,9 @@ class ODAData:
         elif indicators == "all":
             indicators = self.indicators_data.values()
 
-        return pd.concat(indicators, ignore_index=True)
+        data = pd.concat(indicators, ignore_index=True)
+
+        if self._output_config["simplify_output"]:
+            return _group_output(data, self._output_config["output_cols"])
+
+        return data
