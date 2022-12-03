@@ -7,6 +7,7 @@ import pandas as pd
 from oda_data import config
 from oda_data.clean_data import common as clean
 from oda_data.get_data.common import check_integers
+from oda_data.indicators import research_indicators
 from oda_data.indicators.linked_indicators import linked_indicator
 from oda_data.logger import logger
 from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
@@ -213,6 +214,18 @@ class ODAData:
             indicator_name=components["new"],
         )
 
+    def _build_research_indicator(self, indicator: str) -> pd.DataFrame:
+        # Components dict
+        function: str = self._indicators_json[indicator]["function"]
+
+        # function as callable
+        try:
+            function_callable: callable = getattr(research_indicators, function)
+        except AttributeError:
+            raise NotImplementedError(f"Function {function} not found")
+
+        return function_callable(**self.arguments)
+
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
         if self.currency == "USD" and self.prices == "current":
@@ -233,12 +246,24 @@ class ODAData:
                 target_currency=CURRENCIES[self.currency],
             ).assign(currency=self.currency, prices=self.prices)
 
+    @property
+    def arguments(self):
+        """Returns the arguments used by the object"""
+        return {
+            "years": self.years,
+            "donors": self.donors,
+            "recipients": self.recipients,
+            "currency": self.currency,
+            "prices": self.prices,
+            "base_year": self.base_year,
+        }
+
     def available_indicators(self) -> None:
         """Logs a list of available indicators."""
         indicators = "\n".join(self._indicators_json)
         logger.info(f"Available indicators:\n{indicators}")
 
-    def simplify_output_df(self, columns_to_keep: list) -> None:
+    def simplify_output_df(self, columns_to_keep: list) -> ODAData:
         """Simplifies the output DataFrame by summarising the data and removing
         the columns which are not needed.
 
@@ -250,6 +275,8 @@ class ODAData:
         self._output_config["output_cols"] = columns_to_keep
         # Store the 'request' to simply output as an instance variable
         self._output_config["simplify_output"] = True
+
+        return self
 
     def add_names(self) -> None:
         raise NotImplementedError
@@ -279,7 +306,7 @@ class ODAData:
         elif ind_type == "one_linked":
             self.indicators_data[indicator] = self._build_linked_indicator(indicator)
         elif ind_type == "one_research":
-            raise NotImplementedError()
+            self.indicators_data[indicator] = self._build_research_indicator(indicator)
 
         # Convert the units if necessary
         self._convert_units(indicator)
