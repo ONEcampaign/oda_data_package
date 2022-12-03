@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data.indicators.components import (
+from oda_data.indicators.sector_components import (
     multi_contributions_by_donor,
     period_purpose_shares,
     compute_imputations,
