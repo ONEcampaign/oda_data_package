@@ -603,5 +603,10 @@
     "source": "multisystem",
     "type": "one_research",
     "function": "multilateral_imputed_flows"
+  },
+  "total_bi_multi_flow_disbursement_gross":{
+    "source": "crs",
+    "type": "one_research",
+    "function": "total_bi_multi_flows"
   }
 }
