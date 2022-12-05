@@ -51,7 +51,7 @@ def _group_output(df: pd.DataFrame, idx_cols: list) -> pd.DataFrame:
 
     return (
         df.filter(cols + ["value"], axis=1)
-        .groupby(cols, as_index=False, observed=True)["value"]
+        .groupby(cols, as_index=False, observed=True, dropna=False)["value"]
         .sum()
     )
 
@@ -186,7 +186,7 @@ class ODAData:
 
         return (
             combined.assign(indicator=indicator)
-            .groupby(group_cols, observed=True)
+            .groupby(group_cols, observed=True, dropna=False)
             .sum(numeric_only=True)
             .reset_index()
         )
