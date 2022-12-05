@@ -56,12 +56,12 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
     data = pd.DataFrame()
     cols = [c for c in df.columns if c not in ["year", "value"]]
 
-    for y in range(df.year.max(), df.year.min()+1, -1):
+    for y in range(df.year.max(), df.year.min() + 1, -1):
         years = [y - i for i in range(period_length)]
         _ = (
             df.copy(deep=True)
             .loc[lambda d: d.year.isin(years)]
-            .groupby(cols, observed=True,dropna=False)
+            .groupby(cols, observed=True, dropna=False)
             .agg({"value": sum, "year": max})
             .assign(year=y)
             .reset_index()
