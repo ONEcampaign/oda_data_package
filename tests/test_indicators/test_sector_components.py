@@ -101,7 +101,7 @@ def test__get_indicator():
     assert original == original_copy
 
     # Check that the result columns are indeed the requested ones, plus 'value'
-    assert all([c in result.columns for c in cols+["value"]])
+    assert all([c in result.columns for c in cols + ["value"]])
 
     test = original.load_indicator(indicator).get_data()
 
@@ -174,3 +174,16 @@ def test__spending_summary():
     assert "sector_code" not in result_p.columns
     assert "value" not in result_p.columns
     assert "share" in result_s.columns
+
+
+def test_bilat_outflows_by_donor():
+
+    oda = ODAData([2019, 2020], donors=[4, 12])
+
+    result = sc.bilat_outflows_by_donor(oda)
+
+    assert "purpose_code" in result.columns
+    assert 4 in result.donor_code.unique()
+    assert 12 in result.donor_code.unique()
+    assert 2019 in result.year.unique()
+    assert 2020 in result.year.unique()
