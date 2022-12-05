@@ -56,7 +56,7 @@
     "keep": true
   },
   "channel_code": {
-    "type": "category",
+    "type": "Int32",
     "keep": true
   },
   "channel_name_e": {

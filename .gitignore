@@ -131,3 +131,18 @@ dmypy.json
 
 .idea/
 .DS_Store
+oda_data/.raw_data/crs_2010_raw.feather
+oda_data/.raw_data/crs_2011_raw.feather
+oda_data/.raw_data/crs_2012_raw.feather
+oda_data/.raw_data/crs_2013_raw.feather
+oda_data/.raw_data/crs_2014_raw.feather
+oda_data/.raw_data/crs_2014_raw.feather
+oda_data/.raw_data/crs_2015_raw.feather
+oda_data/.raw_data/crs_2016_raw.feather
+oda_data/.raw_data/crs_2017_raw.feather
+oda_data/.raw_data/crs_2018_raw.feather
+oda_data/.raw_data/crs_2019_raw.feather
+oda_data/.raw_data/crs_2020_raw.feather
+oda_data/.raw_data/multisystem_raw.feather
+oda_data/.raw_data/table2a_raw.feather
+oda_data/.raw_data/table1_raw.feather
