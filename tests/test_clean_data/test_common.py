@@ -39,7 +39,7 @@ def test__validate_columns():
     logger.setLevel("CRITICAL")
 
     clean = common._validate_columns(df, dtypes)
-    assert len(clean) == len(dtypes) - 1
+    assert len(clean) == len(dtypes) - 5
 
 
 def test_clean_raw_df():
