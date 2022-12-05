@@ -126,3 +126,16 @@ def test_oda_data_simplify_output(caplog):
     pd.testing.assert_frame_equal(result1, result3)
 
     assert "['test']" in caplog.text
+
+
+def test_build_oda_indicator():
+
+    test = ODAData(years=range(2015, 2020))
+
+    result = test._build_research_indicator("imputed_multi_flow_disbursement_gross")
+
+    years = list(result.year.unique())
+    assert years == [2017, 2018, 2019]
+
+    result_from_obj = test.load_indicator("imputed_multi_flow_disbursement_gross")
+    pd.testing.assert_frame_equal(result, result_from_obj.get_data())
