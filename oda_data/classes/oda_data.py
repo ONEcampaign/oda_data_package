@@ -224,7 +224,7 @@ class ODAData:
         except AttributeError:
             raise NotImplementedError(f"Function {function} not found")
 
-        return function_callable(**self.arguments)
+        return function_callable(**self.arguments).assign(indicator=indicator)
 
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
