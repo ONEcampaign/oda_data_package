@@ -8,5 +8,5 @@ This file contains functions that are used in different cleaning steps.
 It also contains `dac_exchange()` and `dac_deflate()` which are partial implementations of `pydeflate.deflate()`
 which enforce certain shared settings (e.g. using the DAC as a source, setting a common base year, etc.)
 
-## [names.py](names.py)
+## [names.py](../tools/names.py)
 This file contains functions to add names to the donor, recipient, and channel codes.
