@@ -61,7 +61,7 @@ def _group_output(df: pd.DataFrame, idx_cols: list) -> pd.DataFrame:
 
 def _drop_name_cols(df: pd.DataFrame) -> pd.DataFrame:
     """Drop columns that contain names"""
-    return df.drop(columns=[c for c in df.columns if c.contains("name")])
+    return df.drop(columns=[c for c in df.columns if "name" in c])
 
 
 @dataclass
