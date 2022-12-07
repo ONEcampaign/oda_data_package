@@ -59,6 +59,11 @@ def _group_output(df: pd.DataFrame, idx_cols: list) -> pd.DataFrame:
     )
 
 
+def _drop_name_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop columns that contain names"""
+    return df.drop(columns=[c for c in df.columns if c.contains("name")])
+
+
 @dataclass
 class ODAData:
     """A class for working with ODA data.
@@ -187,6 +192,7 @@ class ODAData:
             .rename(columns=names)
             .assign(indicator=indicator)
             .reset_index(drop=True)
+            .pipe(_drop_name_cols)
         )
 
     def _build_one_indicator(self, indicator: str) -> pd.DataFrame:
@@ -250,7 +256,11 @@ class ODAData:
         except AttributeError:
             raise NotImplementedError(f"Function {function} not found")
 
-        return function_callable(**self.arguments).assign(indicator=indicator)
+        return (
+            function_callable(**self.arguments)
+            .assign(indicator=indicator)
+            .pipe(_drop_name_cols)
+        )
 
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
@@ -295,6 +305,11 @@ class ODAData:
         """Returns a dictionary of available recipient codes"""
         logger.info("Note that not all recipients may be available for all indicators")
         return _OdaDict(names.recipient_names())
+
+    @staticmethod
+    def available_currencies() -> list:
+        """Returns a dictionary of available currencies"""
+        return _OdaList(CURRENCIES)
 
     def available_indicators(self) -> list:
         """Returns a list of indicators"""
