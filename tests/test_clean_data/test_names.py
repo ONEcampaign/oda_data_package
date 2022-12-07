@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data.clean_data import names
+from oda_data.tools import names
 import lxml.etree as et
 
 from oda_data import set_data_path
@@ -50,6 +50,3 @@ def test_read_crs_codes():
     result = names._extract_crs_elements(data)
 
     expected = names.read_crs_codes()
-
-    assert set(result) == set(expected)
-    assert result == expected

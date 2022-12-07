@@ -90,6 +90,41 @@ def clean_raw_df(
     return df
 
 
+def _cols_in_list(all_columns: list, cols_list: list) -> list:
+    return [c for c in cols_list if c in all_columns]
+
+
+def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Reorder columns to have a more predictable output"""
+
+    # Get all columns
+    all_columns = df.columns.tolist()
+
+    # Columns to appear first
+    reorder_b = _cols_in_list(
+        all_columns,
+        [
+            "year",
+            "indicator",
+            "donor_code",
+            "donor_name",
+            "recipient_code",
+            "recipient_name",
+        ],
+    )
+
+    # Columns to appear last
+    reorder_l = _cols_in_list(all_columns, ["currency", "prices", "value"])
+
+    new_order = (
+        reorder_b
+        + [c for c in all_columns if c not in reorder_b + reorder_l]
+        + reorder_l
+    )
+
+    return df.filter(new_order, axis=1)
+
+
 # Create a helper function to consistently exchange data
 dac_exchange = partial(
     exchange,

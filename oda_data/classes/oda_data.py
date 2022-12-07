@@ -5,12 +5,15 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from oda_data import config
+from oda_data.classes.representations import _OdaList, _OdaDict
 from oda_data.clean_data import common as clean
+from oda_data.clean_data.common import reorder_columns
 from oda_data.get_data.common import check_integers
 from oda_data.indicators import research_indicators
 from oda_data.indicators.linked_indicators import linked_indicator
 from oda_data.logger import logger
 from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
+from oda_data.tools import names
 
 READERS: dict[str, callable] = {
     "dac1": read_dac1,
@@ -58,12 +61,30 @@ def _group_output(df: pd.DataFrame, idx_cols: list) -> pd.DataFrame:
 
 @dataclass
 class ODAData:
+    """A class for working with ODA data.
+
+    Attributes:
+        years: A list of years to include in the data. If not specified, no data is returned.
+        donors: A list of donor codes to include in the data. If not specified,
+            all donors are included.
+        recipients: A list of recipient codes to include in the data. If not specified,
+            all recipients are included.
+        currency: The currency to use for the data. Defaults to USD. Other available currencies
+            are EUR, GBP and CAD.
+        prices: The prices to use for the data. Defaults to current prices but can
+            also be 'constant'.
+        base_year: The base year to use for constant prices. It is only required if
+            prices is set to 'constant'. If not specified in that case, an error is raised.
+        include_names: Whether to add names to the data. Defaults to False.
+    """
+
     years: list | int | range = field(default_factory=list)
     donors: list | int | None = None
     recipients: list | int | None = None
     currency: str = "USD"
     prices: str = "current"
     base_year: int | None = None
+    include_names: bool = False
 
     def __post_init__(self) -> None:
         """Loads the indicators json to the object"""
@@ -95,7 +116,8 @@ class ODAData:
         self._output_config: dict = {
             "output_cols": None,
             "simplify_output": False,
-            "add_names": False,
+            "add_names": self.include_names,
+            "id_cols": None,
         }
 
     def _load_raw_data(self, indicator: str) -> None:
@@ -110,7 +132,11 @@ class ODAData:
             self._data[source] = READERS[source](years=self.years)
 
     def _filter_indicator_data(self, indicator: str) -> pd.DataFrame:
-        """Filters the data for the specified indicator"""
+        """Filters the data for the specified indicator
+
+        Args:
+            indicator: the indicator to filter
+        """
         # track available columns
         available_cols = self._data[self._indicators_json[indicator]["source"]].columns
 
@@ -258,10 +284,21 @@ class ODAData:
             "base_year": self.base_year,
         }
 
-    def available_indicators(self) -> None:
-        """Logs a list of available indicators."""
-        indicators = "\n".join(self._indicators_json)
-        logger.info(f"Available indicators:\n{indicators}")
+    @staticmethod
+    def available_donors() -> dict:
+        """Returns a dictionary of available donor codes and their names"""
+        logger.info("Note that not all donors may be available for all indicators")
+        return _OdaDict(names.donor_names())
+
+    @staticmethod
+    def available_recipients() -> dict:
+        """Returns a dictionary of available recipient codes"""
+        logger.info("Note that not all recipients may be available for all indicators")
+        return _OdaDict(names.recipient_names())
+
+    def available_indicators(self) -> list:
+        """Returns a list of indicators"""
+        return _OdaList(self._indicators_json.keys())
 
     def simplify_output_df(self, columns_to_keep: list) -> ODAData:
         """Simplifies the output DataFrame by summarising the data and removing
@@ -278,8 +315,16 @@ class ODAData:
 
         return self
 
-    def add_names(self) -> None:
-        raise NotImplementedError
+    def add_names(self, id_columns: str | list[str] | None = None) -> ODAData:
+        """Adds names to the output DataFrame."""
+        self._output_config["add_names"] = True
+
+        if isinstance(id_columns, str):
+            id_columns = [id_columns]
+
+        self._output_config["id_cols"] = id_columns
+
+        return self
 
     def load_indicator(self, indicator: str) -> ODAData:
         """Loads data for the specified indicator. Any parameters specified for
@@ -343,6 +388,9 @@ class ODAData:
         data = pd.concat(indicators, ignore_index=True)
 
         if self._output_config["simplify_output"]:
-            return _group_output(data, self._output_config["output_cols"])
+            data = _group_output(data, self._output_config["output_cols"])
 
-        return data
+        if self._output_config["add_names"]:
+            data = names.add_name(df=data, name_id=self._output_config["id_cols"])
+
+        return data.pipe(reorder_columns)
