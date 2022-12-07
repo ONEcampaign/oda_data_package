@@ -95,7 +95,7 @@ def test_oda_data_simplify_output(caplog):
 
     # Indicate that we want to simplify the output
     test.simplify_output_df(
-        ["donor_name", "recipient_name", "indicator", "sector_name", "value"]
+        ["donor_code", "recipient_code", "indicator", "sector_code", "value"]
     )
 
     # Get the simplified data
@@ -106,7 +106,7 @@ def test_oda_data_simplify_output(caplog):
 
     # Test not including the value
     test.simplify_output_df(
-        ["donor_name", "recipient_name", "indicator", "sector_name"]
+        ["donor_code", "recipient_code", "indicator", "sector_code"]
     )
 
     # Get the simplified data
@@ -117,7 +117,7 @@ def test_oda_data_simplify_output(caplog):
 
     # Test including an unavailable column (should show warning but continue)
     test.simplify_output_df(
-        ["donor_name", "recipient_name", "indicator", "sector_name", "value", "test"]
+        ["donor_code", "recipient_code", "indicator", "sector_code", "value", "test"]
     )
 
     # Get the simplified data
