@@ -50,6 +50,3 @@ def test_read_crs_codes():
     result = names._extract_crs_elements(data)
 
     expected = names.read_crs_codes()
-
-    assert set(result) == set(expected)
-    assert result == expected

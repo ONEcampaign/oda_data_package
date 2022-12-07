@@ -272,6 +272,7 @@ class ODAData:
                 target_currency=CURRENCIES[self.currency],
             ).assign(currency=self.currency, prices=self.prices)
 
+    @property
     def arguments(self):
         """Returns the arguments used by the object"""
         return {

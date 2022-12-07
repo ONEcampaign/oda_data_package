@@ -7,6 +7,7 @@ from lxml import etree as et
 from oda_data import config
 from oda_data.clean_data.common import clean_column_name
 from oda_data.logger import logger
+from oda_data.read_data.read import read_crs
 from oda_data.tools.groupings import donor_groupings, recipient_groupings
 
 
@@ -93,9 +94,46 @@ def donor_names() -> dict:
     return {**d["all_official"], **d["dac1_aggregates"]}
 
 
+def _return_donor_names(df, col, loc) -> tuple:
+    return loc, "donor_name", df[col].map(donor_names())
+
+
 def recipient_names() -> dict:
     d = recipient_groupings()
     return {**d["all_recipients"], **d["dac2a_aggregates"]}
+
+
+def _return_recipient_names(df, col, loc) -> tuple:
+    return loc, "donor_name", df[col].map(recipient_names())
+
+
+def agency_names() -> pd.DataFrame:
+    """Return a dictionary with the agency codes and their names"""
+
+    return (
+        read_crs(years=[2020])
+        .filter(["donor_code", "agency_code", "agency_name"], axis=1)
+        .drop_duplicates()
+    )
+
+
+def _return_agency_names(df, col, loc) -> tuple:
+    """Merge the agency names to the dataframe"""
+    agency = agency_names()
+
+    series = (
+        df.filter(["donor_code", col], axis=1)
+        .astype("Int16")
+        .merge(agency, how="left", on=["donor_code", col])["agency_name"]
+    )
+
+    return loc, "agency_name", series
+
+
+def _return_crs_names(df, col, loc) -> tuple:
+    series = df[col].astype(str).map(read_crs_names()[col])
+
+    return loc, f"{col}_name", series
 
 
 def add_name(df: pd.DataFrame, name_id: str | list | None = None) -> pd.DataFrame:
@@ -129,19 +167,16 @@ def add_name(df: pd.DataFrame, name_id: str | list | None = None) -> pd.DataFram
     for idx, col in enumerate(name_id):
         loc = code_col_idx[col] + idx
         if "donor" in col:
-            names.append((loc, "donor_name", df[col].map(donor_names())))
+            names.append(_return_donor_names(df=df, col=col, loc=loc))
         elif "recipient" in col:
-            names.append((loc, "recipient_name", df[col].map(recipient_names())))
+            names.append(_return_recipient_names(df=df, col=col, loc=loc))
+        elif "agency" in col:
+            names.append(_return_agency_names(df=df, col=col, loc=loc))
         elif col in read_crs_codes().keys():
-            names.append(
-                (
-                    loc,
-                    f"{col}_name",
-                    df[col].astype(str).map(read_crs_names()[col]),
-                )
-            )
+            names.append(_return_crs_names(df=df, col=col, loc=loc))
 
     for new_col in names:
-        df.insert(loc=new_col[0] + 1, column=new_col[1], value=new_col[2])
+        if new_col[1] not in df.columns:
+            df.insert(loc=new_col[0] + 1, column=new_col[1], value=new_col[2])
 
     return df
