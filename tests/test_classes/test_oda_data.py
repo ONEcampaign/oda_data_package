@@ -82,7 +82,7 @@ def test_odadata():
     assert len(cols) < len(oda.get_data("all").columns)
 
     # add names for specific column
-    oda.add_names(id_columns='donor_code')
+    oda.add_names(id_columns="donor_code")
 
     assert "donor_name" in oda.get_data("all").columns
 
