@@ -70,11 +70,21 @@ def test_odadata():
         ODAData(years=2019, prices="constant", base_year=None)
 
     # test specifying recipients for an indicator that doesn't need them
-    ODAData(years=2019, recipients=[57, 63]).load_indicator("total_oda_ge")
+    oda = ODAData(years=2019, recipients=[57, 63]).load_indicator("total_oda_ge")
 
-    # log available indicators
-    oda = ODAData(years=2019)
-    oda.available_indicators()
+    # test adding names
+    cols = oda.get_data("all").columns
+
+    # add names
+    oda.add_names()
+
+    # check that the names have been added
+    assert len(cols) < len(oda.get_data("all").columns)
+
+    # add names for specific column
+    oda.add_names(id_columns="donor_code")
+
+    assert "donor_name" in oda.get_data("all").columns
 
 
 def test_oda_data_linked_indicator():
@@ -139,3 +149,11 @@ def test_build_oda_indicator():
 
     result_from_obj = test.load_indicator("imputed_multi_flow_disbursement_gross")
     assert len(result) == len(result_from_obj.get_data())
+
+
+def test_available_properties():
+    oda = ODAData()
+
+    assert isinstance(oda.available_indicators(), list)
+    assert isinstance(oda.available_donors(), dict)
+    assert isinstance(oda.available_recipients(), dict)

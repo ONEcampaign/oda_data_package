@@ -1,6 +1,7 @@
 import pathlib
 
 import pandas as pd
+import requests
 
 from oda_data import config
 from oda_data.clean_data.common import read_settings, clean_raw_df
@@ -31,7 +32,7 @@ def _download(file_url: str, year: int) -> pd.DataFrame:
     logger.info(f"Downloading CRS data for {year}... This may take a while.")
 
     # Get file content
-    file_content = common.get_zip(file_url)
+    file_content: requests.Response = common.get_zip(file_url)
 
     return common.read_zip_content(
         request_content=file_content, file_name=f"CRS {year} data.txt"

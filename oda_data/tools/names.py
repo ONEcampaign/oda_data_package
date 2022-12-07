@@ -104,7 +104,7 @@ def recipient_names() -> dict:
 
 
 def _return_recipient_names(df, col, loc) -> tuple:
-    return loc, "donor_name", df[col].map(recipient_names())
+    return loc, "recipient_name", df[col].map(recipient_names())
 
 
 def agency_names() -> pd.DataFrame:
@@ -132,6 +132,8 @@ def _return_agency_names(df, col, loc) -> tuple:
 
 def _return_crs_names(df, col, loc) -> tuple:
     series = df[col].astype(str).map(read_crs_names()[col])
+
+    col = col.replace("_code", "")
 
     return loc, f"{col}_name", series
 
