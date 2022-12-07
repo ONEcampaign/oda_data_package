@@ -11,7 +11,7 @@ set_data_path(config.OdaPATHS.test_files)
 def test_multilateral_imputed_flows():
     # Test that the function runs without error
     df = multilateral_imputed_flows(
-        years=range(2012, 2021),
+        years=list(range(2012, 2021)),
         currency="USD",
         prices="current",
         donors=None,
@@ -29,7 +29,7 @@ def test_multilateral_imputed_flows():
     assert years == list(range(2014, 2021))
 
     df2 = multilateral_imputed_flows(
-        years=range(2012, 2021),
+        years=list(range(2012, 2021)),
         currency="USD",
         prices="current",
         donors=[4, 12],

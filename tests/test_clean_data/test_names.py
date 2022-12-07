@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data.clean_data import names
+from oda_data.tools import names
 import lxml.etree as et
 
 from oda_data import set_data_path
