@@ -16,7 +16,6 @@ def _save(
     save_path: pathlib.Path,
     small_version: bool,
 ) -> None:
-
     # settings
     settings = read_settings(config_file_path)
 
@@ -50,8 +49,14 @@ def _years(years: int | list | range, crs_dict: dict) -> list:
 
 
 def download_crs(years: int | list | range, small_version: bool = False) -> None:
-    """Download the CRS file for the specified year from the OECD. Store.
-    This function stores the raw data as a feather file in the raw data folder."""
+    """Download CRS files for the specified year(s) from the OECD and store
+     them as feather files.
+
+
+    Args:
+        years: The year(s) for which to download the CRS data.
+        small_version: If True, only save a small version of the CRS data (default is False).
+    """
 
     crs_dict = common.extract_file_link_multiple(config.CRS_URL)
 
