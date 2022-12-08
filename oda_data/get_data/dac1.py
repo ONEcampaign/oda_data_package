@@ -4,7 +4,11 @@ from oda_data.get_data import common
 
 def download_dac1(small_version: bool = False) -> None:
     """Download the DAC1 file from OECD.Stat. Data for all years is downloaded at once.
-    This function stores the raw data as a feather file in the raw data folder."""
+    This function stores the raw data as a feather file in the raw data folder.
+
+    Args:
+        small_version: optionally save a smaller version of the file with only key
+            columns (default is False)."""
 
     common.download_single_table(
         bulk_url=config.TABLE1_URL,
