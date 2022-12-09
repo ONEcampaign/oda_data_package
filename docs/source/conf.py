@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("../../oda_data/"))
 project = "oda_data"
 copyright = "2022, Jorge Rivera"
 author = "Jorge Rivera"
-release = "0.1.9"
+release = "0.1.10"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
