@@ -451,6 +451,17 @@
     },
     "value_column": "usd_disbursement"
   },
+  "crs_bilateral_all_flows_disbursement_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": [
+        10,
+        21
+      ]
+    },
+    "value_column": "usd_disbursement"
+  },
   "crs_gender_significant_flow_disbursement_gross": {
     "source": "crs",
     "type": "dac",
@@ -604,7 +615,7 @@
     "type": "one_research",
     "function": "multilateral_imputed_flows"
   },
-  "total_bi_multi_flow_disbursement_gross":{
+  "total_bi_multi_flow_disbursement_gross": {
     "source": "crs",
     "type": "one_research",
     "function": "total_bi_multi_flows"

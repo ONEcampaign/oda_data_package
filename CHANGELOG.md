@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.1.10] Unreleased
+## [0.1.11] Unreleased
 
 ### Changed
 
@@ -21,6 +21,12 @@
 ### Breaking changes
 
 * ...
+
+## [0.1.10] 2022-12-09
+
+### Added
+
+* A total (ODA + OOF, excluding export credits) indicator for the CRS
 
 ## [0.1.9] 2022-12-07
 
