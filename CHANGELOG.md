@@ -1,15 +1,14 @@
 # Changes to the oda_data package
 
-## [0.1.11] Unreleased
+## [0.2.1] unreleased
 
 ### Changed
 
-* `ODAData().load_indicator()` now accepts a list of indicators as input.
+* ...
 
 ### Added
 
-* A method to ODAData in order to add a "share" column to the output data.
-* A method to ODAData in order to add a "gni_share"" column to the output data.
+* ...
 
 ### Fixed
 
@@ -22,6 +21,17 @@
 ### Breaking changes
 
 * ...
+
+## [0.2.0] 2022-12-16
+
+### Changed
+
+* `ODAData().load_indicator()` now accepts a list of indicators as input.
+
+### Added
+
+* A method to ODAData in order to add a "share" column to the output data.
+* A method to ODAData in order to add a "gni_share"" column to the output data.
 
 ## [0.1.10] 2022-12-09
 
