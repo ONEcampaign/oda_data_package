@@ -114,9 +114,7 @@ def test_oda_data_simplify_output(caplog):
     full = test.get_data("all")
 
     # Indicate that we want to simplify the output
-    test.simplify_output_df(
-        ["donor_code", "indicator", "value"]
-    )
+    test.simplify_output_df(["donor_code", "indicator", "value"])
 
     # Get the simplified data
     result1 = test.get_data("all")
@@ -125,9 +123,7 @@ def test_oda_data_simplify_output(caplog):
     assert len(result1.columns) == 3
 
     # Test not including the value
-    test.simplify_output_df(
-        ["donor_code", "indicator"]
-    )
+    test.simplify_output_df(["donor_code", "indicator"])
 
     # Get the simplified data
     result2 = test.get_data("all")
@@ -136,9 +132,7 @@ def test_oda_data_simplify_output(caplog):
     pd.testing.assert_frame_equal(result1, result2)
 
     # Test including an unavailable column (should show warning but continue)
-    test.simplify_output_df(
-        ["donor_code", "indicator", "value", "test"]
-    )
+    test.simplify_output_df(["donor_code", "indicator", "value", "test"])
 
     # Get the simplified data
     result3 = test.get_data("all")
