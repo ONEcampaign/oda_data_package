@@ -1,4 +1,4 @@
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 from oda_data.classes.oda_data import ODAData
 from oda_data.get_data.crs import download_crs
