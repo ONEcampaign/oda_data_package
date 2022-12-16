@@ -157,3 +157,44 @@ def test_available_properties():
     assert isinstance(oda.available_indicators(), list)
     assert isinstance(oda.available_donors(), dict)
     assert isinstance(oda.available_recipients(), dict)
+    assert isinstance(oda.available_currencies(), list)
+
+
+def test_add_shares() -> None:
+    oda = ODAData(years=range(2014, 2021), donors=[4, 12])
+
+    oda.load_indicator("total_bi_multi_flow_disbursement_gross")
+    oda.load_indicator("total_oda_grants_ge")
+    oda.load_indicator("recipient_loans_flow_net")
+
+    oda.add_share_of_total(include_share_of=True)
+
+    bi_imputed_total = oda.get_data("total_bi_multi_flow_disbursement_gross")
+    total_grants = oda.get_data("total_oda_grants_ge")
+    recipient_loans = oda.get_data("recipient_loans_flow_net")
+
+    assert "share" in bi_imputed_total.columns
+    assert "share_of" in total_grants.columns
+
+    assert (
+        bi_imputed_total.share_of.unique()[0]
+        == "total_bi_multi_flow_disbursement_gross"
+    )
+
+    assert total_grants.share_of.unique()[0] == "total_oda_ge"
+
+    assert recipient_loans.share_of.unique()[0] == "recipient_total_flow_net"
+
+    # Check that share total is 100
+    assert (
+        bi_imputed_total.groupby(["donor_code", "year"], as_index=False)
+        .sum(numeric_only=True)
+        .round(2)
+        .share.unique()
+    )[0] == 100
+
+    oda = ODAData(years=[2020])
+    oda.load_indicator("total_oda_grants_ge")
+    oda.add_share_of_total(include_share_of=False)
+
+    assert "share_of" not in oda.get_data().columns
