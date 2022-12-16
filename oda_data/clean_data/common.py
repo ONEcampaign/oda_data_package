@@ -165,7 +165,7 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
         + reorder_l
     )
 
-    return df.filter(new_order, axis=1)
+    return df.filter(new_order, axis=1).sort_values(by=new_order).reset_index(drop=True)
 
 
 # Create a helper function to consistently exchange data
