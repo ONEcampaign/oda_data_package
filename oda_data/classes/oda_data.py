@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -123,6 +124,8 @@ class ODAData:
             "simplify_output": False,
             "add_names": self.include_names,
             "id_cols": None,
+            "add_share_of_total": False,
+            "include_share_of": False,
         }
 
     def _load_raw_data(self, indicator: str) -> None:
@@ -282,6 +285,86 @@ class ODAData:
                 target_currency=CURRENCIES[self.currency],
             ).assign(currency=self.currency, prices=self.prices)
 
+    def _add_share(self, data: pd.DataFrame, include_share_of: bool) -> pd.DataFrame:
+        """Adds a share column to the data
+
+        Args:
+            data: a DataFrame in its final form before returning to user
+            include_share_of: whether to include the indicator based on which
+            the share is calculated
+        """
+
+        def __add_indicator_share(
+            object_: ODAData, d_: pd.DataFrame, indicator: str
+        ) -> pd.DataFrame:
+            """A helper function to add the share data to each indicator in the
+            DataFrame that will be returned to the user."""
+
+            # Filter the dataframe to keep only the relevant indicator. All columns which are
+            # not relevant to the indicator are dropped.
+            d_ = d_.loc[lambda d: d.indicator == indicator].dropna(axis=1, how="all")
+
+            # Save the indicator that is used to calculate the share
+            total_indicator = share_settings[indicator]
+
+            # In the case of DAC2a, total shares must be calculated for "All Developing
+            # Countries". This ensures that share is always of 'Total'.
+            if self._indicators_json[indicator]["source"] == "dac2a":
+                object_.recipients = [10100]
+            else:
+                # In all other cases, the recipients are set to None. This either captures
+                # all recipients (like the CRS) or removes recipients when it's not pertinent (DAC1)
+                object_.recipients = None
+
+            # Get the total data for the indicator
+            total_data = (
+                object_.load_indicator(total_indicator)
+                .simplify_output_df(columns_to_keep=["year", "donor_code", "indicator"])
+                .get_data(total_indicator)
+                .rename(columns={"indicator": "share_of", "value": "total_value"})
+            )
+
+            # Create a list of merge columns
+            cols = [
+                col
+                for col in total_data.columns
+                if col in d_.columns and col not in ["value", "indicator"]
+            ]
+
+            # Merge the data with the total data and calculate the share
+            d_ = (
+                d_.merge(total_data, on=cols, how="left")
+                .assign(share=lambda d: round(100 * d.value / d.total_value, 5))
+                .drop(columns=["total_value"])
+            )
+
+            return d_
+
+        # For each indicator, load the corresponding 'total' indicator
+        share_settings = {
+            indicator: column["share_of"]
+            for indicator, column in self._indicators_json.items()
+            if "share_of" in column
+        }
+
+        # Create a copy of the object to handle the total indicators.
+        obj = copy.deepcopy(self)
+        obj._output_config["add_share_of_total"] = False
+
+        # Create an empty DataFrame to store the share data
+        share_data = pd.DataFrame()
+
+        # For each indicator, add the share data
+        for indicator in data.indicator.unique():
+            i_data = __add_indicator_share(object_=obj, d_=data, indicator=indicator)
+            share_data = pd.concat([share_data, i_data], ignore_index=True)
+
+        # If not requested drop the share_of column
+        if not include_share_of:
+            share_data = share_data.drop(columns=["share_of"])
+
+        return share_data
+
     @property
     def arguments(self):
         """Returns the arguments used by the object"""
@@ -294,26 +377,27 @@ class ODAData:
             "base_year": self.base_year,
         }
 
-    @staticmethod
-    def available_donors() -> dict:
+    @classmethod
+    def available_donors(cls) -> dict:
         """Returns a dictionary of available donor codes and their names"""
         logger.info("Note that not all donors may be available for all indicators")
         return _OdaDict(names.donor_names())
 
-    @staticmethod
-    def available_recipients() -> dict:
+    @classmethod
+    def available_recipients(cls) -> dict:
         """Returns a dictionary of available recipient codes"""
         logger.info("Note that not all recipients may be available for all indicators")
         return _OdaDict(names.recipient_names())
 
-    @staticmethod
-    def available_currencies() -> list:
+    @classmethod
+    def available_currencies(cls) -> list:
         """Returns a dictionary of available currencies"""
         return _OdaList(CURRENCIES)
 
-    def available_indicators(self) -> list:
+    @classmethod
+    def available_indicators(cls) -> list:
         """Returns a list of indicators"""
-        return _OdaList(self._indicators_json.keys())
+        return _OdaList(_load_indicators().keys())
 
     def simplify_output_df(self, columns_to_keep: list) -> ODAData:
         """Simplifies the output DataFrame by summarising the data and removing
@@ -327,6 +411,24 @@ class ODAData:
         self._output_config["output_cols"] = columns_to_keep
         # Store the 'request' to simply output as an instance variable
         self._output_config["simplify_output"] = True
+
+        return self
+
+    def add_share_of_total(self, include_share_of: bool = False) -> ODAData:
+        """Adds a column to the output DataFrame which shows the value as a
+        share of total ODA. Since the definition of "total" can vary,
+        you can optionally request a 'share_of' column which explicitly
+        indicates the 'total' value used.
+
+        Args:
+            include_share_of: if True, adds a column which explicitly
+            indicates the 'total' value used.
+        """
+
+        # Flag that a share of total column should be added
+        self._output_config["add_share_of_total"] = True
+        # Flag that a 'share_of' column should be added
+        self._output_config["include_share_of"] = include_share_of
 
         return self
 
@@ -407,5 +509,8 @@ class ODAData:
 
         if self._output_config["add_names"]:
             data = names.add_name(df=data, name_id=self._output_config["id_cols"])
+
+        if self._output_config["add_share_of_total"]:
+            data = self._add_share(data, self._output_config["include_share_of"])
 
         return data.pipe(reorder_columns)
