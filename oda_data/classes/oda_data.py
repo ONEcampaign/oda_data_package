@@ -443,35 +443,44 @@ class ODAData:
 
         return self
 
-    def load_indicator(self, indicator: str) -> ODAData:
+    def load_indicator(self, indicator: str | list[str]) -> ODAData:
         """Loads data for the specified indicator. Any parameters specified for
         the object (years, donors, prices, etc.) are applied to the data.
 
         Args:
-            indicator: a string with an indicator code. Call `available_indicators()` to
+            indicator: a string with an indicator code. A list of
+            indicators can also be passed, which is equivalent to calling this
+            method multiple times. Call `available_indicators()` to
             view a list of available indicators. See project documentation for
             more details.
 
         """
+        if isinstance(indicator, str):
+            indicator = [indicator]
 
-        # Load necessary data to the object
-        self._load_raw_data(indicator)
+        def __load_single_indicator(ind_: str) -> None:
+            # Load necessary data to the object
+            self._load_raw_data(ind_)
 
-        # Indicator type
-        ind_type = self._indicators_json[indicator]["type"]
+            # Indicator type
+            ind_type = self._indicators_json[ind_]["type"]
 
-        # Load the indicator data to the object
-        if ind_type == "dac":
-            self.indicators_data[indicator] = self._filter_indicator_data(indicator)
-        elif ind_type == "one":
-            self.indicators_data[indicator] = self._build_one_indicator(indicator)
-        elif ind_type == "one_linked":
-            self.indicators_data[indicator] = self._build_linked_indicator(indicator)
-        elif ind_type == "one_research":
-            self.indicators_data[indicator] = self._build_research_indicator(indicator)
+            # Load the indicator data to the object
+            if ind_type == "dac":
+                self.indicators_data[ind_] = self._filter_indicator_data(ind_)
+            elif ind_type == "one":
+                self.indicators_data[ind_] = self._build_one_indicator(ind_)
+            elif ind_type == "one_linked":
+                self.indicators_data[ind_] = self._build_linked_indicator(ind_)
+            elif ind_type == "one_research":
+                self.indicators_data[ind_] = self._build_research_indicator(ind_)
 
-        # Convert the units if necessary
-        self._convert_units(indicator)
+            # Convert the units if necessary
+            self._convert_units(ind_)
+
+        # Load each indicator
+        for single_indicator in indicator:
+            __load_single_indicator(ind_=single_indicator)
 
         return self
 
