@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oda_data"
-version = "0.1.11"
+version = "0.2.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 readme = "README.md"
 authors = ["Jorge Rivera <jorge.rivera@one.org>"]
