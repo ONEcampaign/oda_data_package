@@ -9,6 +9,7 @@
 ### Added
 
 * A method to ODAData in order to add a "share" column to the output data.
+* A method to ODAData in order to add a "gni_share"" column to the output data.
 
 ### Fixed
 

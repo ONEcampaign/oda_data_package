@@ -208,3 +208,23 @@ def test_add_shares() -> None:
     oda.add_share_of_total(include_share_of=False)
 
     assert "share_of" not in oda.get_data().columns
+
+
+def test_oda_gni():
+
+    oda = ODAData(
+        years=range(2018, 2022),
+        donors=12,
+        currency="GBP",
+        prices="constant",
+        base_year=2015,
+    )
+
+    oda.load_indicator(["total_oda_ge"])
+
+    oda.add_share_of_gni()
+
+    data = oda.get_data()
+
+    assert "gni_share" in data.columns
+    assert data.query("year == 2019").gni_share.sum().round(1) == 0.7
