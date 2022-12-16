@@ -373,7 +373,10 @@ class ODAData:
 
         # If not requested drop the share_of column
         if not include_share_of:
-            share_data = share_data.drop(columns=["share_of"])
+            try:
+                share_data = share_data.drop(columns=["share_of"])
+            except KeyError:
+                pass
 
         return share_data
 
