@@ -198,3 +198,10 @@ def test_add_shares() -> None:
     oda.add_share_of_total(include_share_of=False)
 
     assert "share_of" not in oda.get_data().columns
+
+
+def test_oda_gni():
+
+    oda = ODAData(years=range(2014, 2021), donors=12)
+
+    oda.load_indicator(["total_oda_ge", "total_oda_flow_net"])
