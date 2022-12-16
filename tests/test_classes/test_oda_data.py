@@ -87,6 +87,16 @@ def test_odadata():
     assert "donor_name" in oda.get_data("all").columns
 
 
+def test_multiple_indicators():
+    oda = ODAData(years=2019, donors=4, recipients=57, currency="EUR")
+
+    oda.load_indicator(indicator=["total_oda_ge", "recipient_bilateral_flow_net"])
+
+    data = oda.get_data("all")
+
+    assert data.indicator.nunique() == 2
+
+
 def test_oda_data_linked_indicator():
     # load a linked indicator
     oda = ODAData(years=2019).load_indicator("total_in_donor_students_ge_linked")
