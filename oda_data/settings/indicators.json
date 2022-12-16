@@ -629,7 +629,7 @@
     "type": "one",
     "indicators": [
       "crs_gender_significant_flow_disbursement_gross",
-      "crs_gender_principal_flow_gross"
+      "crs_gender_principal_flow_disbursement_gross"
     ],
     "group_by": [
       "category",

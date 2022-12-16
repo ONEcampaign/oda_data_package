@@ -1,6 +1,7 @@
 from oda_data import config
 
 from oda_data.get_data import common
+from oda_data.logger import logger
 
 
 def download_multisystem(small_version: bool = False) -> None:
@@ -11,6 +12,7 @@ def download_multisystem(small_version: bool = False) -> None:
         small_version: optionally save a smaller version of the file with only key
              columns (default is False)."""
 
+    logger.info(f"Downloading Multisystem data... This may take a while.")
     common.download_single_table(
         bulk_url=config.MULTISYSTEM_URL,
         raw_file_name="MultiSystem entire dataset.txt",
