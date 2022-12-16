@@ -156,7 +156,7 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     # Columns to appear last
     reorder_l = _cols_in_list(
-        all_columns, ["currency", "prices", "value", "share", "total_of"]
+        all_columns, ["currency", "prices", "value", "share", "total_of", "gni_share"]
     )
 
     new_order = (

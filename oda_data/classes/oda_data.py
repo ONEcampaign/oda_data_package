@@ -126,6 +126,7 @@ class ODAData:
             "id_cols": None,
             "add_share_of_total": False,
             "include_share_of": False,
+            "add_share_of_gni": False,
         }
 
     def _load_raw_data(self, indicator: str) -> None:
@@ -365,6 +366,30 @@ class ODAData:
 
         return share_data
 
+    def _add_gni_share(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Adds a share of GNI column to the data"""
+        # Create a copy of the object to handle the total indicators.
+        obj = copy.deepcopy(self)
+        obj._output_config["add_share_of_gni"] = False
+        obj.recipients = None
+
+        # Load the GNI data
+        gni_data = (
+            obj.load_indicator("gni")
+            .get_data("gni")
+            .filter(["year", "donor_code", "value"], axis=1)
+            .rename(columns={"value": "gni"})
+        )
+
+        # Merge the GNI data with the indicator data, calculate share of GNI, drop GNI
+        data = (
+            data.merge(gni_data, on=["year", "donor_code"], how="left")
+            .assign(gni_share=lambda d: round(100 * d.value / d.gni, 5))
+            .drop(columns=["gni"])
+        )
+
+        return data
+
     @property
     def arguments(self):
         """Returns the arguments used by the object"""
@@ -429,6 +454,16 @@ class ODAData:
         self._output_config["add_share_of_total"] = True
         # Flag that a 'share_of' column should be added
         self._output_config["include_share_of"] = include_share_of
+
+        return self
+
+    def add_share_of_gni(self) -> ODAData:
+        """Adds a column to the output DataFrame which shows the value as a
+        share of GNI.
+        """
+
+        # Flag that a share of total column should be added
+        self._output_config["add_share_of_gni"] = True
 
         return self
 
@@ -512,5 +547,8 @@ class ODAData:
 
         if self._output_config["add_share_of_total"]:
             data = self._add_share(data, self._output_config["include_share_of"])
+
+        if self._output_config["add_share_of_gni"]:
+            data = self._add_share_of_gni(data)
 
         return data.pipe(reorder_columns)
