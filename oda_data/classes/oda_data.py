@@ -558,6 +558,6 @@ class ODAData:
             data = self._add_share(data, self._output_config["include_share_of"])
 
         if self._output_config["add_share_of_gni"]:
-            data = self._add_share_of_gni(data)
+            data = self._add_gni_share(data)
 
         return data.pipe(reorder_columns)
