@@ -1,6 +1,3 @@
-import pandas as pd
-import pytest
-
 from oda_data import set_data_path, config
 from oda_data.read_data import read
 
@@ -40,15 +37,6 @@ def test_read_dac2a():
 
     # Check that recipient is a column
     assert "recipient_code" in dac2a.columns
-
-
-def test_not_found_dac2a(mocker):
-    set_data_path(config.OdaPATHS.settings)
-
-    mocker.patch("oda_data.read_data.read.download_dac2a", return_value=pd.DataFrame())
-
-    with pytest.raises(FileNotFoundError):
-        read.read_dac2a(2019)
 
 
 def test_read_multisystem():
