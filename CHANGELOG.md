@@ -4,7 +4,7 @@
 
 ### Changed
 
-* ...
+* `ODAData().load_indicator()` now accepts a list of indicators as input.
 
 ### Added
 
