@@ -131,22 +131,14 @@
   },
   "oda_gni_flow": {
     "source": "dac1",
-    "type": "dac",
-    "filters": {
-      "aidtype_code": 2,
-      "flows_code": 1140,
-      "amounttype_code": "A"
-    },
+    "type": "one_research",
+    "function": "oda_gni_flow",
     "share_of": ""
   },
-  "od_gni_ge": {
+  "oda_gni_ge": {
     "source": "dac1",
-    "type": "dac",
-    "filters": {
-      "aidtype_code": 11002,
-      "flows_code": 1140,
-      "amounttype_code": "A"
-    },
+    "type": "one_research",
+    "function": "oda_gni_ge",
     "share_of": ""
   },
   "total_in_donor_students_flow": {

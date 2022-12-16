@@ -268,7 +268,14 @@ class ODAData:
 
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
+
         if self.currency == "USD" and self.prices == "current":
+            self.indicators_data[indicator] = self.indicators_data[indicator].assign(
+                currency=self.currency, prices=self.prices
+            )
+
+        # If indicator is a ratio, don't convert
+        if indicator in ["oda_gni_flow", "oda_gni_ge"]:
             self.indicators_data[indicator] = self.indicators_data[indicator].assign(
                 currency=self.currency, prices=self.prices
             )
@@ -307,6 +314,10 @@ class ODAData:
 
             # Save the indicator that is used to calculate the share
             total_indicator = share_settings[indicator]
+
+            # If there is no valid total dataframe, return all missing values
+            if total_indicator == "":
+                return d_.assign(share=pd.NA)
 
             # In the case of DAC2a, total shares must be calculated for "All Developing
             # Countries". This ensures that share is always of 'Total'.
@@ -387,6 +398,10 @@ class ODAData:
             .assign(gni_share=lambda d: round(100 * d.value / d.gni, 5))
             .drop(columns=["gni"])
         )
+
+        # if indicator is ratio, assign null to gni share
+        ratios = ["oda_gni_flow", "oda_gni_ge"]
+        data.loc[data.indicator.isin(ratios), "gni_share"] = pd.NA
 
         return data
 

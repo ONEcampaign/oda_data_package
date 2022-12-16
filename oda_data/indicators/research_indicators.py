@@ -95,3 +95,49 @@ def total_bi_multi_flows(
         df = df.loc[lambda d: d.recipient_code.isin(recipients)]
 
     return df.reset_index(drop=True)
+
+
+def oda_gni_flow(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    recipients: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    return (
+        ODAData(years=years, donors=donors, recipients=recipients)
+        .load_indicator("total_oda_flow_net")
+        .add_share_of_gni()
+        .get_data()
+        .drop("value", axis=1)
+        .rename(columns={"gni_share": "value"})
+        .assign(prices=prices, currency=currency)
+    )
+
+
+def oda_gni_ge(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    recipients: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    return (
+        ODAData(years=years, donors=donors, recipients=recipients)
+        .load_indicator("total_oda_ge")
+        .add_share_of_gni()
+        .get_data()
+        .drop("value", axis=1)
+        .rename(columns={"gni_share": "value"})
+        .assign(prices=prices, currency=currency)
+    )
