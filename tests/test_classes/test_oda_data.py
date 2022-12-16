@@ -187,11 +187,22 @@ def test_add_shares() -> None:
 
     assert "share_of" not in oda.get_data().columns
 
+    # test that it works when share is not a valid
+    oda = (
+        ODAData(years=[2018, 2019], donors=4)
+        .load_indicator("gni")
+        .add_share_of_total(True)
+    )
+
+    data = oda.get_data()
+
+    assert data.share.notna().sum() == 0
+
 
 def test_oda_gni():
     oda = ODAData(
         years=range(2018, 2022),
-        donors=12,
+        donors=[12],
         currency="GBP",
         prices="constant",
         base_year=2015,
@@ -205,3 +216,13 @@ def test_oda_gni():
 
     assert "gni_share" in data.columns
     assert data.query("year == 2019").gni_share.sum().round(1) == 0.7
+
+    oda.load_indicator("oda_gni_ge")
+
+    data2 = oda.get_data("oda_gni_ge")
+
+    assert data.gni_share.tolist() == data2.value.tolist()
+
+    oda.load_indicator("oda_gni_flow")
+
+    assert oda.get_data("oda_gni_flow").value.sum() > 0

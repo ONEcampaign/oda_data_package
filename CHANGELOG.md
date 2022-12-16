@@ -22,6 +22,14 @@
 
 * ...
 
+## [0.2.2] 2022-12-16
+
+### Fixed
+
+* The ODA GNI indicators, which returned mostly invalid data from the source
+* A typo in the ODA GNI indicator name
+* How `ODAData` deals with adding shares to indicators for which shares don't make sense
+
 ## [0.2.1] 2022-12-16
 
 ### Changed
