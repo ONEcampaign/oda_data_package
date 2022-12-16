@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.2.1] unreleased
+## [0.2.2] unreleased
 
 ### Changed
 
@@ -21,6 +21,12 @@
 ### Breaking changes
 
 * ...
+
+## [0.2.1] 2022-12-16
+
+### Changed
+
+* Download data for indicator automatically if not available in data folder
 
 ## [0.2.0] 2022-12-16
 

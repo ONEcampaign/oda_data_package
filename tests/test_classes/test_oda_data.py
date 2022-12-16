@@ -107,7 +107,7 @@ def test_oda_data_linked_indicator():
 def test_oda_data_simplify_output(caplog):
     # Load a CRS indicator
     test = ODAData(years=2019, recipients=[89, 65]).load_indicator(
-        "crs_bilateral_total_flow_gross_by_purpose"
+        "recipient_bilateral_flow_net"
     )
 
     # Get the full data to compare
@@ -115,18 +115,18 @@ def test_oda_data_simplify_output(caplog):
 
     # Indicate that we want to simplify the output
     test.simplify_output_df(
-        ["donor_code", "recipient_code", "indicator", "sector_code", "value"]
+        ["donor_code", "indicator", "value"]
     )
 
     # Get the simplified data
     result1 = test.get_data("all")
 
     assert len(result1.columns) <= len(full.columns)
-    assert len(result1.columns) == 5
+    assert len(result1.columns) == 3
 
     # Test not including the value
     test.simplify_output_df(
-        ["donor_code", "recipient_code", "indicator", "sector_code"]
+        ["donor_code", "indicator"]
     )
 
     # Get the simplified data
@@ -137,7 +137,7 @@ def test_oda_data_simplify_output(caplog):
 
     # Test including an unavailable column (should show warning but continue)
     test.simplify_output_df(
-        ["donor_code", "recipient_code", "indicator", "sector_code", "value", "test"]
+        ["donor_code", "indicator", "value", "test"]
     )
 
     # Get the simplified data
@@ -149,7 +149,6 @@ def test_oda_data_simplify_output(caplog):
 
 
 def test_build_oda_indicator():
-
     test = ODAData(years=range(2015, 2020))
 
     result = test._build_research_indicator("imputed_multi_flow_disbursement_gross")
@@ -173,35 +172,20 @@ def test_available_properties():
 def test_add_shares() -> None:
     oda = ODAData(years=range(2014, 2021), donors=[4, 12])
 
-    oda.load_indicator("total_bi_multi_flow_disbursement_gross")
     oda.load_indicator("total_oda_grants_ge")
     oda.load_indicator("recipient_loans_flow_net")
 
     oda.add_share_of_total(include_share_of=True)
 
-    bi_imputed_total = oda.get_data("total_bi_multi_flow_disbursement_gross")
     total_grants = oda.get_data("total_oda_grants_ge")
     recipient_loans = oda.get_data("recipient_loans_flow_net")
 
-    assert "share" in bi_imputed_total.columns
+    assert "share" in total_grants.columns
     assert "share_of" in total_grants.columns
-
-    assert (
-        bi_imputed_total.share_of.unique()[0]
-        == "total_bi_multi_flow_disbursement_gross"
-    )
 
     assert total_grants.share_of.unique()[0] == "total_oda_ge"
 
     assert recipient_loans.share_of.unique()[0] == "recipient_total_flow_net"
-
-    # Check that share total is 100
-    assert (
-        bi_imputed_total.groupby(["donor_code", "year"], as_index=False)
-        .sum(numeric_only=True)
-        .round(2)
-        .share.unique()
-    )[0] == 100
 
     oda = ODAData(years=[2020])
     oda.load_indicator("total_oda_grants_ge")
@@ -211,7 +195,6 @@ def test_add_shares() -> None:
 
 
 def test_oda_gni():
-
     oda = ODAData(
         years=range(2018, 2022),
         donors=12,
