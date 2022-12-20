@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.2.2] unreleased
+## [0.2.5] unreleased
 
 ### Changed
 
@@ -21,6 +21,14 @@
 ### Breaking changes
 
 * ...
+
+## [0.2.4] 2022-12-20
+
+
+### Added
+
+* The ability to retrieve COVID-19 indicators
+
 
 ## [0.2.3] 2022-12-16
 
