@@ -119,6 +119,186 @@
     },
     "share_of": "total_oda_ge"
   },
+  "total_covid_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8851,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8851,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_covid_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_covid_oda_flow",
+      "new": "total_covid_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_health_covid_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8852,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_health_covid_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8852,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_health_covid_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_health_covid_oda_flow",
+      "new": "total_health_covid_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8853,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8853,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_covid_vaccine_donations_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_covid_vaccine_donations_oda_flow",
+      "new": "total_covid_vaccine_donations_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_domestic_supply_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8854,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_domestic_supply_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8854,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_covid_vaccine_donations_domestic_supply_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_covid_vaccine_donations_domestic_supply_oda_flow",
+      "new": "total_covid_vaccine_donations_domestic_supply_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_dev_purchase_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8855,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_vaccine_donations_dev_purchase_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8855,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_covid_vaccine_donations_dev_purchase_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_covid_vaccine_donations_dev_purchase_oda_flow",
+      "new": "total_covid_vaccine_donations_dev_purchase_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_ancillary_oda_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8856,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "total_covid_ancillary_oda_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 8856,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "total_covid_ancillary_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "total_covid_oda_ge",
+      "secondary": "total_covid_ancillary_oda_flow",
+      "new": "total_covid_ancillary_oda_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
   "gni": {
     "source": "dac1",
     "type": "dac",
