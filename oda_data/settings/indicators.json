@@ -663,7 +663,7 @@
     "group_by": [
       "aidtype_code"
     ],
-    "share_of": ""
+    "share_of": "recipient_total_flow_net"
   },
   "crs_bilateral_flow_disbursement_gross": {
     "source": "crs",
