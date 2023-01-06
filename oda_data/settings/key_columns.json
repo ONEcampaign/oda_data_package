@@ -33,6 +33,8 @@
       "agency_name",
       "recipient_code",
       "recipient_name",
+      "region_code",
+      "region_name",
       "year",
       "flow_code",
       "category",

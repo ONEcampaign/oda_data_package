@@ -104,6 +104,15 @@ def extract_file_link_single(url: str) -> str:
 
 
 def _fetch_page_multiple_links(url: str) -> bs4.ResultSet:
+    """
+    Fetches multiple links from a specified URL.
+
+    Args:
+        url: The URL to fetch the links from.
+
+    Returns:
+        A ResultSet containing the links found on the page.
+    """
     # Get page data
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -111,6 +120,14 @@ def _fetch_page_multiple_links(url: str) -> bs4.ResultSet:
 
 
 def _links_dict(results_set: bs4.ResultSet) -> dict[int, str]:
+    """Creates a dictionary of links and their corresponding years.
+
+    Args:
+        results_set: The ResultSet containing the links to be processed.
+
+    Returns:
+        A dictionary mapping each link's year to its URL.
+    """
     # empty dictionary to hold files
     links_dict = {}
 
@@ -138,7 +155,16 @@ def download_single_table(
     config_file_path: pathlib.Path,
     small_version: bool = False,
 ) -> None:
-    """Download a single table from the DAC bulk download website and save it as a feather file"""
+    """Download a single table from the DAC bulk download website and save it as a feather file
+
+    Args:
+        bulk_url: The URL of the DAC bulk download page from which to download the table.
+        raw_file_name: The name of the file to be downloaded.
+        output_file_name: The name to use when saving the processed file.
+        save_path: The path to save the processed file to.
+        config_file_path: The path to the configuration file to use when processing the file.
+        small_version: Whether to save a smaller version of the file.
+    """
 
     # Get the file download link from website
     file_url = extract_file_link_single(bulk_url)

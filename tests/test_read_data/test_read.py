@@ -1,5 +1,5 @@
-from oda_data.read_data import read
 from oda_data import set_data_path, config
+from oda_data.read_data import read
 
 set_data_path(config.OdaPATHS.test_files)
 
@@ -40,7 +40,6 @@ def test_read_dac2a():
 
 
 def test_read_multisystem():
-
     multisystem = read.read_multisystem(2019)
 
     assert multisystem.year.dropna().unique() == [2019]

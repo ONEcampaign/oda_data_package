@@ -1,6 +1,7 @@
 import pathlib
 
 import pandas as pd
+import requests
 
 from oda_data import config
 from oda_data.clean_data.common import read_settings, clean_raw_df
@@ -15,7 +16,6 @@ def _save(
     save_path: pathlib.Path,
     small_version: bool,
 ) -> None:
-
     # settings
     settings = read_settings(config_file_path)
 
@@ -31,7 +31,7 @@ def _download(file_url: str, year: int) -> pd.DataFrame:
     logger.info(f"Downloading CRS data for {year}... This may take a while.")
 
     # Get file content
-    file_content = common.get_zip(file_url)
+    file_content: requests.Response = common.get_zip(file_url)
 
     return common.read_zip_content(
         request_content=file_content, file_name=f"CRS {year} data.txt"
@@ -49,8 +49,14 @@ def _years(years: int | list | range, crs_dict: dict) -> list:
 
 
 def download_crs(years: int | list | range, small_version: bool = False) -> None:
-    """Download the CRS file for the specified year from the OECD. Store.
-    This function stores the raw data as a feather file in the raw data folder."""
+    """Download CRS files for the specified year(s) from the OECD and store
+     them as feather files.
+
+
+    Args:
+        years: The year(s) for which to download the CRS data.
+        small_version: If True, only save a small version of the CRS data (default is False).
+    """
 
     crs_dict = common.extract_file_link_multiple(config.CRS_URL)
 

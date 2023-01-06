@@ -3,7 +3,7 @@
 This module contains functions to make it easier to read data from the different databases.
 
 The functions in this module assume that the data has been downloaded and is stored in the `raw_data` folder.
-If that isn't the case, please see the [get_data](../../scripts/get_data) module.
+If that isn't the case, please see the [get_data](../../oda_data/get_data) module.
 
 There is a function for each of the sources. To use, for exmple
 ````python
