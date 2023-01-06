@@ -1,5 +1,7 @@
 import pandas as pd
 
+from oda_data.logger import logger
+
 
 def linked_indicator(
     data: pd.DataFrame,
@@ -33,6 +35,12 @@ def linked_indicator(
 
     # Create a new column with the new indicator name, using the main indicator
     # and filling missing values with the fallback indicator
+    try:
+        df[main]
+    except KeyError:
+        logger.info(f"Main indicator {main_indicator} has no data")
+        main = fallback
+
     df[new] = df[main].fillna(df[fallback])
 
     # Stack the indicator column back and return

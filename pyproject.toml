@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oda_data"
-version = "0.1.8"
+version = "0.2.5"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 readme = "README.md"
 authors = ["Jorge Rivera <jorge.rivera@one.org>"]
@@ -31,6 +31,7 @@ bump2version = "^1.0.1"
 Sphinx = "^5.3.0"
 sphinx-rtd-theme = "^1.1.1"
 myst-parser = "^0.18.1"
+pytest-mock = "^3.10.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
