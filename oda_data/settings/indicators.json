@@ -525,15 +525,8 @@
   },
   "one_non_core_oda_ge_linked": {
     "source": "dac1",
-    "type": "one",
-    "indicators": [
-      "debt_relief_ge",
-      "idrc_ge_linked",
-      "total_in_donor_students_ge_linked"
-    ],
-    "group_by": [
-      "aidtype_code"
-    ],
+    "type": "one_research",
+    "function": "one_non_core_oda_ge_linked",
     "share_of": "total_oda_ge"
   },
   "one_core_oda_flow": {
