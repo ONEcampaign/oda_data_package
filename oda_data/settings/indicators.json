@@ -19,6 +19,12 @@
     },
     "share_of": ""
   },
+  "total_oda_official_definition": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "total_oda_official_definition",
+    "share_of": "total_oda_official_definition"
+  },
   "total_oda_bilateral_flow_net": {
     "source": "dac1",
     "type": "dac",
