@@ -141,3 +141,35 @@ def oda_gni_ge(
         .rename(columns={"gni_share": "value"})
         .assign(prices=prices, currency=currency)
     )
+
+
+def total_oda_official_definition(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = ["total_oda_flow_net", "total_oda_ge"]
+
+    data = (
+        ODAData(
+            years=years,
+            donors=donors,
+            currency=currency,
+            prices=prices,
+            base_year=base_year,
+        )
+        .load_indicator(indicators)
+        .get_data()
+    )
+    query = (
+        "(indicator == 'total_oda_flow_net' and year < 2018) or "
+        "(indicator == 'total_oda_ge' and year >= 2018)"
+    )
+
+    return data.query(query).reset_index(drop=True)
