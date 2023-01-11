@@ -141,3 +141,166 @@ def oda_gni_ge(
         .rename(columns={"gni_share": "value"})
         .assign(prices=prices, currency=currency)
     )
+
+
+def total_oda_official_definition(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = ["total_oda_flow_net", "total_oda_ge"]
+
+    data = (
+        ODAData(
+            years=years,
+            donors=donors,
+            currency=currency,
+            prices=prices,
+            base_year=base_year,
+        )
+        .load_indicator(indicators)
+        .get_data()
+    )
+    query = (
+        "(indicator == 'total_oda_flow_net' and year < 2018) or "
+        "(indicator == 'total_oda_ge' and year >= 2018)"
+    )
+
+    return data.query(query).reset_index(drop=True)
+
+
+def one_non_core_oda_ge_linked(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = [
+        "debt_relief_ge",
+        "idrc_ge_linked",
+        "total_in_donor_students_ge_linked",
+    ]
+
+    data = (
+        ODAData(
+            years=years,
+            donors=donors,
+            currency=currency,
+            prices=prices,
+            base_year=base_year,
+        )
+        .load_indicator(indicators)
+        .get_data()
+        .loc[lambda d: d.year >= 2018]
+    )
+
+    cols = [c for c in data.columns if c not in ["value", "indicator", "aidtype_code"]]
+
+    return (
+        data.groupby(cols, observed=True)
+        .sum(numeric_only=True)
+        .reset_index()
+        .assign(indicator="one_non_core_ge_linked")
+    )
+
+
+def _core_oda(oda_obj, indicators: list) -> pd.DataFrame:
+
+    oda_obj.load_indicator(indicators)
+
+    total = oda_obj.get_data([i for i in indicators if "total" in i])
+    non_core = oda_obj.get_data([i for i in indicators if "core" in i]).assign(
+        value=lambda d: -1 * d.value
+    )
+
+    cols = [c for c in total.columns if c not in ["value", "indicator", "aidtype_code"]]
+
+    return (
+        pd.concat([total, non_core], ignore_index=True)
+        .groupby(cols, observed=True)
+        .sum(numeric_only=True)
+        .reset_index()
+    )
+
+
+def one_core_oda_flow(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = ["total_oda_flow_net", "one_non_core_oda_flow"]
+
+    oda = ODAData(
+        years=years,
+        donors=donors,
+        currency=currency,
+        prices=prices,
+        base_year=base_year,
+    )
+
+    return _core_oda(oda, indicators)
+
+
+def one_core_oda_ge(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = ["total_oda_ge", "one_non_core_oda_ge"]
+
+    oda = ODAData(
+        years=years,
+        donors=donors,
+        currency=currency,
+        prices=prices,
+        base_year=base_year,
+    )
+
+    return _core_oda(oda, indicators)
+
+
+def one_core_oda_ge_linked(
+    years: list,
+    currency: str,
+    prices: str,
+    base_year: int | None,
+    donors: list | None,
+    **kwargs,
+) -> pd.DataFrame:
+
+    from oda_data import ODAData
+
+    indicators = ["total_oda_ge", "one_non_core_oda_ge_linked"]
+
+    oda = ODAData(
+        years=years,
+        donors=donors,
+        currency=currency,
+        prices=prices,
+        base_year=base_year,
+    )
+
+    return _core_oda(oda, indicators)

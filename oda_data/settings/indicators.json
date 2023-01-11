@@ -19,6 +19,12 @@
     },
     "share_of": ""
   },
+  "total_oda_official_definition": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "total_oda_official_definition",
+    "share_of": "total_oda_official_definition"
+  },
   "total_oda_bilateral_flow_net": {
     "source": "dac1",
     "type": "dac",
@@ -489,6 +495,56 @@
       "secondary": "eu_core_flow",
       "new": "eu_core_ge_linked"
     },
+    "share_of": "total_oda_ge"
+  },
+  "one_non_core_oda_flow": {
+    "source": "dac1",
+    "type": "one",
+    "indicators": [
+      "debt_relief_flow",
+      "idrc_flow",
+      "total_in_donor_students_flow"
+    ],
+    "group_by": [
+      "aidtype_code"
+    ],
+    "share_of": "total_oda_flow_net"
+  },
+  "one_non_core_oda_ge": {
+    "source": "dac1",
+    "type": "one",
+    "indicators": [
+      "debt_relief_ge",
+      "idrc_ge",
+      "total_in_donor_students_ge"
+    ],
+    "group_by": [
+      "aidtype_code"
+    ],
+    "share_of": "total_oda_ge"
+  },
+  "one_non_core_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "one_non_core_oda_ge_linked",
+    "share_of": "total_oda_ge"
+  },
+  "one_core_oda_flow": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "one_core_oda_flow",
+    "share_of": "total_oda_flow_net"
+  },
+  "one_core_oda_ge": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "one_core_oda_ge",
+    "share_of": "total_oda_ge"
+  },
+  "one_core_oda_ge_linked": {
+    "source": "dac1",
+    "type": "one_research",
+    "function": "one_core_oda_ge_linked",
     "share_of": "total_oda_ge"
   },
   "total_psi_flow": {
