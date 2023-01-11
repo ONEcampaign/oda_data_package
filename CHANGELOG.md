@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.2.5] unreleased
+## [0.3.1] unreleased
 
 ### Changed
 
@@ -21,6 +21,14 @@
 ### Breaking changes
 
 * ...
+
+## [0.3.0] 2023-01-10
+
+
+### Added
+
+* ONE Core ODA indicators (flows, ge, linked ge), including 'non Core' indicators
+* An "official definition" total ODA indicator
 
 ## [0.2.5] 2022-12-21
 
