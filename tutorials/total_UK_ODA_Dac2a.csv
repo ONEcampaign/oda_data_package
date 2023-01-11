@@ -1,57 +1,64 @@
-year,indicator,donor_code,donor_name,recipient_code,currency,prices,value
-2012,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,1694.0412196295404
-2013,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2364.6014257146217
-2014,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2645.031472904123
-2015,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2346.940483870968
-2016,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2622.0592877331824
-2017,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2989.340872751499
-2018,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2758.301854996734
-2019,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2413.38932878028
-2020,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,2790.871744783792
-2014,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,0.0
-2017,recipient_imputed_multi_flow_net,12,United Kingdom,10001,GBP,constant,0.0
-2012,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,1191.9850012027905
-2013,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,1986.9281966827427
-2014,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,1974.1344001852715
-2015,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,1732.7208870967743
-2016,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,2046.349621254946
-2017,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,2379.8314590273153
-2018,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,2610.1573481384717
-2019,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,1914.807000320137
-2020,recipient_imputed_multi_flow_net,12,United Kingdom,10016,GBP,constant,2134.8659117024495
-2012,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,2615.345502766418
-2013,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,2941.144284201858
-2014,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3052.923501621122
-2015,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3169.401169354839
-2016,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3231.2961673261725
-2017,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3324.315374194981
-2018,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3102.3509862834753
-2019,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,3185.4080034147905
-2020,recipient_bilateral_flow_net,12,United Kingdom,10001,GBP,constant,2630.593528878137
-2012,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2308.0694864084676
-2013,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2668.8271168097867
-2014,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2675.6265400648454
-2015,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2874.0241129032256
-2016,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2659.5239796495193
-2017,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2861.2613724183875
-2018,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2601.204366427172
-2019,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2891.443026357913
-2020,recipient_bilateral_flow_net,12,United Kingdom,10016,GBP,constant,2312.9213819171455
-2012,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,4309.386722395959
-2013,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5305.745709916479
-2014,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5697.954974525244
-2015,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5516.341653225807
-2016,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5853.355455059354
-2017,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,6313.65624694648
-2018,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5860.65284128021
-2019,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5598.79733219507
-2020,recipient_total_flow_net,12,United Kingdom,10001,GBP,constant,5421.465273661929
-2012,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,3500.054487611258
-2013,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4655.75531349253
-2014,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4649.7609402501175
-2015,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4606.745
-2016,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4705.873600904465
-2017,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,5241.092831445703
-2018,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,5211.361714565644
-2019,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4806.25002667805
-2020,recipient_total_flow_net,12,United Kingdom,10016,GBP,constant,4447.787293619595
+year,indicator,donor_code,donor_name,recipient_code,recipient_name,currency,prices,value
+2012,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2615.1167665488774
+2012,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2307.867624328072
+2012,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,1693.8930600152462
+2012,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1191.8807510606
+2012,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,4309.009826564124
+2012,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,3499.748375388672
+2013,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2941.2243106908672
+2013,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2668.899733738197
+2013,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2364.6657648737105
+2013,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1986.9822596161212
+2013,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5305.890075564577
+2013,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4655.881993354318
+2014,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3053.1305672270996
+2014,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2675.8080153722335
+2014,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,0.0
+2014,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2645.210873090363
+2014,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1974.2682965425302
+2014,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5698.341440317462
+2014,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4650.076311914764
+2015,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3169.529703278289
+2015,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2874.140667916486
+2015,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2347.035663197401
+2015,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1732.791156968577
+2015,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5516.565366475691
+2015,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4606.931824885063
+2016,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3231.1806558142034
+2016,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2659.4289076969344
+2016,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2621.9655550583934
+2016,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2046.2764688954815
+2016,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5853.146210872596
+2016,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4705.705376592416
+2017,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3324.512940187163
+2017,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2861.431418842479
+2017,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,0.0
+2017,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2989.5185310146353
+2017,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2379.972893792223
+2017,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,6314.031471201798
+2017,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,5241.404312634702
+2018,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3102.443289543984
+2018,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2601.2817592319616
+2018,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2758.3839218730513
+2018,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2610.235007318474
+2018,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5860.827211417035
+2018,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,5211.516766550436
+2019,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,3185.4823800602667
+2019,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2891.510539164013
+2019,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2413.445679427453
+2019,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1914.8517094818094
+2019,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5598.928059487719
+2019,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4806.362248645823
+2020,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2630.693562811657
+2020,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2313.071529892677
+2020,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2791.052919875053
+2020,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,2135.004500846542
+2020,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,5421.74648268671
+2020,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,4448.076030739219
+2021,recipient_bilateral_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,1732.8772
+2021,recipient_bilateral_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1379.88962
+2021,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,0.0
+2021,recipient_imputed_multi_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,2317.1671
+2021,recipient_imputed_multi_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,1772.24425
+2021,recipient_total_flow_net,12,United Kingdom,10001,"Africa, Total",GBP,constant,4050.0442999999996
+2021,recipient_total_flow_net,12,United Kingdom,10016,"LDCs, Total",GBP,constant,3152.133869999999
