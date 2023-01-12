@@ -179,6 +179,6 @@ def add_name(df: pd.DataFrame, name_id: str | list | None = None) -> pd.DataFram
 
     for new_col in names:
         if new_col[1] not in df.columns:
-            df.insert(loc=new_col[0] + 1, column=new_col[1], value=new_col[2])
+            df.insert(loc=new_col[0], column=new_col[1], value=new_col[2])
 
     return df
