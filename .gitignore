@@ -146,3 +146,5 @@ oda_data/.raw_data/crs_2020_raw.feather
 oda_data/.raw_data/multisystem_raw.feather
 oda_data/.raw_data/table2a_raw.feather
 oda_data/.raw_data/table1_raw.feather
+oda_data/.raw_data/crs_2021_raw.feather
+oda_data/.raw_data/crs_codes.json
