@@ -873,7 +873,17 @@
     ],
     "group_by": [
       "category",
-      "aid_t"
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
     ],
     "share_of": "total_bi_multi_flow_disbursement_gross"
   },
