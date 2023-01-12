@@ -52,7 +52,7 @@ pytz = ">=2015.7"
 
 [[package]]
 name = "bblocks"
-version = "0.4.3"
+version = "0.5.0"
 description = "A package with tools to download and analyse international development data."
 category = "main"
 optional = false
@@ -61,15 +61,16 @@ python-versions = ">=3.10,<4.0"
 [package.dependencies]
 beautifulsoup4 = ">=4.11.1,<5.0.0"
 camelot-py = ">=0.10.1,<0.11.0"
-country-converter = ">=0.7.7,<0.8.0"
-numpy = ">=1.23,<2.0"
-opencv-python = ">=4.6.0,<5.0.0"
+country-converter = ">=0.8.0,<0.9.0"
+numpy = ">=1.24.1,<2.0.0"
+opencv-python = ">=4.7.0,<5.0.0"
 openpyxl = ">=3.0.10,<4.0.0"
-pandas = ">=1.4,<2.0"
+pandas = ">=1.5.2,<2.0.0"
 pyarrow = ">=10.0.1,<11.0.0"
 pyjstat = ">=2.3.0,<3.0.0"
+PyPDF2 = ">=2.11.2,<3.0.0"
 requests = ">=2.28.1,<3.0.0"
-wbgapi = "1.0.12"
+wbgapi = ">=1.1.2,<2.0.0"
 weo = ">=0.7.4,<0.8.0"
 
 [[package]]
@@ -200,7 +201,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7
 
 [[package]]
 name = "country-converter"
-version = "0.7.7"
+version = "0.8.0"
 description = "The country converter (coco) - a Python package for converting country names between different classifications schemes."
 category = "main"
 optional = false
@@ -211,7 +212,7 @@ pandas = ">=1.0"
 
 [[package]]
 name = "coverage"
-version = "7.0.0"
+version = "7.0.5"
 description = "Code coverage measurement for Python"
 category = "dev"
 optional = false
@@ -461,7 +462,7 @@ testing = ["beautifulsoup4", "coverage", "pytest (>=6,<7)", "pytest-cov", "pytes
 
 [[package]]
 name = "numpy"
-version = "1.24.0"
+version = "1.24.1"
 description = "Fundamental package for array computing in Python"
 category = "main"
 optional = false
@@ -469,7 +470,7 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "opencv-python"
-version = "4.6.0.66"
+version = "4.7.0.68"
 description = "Wrapper package for OpenCV python bindings."
 category = "main"
 optional = false
@@ -477,9 +478,10 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.21.2", markers = "python_version >= \"3.10\" or python_version >= \"3.6\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.21.2", markers = "python_version >= \"3.10\""},
+    {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\""},
     {version = ">=1.19.3", markers = "python_version >= \"3.6\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" or python_version >= \"3.9\""},
-    {version = ">=1.14.5", markers = "python_version >= \"3.7\""},
+    {version = ">=1.17.0", markers = "python_version >= \"3.7\""},
     {version = ">=1.17.3", markers = "python_version >= \"3.8\""},
 ]
 
@@ -604,17 +606,17 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pydeflate"
-version = "1.2.9"
+version = "1.2.10"
 description = "Package to convert current prices figures to constant prices and vice versa"
 category = "main"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = ">=3.10,<4.0"
 
 [package.dependencies]
 BeautifulSoup4 = ">=4.11.1,<5.0.0"
-country-converter = ">=0.7.4,<0.8.0"
-numpy = ">=1.23.0,<2.0.0"
-pandas = ">=1.4.3,<2.0.0"
+country-converter = ">=0.8.0,<0.9.0"
+numpy = ">=1.24.1,<2.0.0"
+pandas = ">=1.5.2,<2.0.0"
 pandas-datareader = ">=0.10.0,<0.11.0"
 pyarrow = ">=10.0.1,<11.0.0"
 requests = ">=2.28.1,<3.0.0"
@@ -831,21 +833,6 @@ lint = ["flake8 (>=3.5.0)", "flake8-comprehensions", "flake8-bugbear", "flake8-s
 test = ["pytest (>=4.6)", "html5lib", "typed-ast", "cython"]
 
 [[package]]
-name = "sphinx-rtd-theme"
-version = "1.1.1"
-description = "Read the Docs theme for Sphinx"
-category = "dev"
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
-
-[package.dependencies]
-docutils = "<0.18"
-sphinx = ">=1.6,<6"
-
-[package.extras]
-dev = ["transifex-client", "sphinxcontrib-httpdomain", "bump2version", "wheel"]
-
-[[package]]
 name = "sphinxcontrib-applehelp"
 version = "1.0.2"
 description = "sphinxcontrib-applehelp is a sphinx extension which outputs Apple help books"
@@ -958,7 +945,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "wbgapi"
-version = "1.0.12"
+version = "1.1.2"
 description = "wbgapi provides a comprehensive interface to the World Bank's data and metadata APIs"
 category = "main"
 optional = false
@@ -998,7 +985,7 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "b945d45cf0d7a3d49103dcf01a89e76b330b6ce4dadc1b5f2fd95ed2d3155402"
+content-hash = "b5cb2dd79ec43c98e847982f60c4a6703a383bc6a89fa07247fab11aa2db6945"
 
 [metadata.files]
 alabaster = [
@@ -1269,7 +1256,6 @@ soupsieve = [
     {file = "soupsieve-2.3.2.post1.tar.gz", hash = "sha256:fc53893b3da2c33de295667a0e19f078c14bf86544af307354de5fcf12a3f30d"},
 ]
 sphinx = []
-sphinx-rtd-theme = []
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},
     {file = "sphinxcontrib_applehelp-1.0.2-py2.py3-none-any.whl", hash = "sha256:806111e5e962be97c29ec4c1e7fe277bfd19e9652fb1a4392105b43e01af885a"},
@@ -1301,7 +1287,10 @@ tomli = [
 ]
 typing-extensions = []
 urllib3 = []
-wbgapi = []
+wbgapi = [
+    {file = "wbgapi-1.1.2-py3-none-any.whl", hash = "sha256:77f4807db012bb8e44708c3f003a467171e38647972ad76ec4b5a4981ff3d59b"},
+    {file = "wbgapi-1.1.2.tar.gz", hash = "sha256:f297bf7e903b8be6a6b31d596a7e290f55dd25000dc08bb50f0043efa6ec91da"},
+]
 weo = []
 xlrd = [
     {file = "xlrd-2.0.1-py2.py3-none-any.whl", hash = "sha256:6a33ee89877bd9abc1158129f6e94be74e2679636b8a205b43b85206c3f0bbdd"},
