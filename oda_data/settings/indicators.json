@@ -99,11 +99,15 @@
     "source": "dac1",
     "type": "dac",
     "filters": {
-      "aidtype_code": 11016,
+      "aidtype_code": [
+        11016,
+        12100
+      ],
       "flows_code": 1160,
       "amounttype_code": "A"
     },
-    "share_of": "total_oda_ge"
+    "share_of": "total_oda_ge",
+    "group": true
   },
   "total_oda_non_grants_flow": {
     "source": "dac1",
@@ -119,11 +123,17 @@
     "source": "dac1",
     "type": "dac",
     "filters": {
-      "aidtype_code": 11017,
+      "aidtype_code": [
+        11017,
+        12110,
+        11026,
+        11018
+      ],
       "flows_code": 1160,
       "amounttype_code": "A"
     },
-    "share_of": "total_oda_ge"
+    "share_of": "total_oda_ge",
+    "group": true
   },
   "total_covid_oda_ge": {
     "source": "dac1",
