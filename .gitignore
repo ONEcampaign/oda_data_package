@@ -149,3 +149,5 @@ oda_data/.raw_data/table1_raw.feather
 tutorials/dac1.feather
 tutorials/data_updates.json
 tutorials/table1_raw.feather
+oda_data/.raw_data/crs_2021_raw.feather
+oda_data/.raw_data/crs_codes.json

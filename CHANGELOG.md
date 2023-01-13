@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.3.1] unreleased
+## [0.4.1] unreleased
 
 ### Changed
 
@@ -21,6 +21,21 @@
 ### Breaking changes
 
 * ...
+
+## [0.3.3] 2023-01-13
+
+
+### Fixed
+
+* Issues with multilateral non core ODA
+
+
+## [0.3.2] 2023-01-12
+
+
+### Fixed
+
+* Issues with multilateral sector imputations
 
 ## [0.3.0] 2023-01-10
 
