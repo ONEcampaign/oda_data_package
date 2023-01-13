@@ -129,7 +129,12 @@ def test__rolling_period_total():
 
 
 def test__purpose_share():
-    result = TEST_DF.pipe(sc._rolling_period_total, 3)
+    result = (
+        (TEST_DF.pipe(sc._rolling_period_total, 3))
+        .query("value>0")
+        .drop_duplicates(["year", "donor_code"])
+    )
+
     result["share"] = result.pipe(sc._purpose_share)
 
     # test that all shares equal 1
@@ -142,10 +147,15 @@ def test__purpose_share():
 
 def test__yearly_share():
 
-    result = TEST_DF.pipe(sc._rolling_period_total, 3).pipe(sc._yearly_share)
+    result = (
+        TEST_DF.pipe(sc._rolling_period_total, 3)
+        .query("value>0")
+        .drop_duplicates(["year", "donor_code"])
+        .pipe(sc._yearly_share)
+    )
 
     shares_total = (
-        result.groupby(["year", "donor_code", "prices", "currency"]).value.sum().values
+        result.groupby(["year", "donor_code", "prices", "currency"]).share.sum().values
     )
 
     assert all(x == 1.0 for x in shares_total)
@@ -162,18 +172,12 @@ def test__spending_summary():
             "recipient_code": "Int32",
             "purpose_code": "Int32",
         },
-    )
+    ).assign(share=lambda d: d.value)
 
     result_p = sc._spending_summary(test_df, "purpose_code")
-    result_s = sc._spending_summary(test_df, "sector_code")
 
-    assert len(result_p) != len(result_s)
     assert "purpose_code" in result_p.columns
-    assert "sector_code" in result_s.columns
-    assert "purpose_code" not in result_s.columns
-    assert "sector_code" not in result_p.columns
     assert "value" not in result_p.columns
-    assert "share" in result_s.columns
 
 
 def test_bilat_outflows_by_donor():

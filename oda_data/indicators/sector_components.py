@@ -77,16 +77,18 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
 
 def _purpose_share(df_: pd.DataFrame) -> pd.Series:
     """Function to calculate the share of total for per purpose code."""
-    cols = ["donor_code", "year", "currency", "prices"]
-    return df_.groupby(cols, observed=True)["value"].transform(lambda p: p / p.sum())
+    cols = ["year", "currency", "prices", "donor_code", "agency_code"]
+    return df_.groupby(cols, observed=True, dropna=False)["value"].transform(
+        lambda p: p / p.sum()
+    )
 
 
 def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate the yearly share of the total value for each purpose code."""
 
     return (
-        df.assign(value=lambda d: _purpose_share(d))
-        .loc[lambda d: d.value.notna()]
+        df.assign(share=lambda d: _purpose_share(d))
+        .loc[lambda d: d.share.notna()]
         .reset_index(drop=True)
     )
 
@@ -102,17 +104,50 @@ def _spending_summary(df: pd.DataFrame, purpose_column: str) -> pd.DataFrame:
         "currency",
         "prices",
         "value",
+        "share",
     ]
 
-    return (
-        df.pipe(add_multi_channel_ids)
-        .loc[lambda d: d.channel_code.notna()]
-        .filter(cols, axis=1)
-        .groupby([c for c in cols if c != "value"], observed=True, dropna=False)
-        .sum()["value"]
-        .reset_index(drop=False)
-        .rename(columns={"value": "share"})
+    summary = df.pipe(add_multi_channel_ids).loc[lambda d: d.channel_code.notna()]
+
+    valid_ids = (
+        summary.groupby(["year", "ids", "channel_code"])[["value", "share"]]
+        .sum()
+        .reset_index()
+        .sort_values(["year", "channel_code", "value"])
+        .drop_duplicates(["year", "channel_code"], keep="last")
+        .filter(["year", "ids"], axis=1)
+        .assign(keep=True)
     )
+
+    summary = (
+        summary.merge(valid_ids, on=["year", "ids"], how="left")
+        .loc[lambda d: d.keep.notna()]
+        .filter(cols, axis=1)
+        .sort_values(["year", "channel_code", "value"])
+        .drop_duplicates(
+            subset=[
+                "year",
+                "channel_code",
+                "recipient_code",
+                "purpose_code",
+                "currency",
+                "prices",
+            ],
+            keep="last",
+        )
+    )
+
+    summary = (
+        summary.groupby(
+            [c for c in cols if c not in ["value", "share"]],
+            observed=True,
+            dropna=False,
+        )[["share"]]
+        .sum()
+        .reset_index(drop=False)
+    )
+
+    return summary
 
 
 # -----------------------------------------------------------------------------

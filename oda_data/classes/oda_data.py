@@ -154,9 +154,12 @@ class ODAData:
 
         # go through all the filters and add them to the query string
         for dimension, value in self._indicators_json[indicator]["filters"].items():
-            if isinstance(value, str):
-                value = f"'{value}'"
-            conditions.append(f"{dimension} == {value}")
+            if isinstance(value, list):
+                conditions.append(f"{dimension} in {value}")
+            else:
+                if isinstance(value, str):
+                    value = f"'{value}'"
+                conditions.append(f"{dimension} == {value}")
 
         # Add the donor filters
         if self.donors is not None:
@@ -190,7 +193,8 @@ class ODAData:
         names = column_settings[self._indicators_json[indicator]["source"]]["rename"]
 
         # Filter the data, keep only the important columns, assign the indicator name
-        return (
+
+        data = (
             data_.query(query)
             .filter(keep, axis=1)
             .rename(columns=names)
@@ -198,6 +202,20 @@ class ODAData:
             .reset_index(drop=True)
             .pipe(_drop_name_cols)
         )
+
+        if "group" not in self._indicators_json[indicator]:
+            return data
+
+        elif self._indicators_json[indicator]["group"]:
+            return (
+                data.groupby(
+                    [c for c in data.columns if c != "value"],
+                    dropna=False,
+                    observed=True,
+                )
+                .sum(numeric_only=True)
+                .reset_index()
+            )
 
     def _build_one_indicator(self, indicator: str) -> pd.DataFrame:
         """Builds data for an indicator used by ONE, made up of other 'raw' indicators"""
