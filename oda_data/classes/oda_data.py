@@ -380,6 +380,7 @@ class ODAData:
         # Create a copy of the object to handle the total indicators.
         obj = copy.deepcopy(self)
         obj._output_config["add_share_of_total"] = False
+        obj._output_config["include_share_of"] = False
 
         # Create an empty DataFrame to store the share data
         share_data = pd.DataFrame()
