@@ -21,7 +21,8 @@ def multilateral_imputed_flows(
 
     # Create the basic ODAData object
     data_obj = ODAData(
-        years=years, currency=currency, prices=prices, base_year=base_year
+        years=years,
+        currency=currency,  # prices=prices, base_year=base_year
     )
 
     # --- Bilateral contributions to multilaterals ---
@@ -57,7 +58,8 @@ def total_bi_multi_flows(
     from oda_data import ODAData
 
     multi_data_obj = ODAData(
-        years=years, currency=currency, prices=prices, base_year=base_year
+        years=years,
+        currency=currency,  # prices=prices, base_year=base_year
     )
 
     # --- Multilateral spending by sector (as values) ---
@@ -68,7 +70,8 @@ def total_bi_multi_flows(
 
     # Create the basic ODAData object
     bilat_data_obj = ODAData(
-        years=years, currency=currency, prices=prices, base_year=base_year
+        years=years,
+        currency=currency,  # prices=prices, base_year=base_year
     )
     # --- Bilateral spending by sector ---
     bilat_spending = bilat_outflows_by_donor(
@@ -160,9 +163,9 @@ def total_oda_official_definition(
         ODAData(
             years=years,
             donors=donors,
-            currency=currency,
-            prices=prices,
-            base_year=base_year,
+            # currency=currency,
+            # prices=prices,
+            # base_year=base_year,
         )
         .load_indicator(indicators)
         .get_data()
@@ -196,9 +199,9 @@ def one_non_core_oda_ge_linked(
         ODAData(
             years=years,
             donors=donors,
-            currency=currency,
-            prices=prices,
-            base_year=base_year,
+            # currency=currency,
+            # prices=prices,
+            # base_year=base_year,
         )
         .load_indicator(indicators)
         .get_data()
@@ -208,7 +211,7 @@ def one_non_core_oda_ge_linked(
     cols = [c for c in data.columns if c not in ["value", "indicator", "aidtype_code"]]
 
     return (
-        data.groupby(cols, observed=True)
+        data.groupby(cols, observed=True, dropna=False)
         .sum(numeric_only=True)
         .reset_index()
         .assign(indicator="one_non_core_ge_linked")
@@ -228,7 +231,7 @@ def _core_oda(oda_obj, indicators: list) -> pd.DataFrame:
 
     return (
         pd.concat([total, non_core], ignore_index=True)
-        .groupby(cols, observed=True)
+        .groupby(cols, observed=True, dropna=False)
         .sum(numeric_only=True)
         .reset_index()
     )
@@ -250,9 +253,9 @@ def one_core_oda_flow(
     oda = ODAData(
         years=years,
         donors=donors,
-        currency=currency,
-        prices=prices,
-        base_year=base_year,
+        # currency=currency,
+        # prices=prices,
+        # base_year=base_year,
     )
 
     return _core_oda(oda, indicators)
@@ -274,9 +277,9 @@ def one_core_oda_ge(
     oda = ODAData(
         years=years,
         donors=donors,
-        currency=currency,
-        prices=prices,
-        base_year=base_year,
+        # currency=currency,
+        # prices=prices,
+        # base_year=base_year,
     )
 
     return _core_oda(oda, indicators)
@@ -298,9 +301,9 @@ def one_core_oda_ge_linked(
     oda = ODAData(
         years=years,
         donors=donors,
-        currency=currency,
-        prices=prices,
-        base_year=base_year,
+        # currency=currency,
+        # prices=prices,
+        # base_year=base_year,
     )
 
     return _core_oda(oda, indicators)
