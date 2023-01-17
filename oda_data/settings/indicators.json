@@ -848,7 +848,7 @@
       ]
     },
     "value_column": "usd_disbursement",
-    "share_of": ""
+    "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
   "crs_gender_allocable_total_flow_disbursement_gross": {
     "source": "crs",
@@ -858,9 +858,19 @@
     ],
     "group_by": [
       "category",
-      "aid_t"
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
     ],
-    "share_of": ""
+    "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
   "crs_gender_total_flow_gross": {
     "source": "crs",
@@ -871,7 +881,17 @@
     ],
     "group_by": [
       "category",
-      "aid_t"
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
     ],
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
