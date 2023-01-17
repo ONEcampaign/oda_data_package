@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.4.1] unreleased
+## [0.4.0] unreleased
 
 ### Changed
 
@@ -21,6 +21,13 @@
 ### Breaking changes
 
 * ...
+
+## [0.3.4] 2023-01-12
+
+
+### Fixed
+
+* Issues with gender data
 
 ## [0.3.3] 2023-01-13
 
