@@ -22,6 +22,13 @@
 
 * ...
 
+## [0.3.5] 2023-01-12
+
+
+### Fixed
+
+* Issues with research indicators in non-usd data
+
 ## [0.3.4] 2023-01-12
 
 
