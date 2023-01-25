@@ -1153,26 +1153,6 @@
     "value_column": "usd_disbursement",
     "share_of": "crs_climate_allocable_flow_disbursement_gross"
   },
-  "crs_climate_mitigation_not_screened_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": "99"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
   "crs_climate_adaptation_total_flow_gross": {
     "source": "crs",
     "type": "one",
