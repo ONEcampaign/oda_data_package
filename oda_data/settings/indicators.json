@@ -1211,8 +1211,8 @@
         "D02",
         "E01"
       ],
-      "climate_mitigation": "1",
-      "climate_adaptation": "1"
+      "climate_mitigation": ["1", "2"],
+      "climate_adaptation": ["1", "2"]
     },
     "value_column": "usd_disbursement",
     "share_of": "crs_climate_allocable_flow_disbursement_gross"
