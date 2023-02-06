@@ -515,20 +515,27 @@ class ODAData:
 
         return self
 
-    def load_indicator(self, indicator: str | list[str]) -> ODAData:
+    def load_indicator(self, indicators: str | list[str], **kwargs) -> ODAData:
         """Loads data for the specified indicator. Any parameters specified for
         the object (years, donors, prices, etc.) are applied to the data.
 
         Args:
-            indicator: a string with an indicator code. A list of
+            indicators: a string with an indicator code. A list of
             indicators can also be passed, which is equivalent to calling this
             method multiple times. Call `available_indicators()` to
             view a list of available indicators. See project documentation for
             more details.
 
         """
-        if isinstance(indicator, str):
-            indicator = [indicator]
+
+        if "indicator" in kwargs:
+            indicators = kwargs.pop("indicator")
+
+        if len(kwargs) > 0:
+            raise ValueError(f"Unexpected keyword arguments: {kwargs}")
+
+        if isinstance(indicators, str):
+            indicators = [indicators]
 
         def __load_single_indicator(ind_: str) -> None:
             # Load necessary data to the object
@@ -551,7 +558,7 @@ class ODAData:
             self._convert_units(ind_)
 
         # Load each indicator
-        for single_indicator in indicator:
+        for single_indicator in indicators:
             __load_single_indicator(ind_=single_indicator)
 
         return self
