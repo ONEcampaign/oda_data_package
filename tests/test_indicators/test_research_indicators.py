@@ -1,6 +1,11 @@
 from oda_data.indicators.research_indicators import (
     multilateral_imputed_flows,
+    one_core_oda_flow,
+    one_core_oda_ge,
+    one_core_oda_ge_linked,
+    one_non_core_oda_ge_linked,
     total_bi_multi_flows,
+    total_oda_official_definition,
 )
 
 from oda_data import set_data_path, config
@@ -72,3 +77,39 @@ def test_total_bi_multi_flows():
     assert recipients == [189]
     assert prices == ["current"]
     assert currencies == ["USD"]
+
+
+def test_total_oda_official_def():
+    df = total_oda_official_definition(years=[2017, 2018, 2021], donors=[4, 12])
+
+    assert df.query("year==2017").indicator.values[0] == "total_oda_flow_net"
+    assert df.query("year==2021").indicator.values[0] == "total_oda_ge"
+    assert df.query("year==2018").indicator.values[0] == "total_oda_ge"
+
+
+def test_oda_non_core_linked():
+    df = one_non_core_oda_ge_linked(years=[2017, 2018, 2021], donors=[4, 12])
+
+    # Check that only 1 indicator is returned
+    assert df.indicator.nunique() == 1
+
+
+def test_one_core_oda_flow():
+    df = one_core_oda_flow(years=[2017, 2018, 2021], donors=[4, 12])
+
+    # Check that data for all years is returned
+    assert df.year.nunique() == 3
+
+
+def test_one_core_oda_ge():
+    df = one_core_oda_ge(years=[2014, 2017, 2018, 2021], donors=[4, 12])
+
+    # Check that no data is provided for 2014 or 2017
+    assert df.year.nunique() == 2
+
+
+def test_one_core_oda_ge_linked():
+    df = one_core_oda_ge_linked(years=[2014, 2017, 2018, 2021], donors=[4, 12])
+
+    # Check that no data is provided for 2014 or 2017
+    assert df.year.nunique() == 2
