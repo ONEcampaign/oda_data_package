@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [0.4.0] unreleased
+## [0.4.1] unreleased
 
 ### Changed
 
@@ -21,6 +21,11 @@
 ### Breaking changes
 
 * ...
+## [0.4.0] 2023-01-30
+
+### Added
+
+* Added indicators for climate finance data
 
 ## [0.3.5] 2023-01-12
 
