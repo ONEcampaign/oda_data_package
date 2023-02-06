@@ -234,5 +234,3 @@ def test_get_data_indicator():
 
     with pytest.raises(ValueError):
         oda.load_indicator(indicator34="test", indicators="total_oda_ge")
-
-
