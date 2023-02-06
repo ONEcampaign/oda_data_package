@@ -45,7 +45,7 @@ def _get_indicator(data: ODAData, indicator: str, columns: list) -> pd.DataFrame
     data = copy.deepcopy(data)
 
     return (
-        data.load_indicator(indicator=indicator)
+        data.load_indicator(indicators=indicator)
         .simplify_output_df(columns_to_keep=columns)
         .get_data(indicators=indicator)
     )
