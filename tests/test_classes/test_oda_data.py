@@ -90,7 +90,7 @@ def test_odadata():
 def test_multiple_indicators():
     oda = ODAData(years=2019, donors=4, recipients=57, currency="EUR")
 
-    oda.load_indicator(indicator=["total_oda_ge", "recipient_bilateral_flow_net"])
+    oda.load_indicator(indicators=["total_oda_ge", "recipient_bilateral_flow_net"])
 
     data = oda.get_data("all")
 
@@ -226,3 +226,13 @@ def test_oda_gni():
     oda.load_indicator("oda_gni_flow")
 
     assert oda.get_data("oda_gni_flow").value.sum() > 0
+
+
+def test_get_data_indicator():
+    oda = ODAData(years=2019, donors=4, recipients=57)
+    oda.load_indicator(indicators="total_oda_ge")
+
+    with pytest.raises(ValueError):
+        oda.load_indicator(indicator34="test", indicators="total_oda_ge")
+
+

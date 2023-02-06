@@ -1,21 +1,15 @@
 import pandas as pd
 
 from oda_data.indicators.sector_components import (
+    bilat_outflows_by_donor,
+    compute_imputations,
     multi_contributions_by_donor,
     period_purpose_shares,
-    compute_imputations,
-    bilat_outflows_by_donor,
 )
 
 
 def multilateral_imputed_flows(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    recipients: list | None,
-    **kwargs,
+    years: list, currency: str, donors: list | None, recipients: list | None, **kwargs
 ) -> pd.DataFrame:
     from oda_data import ODAData
 
@@ -47,13 +41,7 @@ def multilateral_imputed_flows(
 
 
 def total_bi_multi_flows(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    recipients: list | None,
-    **kwargs,
+    years: list, currency: str, donors: list | None, recipients: list | None, **kwargs
 ) -> pd.DataFrame:
     from oda_data import ODAData
 
@@ -104,7 +92,6 @@ def oda_gni_flow(
     years: list,
     currency: str,
     prices: str,
-    base_year: int | None,
     donors: list | None,
     recipients: list | None,
     **kwargs,
@@ -127,7 +114,6 @@ def oda_gni_ge(
     years: list,
     currency: str,
     prices: str,
-    base_year: int | None,
     donors: list | None,
     recipients: list | None,
     **kwargs,
@@ -148,9 +134,6 @@ def oda_gni_ge(
 
 def total_oda_official_definition(
     years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
     donors: list | None,
     **kwargs,
 ) -> pd.DataFrame:
@@ -159,17 +142,7 @@ def total_oda_official_definition(
 
     indicators = ["total_oda_flow_net", "total_oda_ge"]
 
-    data = (
-        ODAData(
-            years=years,
-            donors=donors,
-            # currency=currency,
-            # prices=prices,
-            # base_year=base_year,
-        )
-        .load_indicator(indicators)
-        .get_data()
-    )
+    data = ODAData(years=years, donors=donors).load_indicator(indicators).get_data()
     query = (
         "(indicator == 'total_oda_flow_net' and year < 2018) or "
         "(indicator == 'total_oda_ge' and year >= 2018)"
@@ -179,12 +152,7 @@ def total_oda_official_definition(
 
 
 def one_non_core_oda_ge_linked(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    **kwargs,
+    years: list, donors: list | None, **kwargs
 ) -> pd.DataFrame:
 
     from oda_data import ODAData
@@ -196,13 +164,7 @@ def one_non_core_oda_ge_linked(
     ]
 
     data = (
-        ODAData(
-            years=years,
-            donors=donors,
-            # currency=currency,
-            # prices=prices,
-            # base_year=base_year,
-        )
+        ODAData(years=years, donors=donors)
         .load_indicator(indicators)
         .get_data()
         .loc[lambda d: d.year >= 2018]
@@ -237,73 +199,34 @@ def _core_oda(oda_obj, indicators: list) -> pd.DataFrame:
     )
 
 
-def one_core_oda_flow(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    **kwargs,
-) -> pd.DataFrame:
+def one_core_oda_flow(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
 
     from oda_data import ODAData
 
     indicators = ["total_oda_flow_net", "one_non_core_oda_flow"]
 
-    oda = ODAData(
-        years=years,
-        donors=donors,
-        # currency=currency,
-        # prices=prices,
-        # base_year=base_year,
-    )
+    oda = ODAData(years=years, donors=donors)
 
     return _core_oda(oda, indicators)
 
 
-def one_core_oda_ge(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    **kwargs,
-) -> pd.DataFrame:
+def one_core_oda_ge(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
 
     from oda_data import ODAData
 
     indicators = ["total_oda_ge", "one_non_core_oda_ge"]
 
-    oda = ODAData(
-        years=years,
-        donors=donors,
-        # currency=currency,
-        # prices=prices,
-        # base_year=base_year,
-    )
+    oda = ODAData(years=years, donors=donors)
 
-    return _core_oda(oda, indicators)
+    return _core_oda(oda, indicators).query("year >= 2018")
 
 
-def one_core_oda_ge_linked(
-    years: list,
-    currency: str,
-    prices: str,
-    base_year: int | None,
-    donors: list | None,
-    **kwargs,
-) -> pd.DataFrame:
+def one_core_oda_ge_linked(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
 
     from oda_data import ODAData
 
     indicators = ["total_oda_ge", "one_non_core_oda_ge_linked"]
 
-    oda = ODAData(
-        years=years,
-        donors=donors,
-        # currency=currency,
-        # prices=prices,
-        # base_year=base_year,
-    )
+    oda = ODAData(years=years, donors=donors)
 
-    return _core_oda(oda, indicators)
+    return _core_oda(oda, indicators).query("year >= 2018")
