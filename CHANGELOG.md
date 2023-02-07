@@ -21,6 +21,13 @@
 ### Breaking changes
 
 * ...
+
+## [0.4.1] 2023-01-30
+
+### Updated
+
+* Updated requirements
+
 ## [0.4.0] 2023-01-30
 
 ### Added
