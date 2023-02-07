@@ -18,10 +18,10 @@ classifiers = ["Programming Language :: Python :: 3.10",
 [tool.poetry.dependencies]
 python = "^3.10"
 pandas = "^1.5.2"
-bblocks = "^0.5.0"
+bblocks = "^1"
 requests = "^2.28.2"
 beautifulsoup4 = "^4.11.1"
-pydeflate = "^1.2.10"
+pydeflate = "^1.2"
 
 
 [tool.poetry.dev-dependencies]
