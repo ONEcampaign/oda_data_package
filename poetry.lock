@@ -33,8 +33,8 @@ tests_no_zope = ["hypothesis", "pympler", "pytest (>=4.3.0)", "pytest-xdist", "c
 
 [[package]]
 name = "bblocks"
-version = "0.5.0"
-description = "A package with tools to download and analyse international development data."
+version = "1.0.0"
+description = "A package with tools to download and analyse international development data. These tools are meant to be the building blocks of further analysis."
 category = "main"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -46,17 +46,17 @@ country-converter = ">=0.8.0,<0.9.0"
 numpy = ">=1.24.1,<2.0.0"
 opencv-python = ">=4.7.0,<5.0.0"
 openpyxl = ">=3.0.10,<4.0.0"
-pandas = ">=1.5.2,<2.0.0"
-pyarrow = ">=10.0.1,<11.0.0"
+pandas = ">=1.5.3,<2.0.0"
+pyarrow = ">=11.0.0,<12.0.0"
 pyjstat = ">=2.3.0,<3.0.0"
-PyPDF2 = ">=2.11.2,<3.0.0"
-requests = ">=2.28.1,<3.0.0"
-wbgapi = ">=1.1.2,<2.0.0"
+PyPDF2 = ">=2,<3"
+requests = ">=2.28.2,<3.0.0"
+wbgapi = "<1.1"
 weo = ">=0.7.4,<0.8.0"
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.11.1"
+version = "4.11.2"
 description = "Screen-scraping library"
 category = "main"
 optional = false
@@ -190,7 +190,7 @@ pandas = ">=1.0"
 
 [[package]]
 name = "coverage"
-version = "7.0.5"
+version = "7.1.0"
 description = "Code coverage measurement for Python"
 category = "dev"
 optional = false
@@ -326,15 +326,15 @@ source = ["Cython (>=0.29.7)"]
 
 [[package]]
 name = "mypy-extensions"
-version = "0.4.3"
-description = "Experimental type system extensions for programs checked with the mypy typechecker."
+version = "1.0.0"
+description = "Type system extensions for programs checked with the mypy type checker."
 category = "dev"
 optional = false
-python-versions = "*"
+python-versions = ">=3.5"
 
 [[package]]
 name = "numpy"
-version = "1.24.1"
+version = "1.24.2"
 description = "Fundamental package for array computing in Python"
 category = "main"
 optional = false
@@ -359,7 +359,7 @@ numpy = [
 
 [[package]]
 name = "openpyxl"
-version = "3.0.10"
+version = "3.1.0"
 description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
 category = "main"
 optional = false
@@ -378,7 +378,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pandas"
-version = "1.5.2"
+version = "1.5.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
 category = "main"
 optional = false
@@ -410,7 +410,7 @@ requests = ">=2.19.0"
 
 [[package]]
 name = "pathspec"
-version = "0.10.3"
+version = "0.11.0"
 description = "Utility library for gitignore style pattern matching of file paths."
 category = "dev"
 optional = false
@@ -435,15 +435,15 @@ image = ["pillow"]
 
 [[package]]
 name = "platformdirs"
-version = "2.6.2"
+version = "3.0.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["furo (>=2022.12.7)", "proselint (>=0.13)", "sphinx-autodoc-typehints (>=1.19.5)", "sphinx (>=5.3)"]
-test = ["appdirs (==1.4.4)", "covdefaults (>=2.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest (>=7.2)"]
+docs = ["furo (>=2022.12.7)", "proselint (>=0.13)", "sphinx-autodoc-typehints (>=1.22,!=1.23.4)", "sphinx (>=6.1.3)"]
+test = ["appdirs (==1.4.4)", "covdefaults (>=2.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest (>=7.2.1)"]
 
 [[package]]
 name = "pluggy"
@@ -459,7 +459,7 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pyarrow"
-version = "10.0.1"
+version = "11.0.0"
 description = "Python library for Apache Arrow"
 category = "main"
 optional = false
@@ -478,7 +478,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pydeflate"
-version = "1.2.10"
+version = "1.2.11"
 description = "Package to convert current prices figures to constant prices and vice versa"
 category = "main"
 optional = false
@@ -490,7 +490,7 @@ country-converter = ">=0.8.0,<0.9.0"
 numpy = ">=1.24.1,<2.0.0"
 pandas = ">=1.5.2,<2.0.0"
 pandas-datareader = ">=0.10.0,<0.11.0"
-pyarrow = ">=10.0.1,<11.0.0"
+pyarrow = ">=11,<12"
 requests = ">=2.28.1,<3.0.0"
 weo = ">=0.7.4,<0.8.0"
 xlrd = ">=2.0.1,<3.0.0"
@@ -524,7 +524,7 @@ image = ["pillow"]
 
 [[package]]
 name = "pytest"
-version = "7.2.0"
+version = "7.2.1"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
@@ -584,7 +584,7 @@ six = ">=1.5"
 
 [[package]]
 name = "pytz"
-version = "2022.7"
+version = "2022.7.1"
 description = "World timezone definitions, modern and historical"
 category = "main"
 optional = false
@@ -688,7 +688,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "wbgapi"
-version = "1.1.2"
+version = "1.0.12"
 description = "wbgapi provides a comprehensive interface to the World Bank's data and metadata APIs"
 category = "main"
 optional = false
@@ -728,16 +728,13 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "05f438c4b267c854358bc3a71a7980169ffe97fba9e55f1e7aeacb11f746c2f7"
+content-hash = "dad458c240d5847d33bc6036b0532f3b8262fb111b21c428a2375cfee314e456"
 
 [metadata.files]
 anyio = []
 attrs = []
 bblocks = []
-beautifulsoup4 = [
-    {file = "beautifulsoup4-4.11.1-py3-none-any.whl", hash = "sha256:58d5c3d29f5a36ffeb94f02f0d786cd53014cf9b3b3951d42e0080d8a9498d30"},
-    {file = "beautifulsoup4-4.11.1.tar.gz", hash = "sha256:ad9aa55b65ef2808eb405f46cf74df7fcb7044d5cbc26487f96eb2ef2e436693"},
-]
+beautifulsoup4 = []
 black = []
 bump2version = [
     {file = "bump2version-1.0.1-py2.py3-none-any.whl", hash = "sha256:37f927ea17cde7ae2d7baf832f8e80ce3777624554a653006c9144f8017fe410"},
@@ -833,16 +830,10 @@ idna = []
 iniconfig = []
 iso3166 = []
 lxml = []
-mypy-extensions = [
-    {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
-    {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
-]
+mypy-extensions = []
 numpy = []
 opencv-python = []
-openpyxl = [
-    {file = "openpyxl-3.0.10-py2.py3-none-any.whl", hash = "sha256:0ab6d25d01799f97a9464630abacbb34aafecdcaa0ef3cba6d6b3499867d0355"},
-    {file = "openpyxl-3.0.10.tar.gz", hash = "sha256:e47805627aebcf860edb4edf7987b1309c1b3632f3750538ed962bbcc3bd7449"},
-]
+openpyxl = []
 packaging = []
 pandas = []
 pandas-datareader = [
@@ -927,10 +918,7 @@ tomli = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 urllib3 = []
-wbgapi = [
-    {file = "wbgapi-1.1.2-py3-none-any.whl", hash = "sha256:77f4807db012bb8e44708c3f003a467171e38647972ad76ec4b5a4981ff3d59b"},
-    {file = "wbgapi-1.1.2.tar.gz", hash = "sha256:f297bf7e903b8be6a6b31d596a7e290f55dd25000dc08bb50f0043efa6ec91da"},
-]
+wbgapi = []
 weo = []
 xlrd = [
     {file = "xlrd-2.0.1-py2.py3-none-any.whl", hash = "sha256:6a33ee89877bd9abc1158129f6e94be74e2679636b8a205b43b85206c3f0bbdd"},
