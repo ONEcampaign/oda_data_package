@@ -22,6 +22,15 @@
 
 * ...
 
+## [1.0.0] 2023-02-20
+
+First major release of the oda_data. We have settled on the basic functionality of the package and
+the basic API.
+
+### Updated
+* Updated requirements
+
+
 ## [0.4.1] 2023-01-30
 
 ### Updated

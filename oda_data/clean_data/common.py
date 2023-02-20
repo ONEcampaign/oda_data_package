@@ -3,9 +3,12 @@ import pathlib
 from functools import partial
 
 import pandas as pd
-from pydeflate import exchange, deflate
+from pydeflate import deflate, exchange, set_pydeflate_path
 
+from oda_data.config import OdaPATHS
 from oda_data.logger import logger
+
+set_pydeflate_path(OdaPATHS.raw_data)
 
 
 def clean_column_name(column_name: str) -> str:
@@ -183,11 +186,14 @@ dac_exchange = partial(
 # Create a helper function to consistently deflate data
 dac_deflate = partial(
     deflate,
-    source="oecd_dac",
+    deflator_source="oecd_dac",
+    deflator_method="dac_deflator",
+    exchange_source="oecd_dac",
+    exchange_method="implied",
     source_currency="USA",
     id_column="donor_code",
     id_type="DAC",
-    source_col="value",
-    target_col="value",
+    source_column="value",
+    target_column="value",
     date_column="year",
 )
