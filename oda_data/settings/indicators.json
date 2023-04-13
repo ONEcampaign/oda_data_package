@@ -740,6 +740,14 @@
     "value_column": "usd_disbursement",
     "share_of": ""
   },
+  "crs_bilateral_flow_disbursement_gross_including_oof": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {"category":[10, 21, 22]
+    },
+    "value_column": "usd_disbursement",
+    "share_of": ""
+  },
   "crs_bilateral_all_flows_disbursement_gross": {
     "source": "crs",
     "type": "dac",
@@ -916,6 +924,28 @@
       "desertification"
     ],
     "share_of": "total_bi_multi_flow_disbursement_gross"
+  },
+  "crs_bilateral_total_flow_gross_by_purpose_including_oof": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_bilateral_flow_disbursement_gross_including_oof"
+    ],
+    "group_by": [
+      "category",
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
+    ],
+    "share_of": "crs_bilateral_total_flow_gross_by_purpose_including_oof"
   },
   "multisystem_multilateral_contributions_disbursement_gross": {
     "source": "multisystem",
