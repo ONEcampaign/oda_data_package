@@ -22,6 +22,12 @@
 
 * ...
 
+## [1.0.1] 2023-04-13
+* Updated requirements to a newer version of pydeflate, given data quality issues with the latest oecd release
+
+### Updated
+* Updated requirements
+
 ## [1.0.0] 2023-02-20
 
 First major release of the oda_data. We have settled on the basic functionality of the package and
