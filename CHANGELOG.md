@@ -22,6 +22,10 @@
 
 * ...
 
+## [1.0.2] 2023-06-12
+* Updated requirements
+* Fixed an encoding bug that affected CRS data given a new file encoding from the OECD bulk downloads
+
 ## [1.0.1] 2023-04-13
 * Updated requirements to a newer version of pydeflate, given data quality issues with the latest oecd release
 
