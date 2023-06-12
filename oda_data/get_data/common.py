@@ -56,40 +56,60 @@ def _extract_zip(serialised_content: io.BytesIO, file_name: str) -> csv:
     return zf.ZipFile(serialised_content).open(file_name)
 
 
-def _raw2df(csv_file: csv, sep: str) -> pd.DataFrame:
+def _raw2df(csv_file: csv, sep: str, encoding: str) -> pd.DataFrame:
     """Convert a raw csv to a DataFrame. Check the result if requested"""
 
-    _ = pd.read_csv(
-        csv_file, sep=sep, dtype="str", encoding="ISO-8859-1", low_memory=False
-    )
+    _ = pd.read_csv(csv_file, sep=sep, dtype="str", encoding=encoding, low_memory=False)
+
+    unnamed_cols = [c for c in _.columns if "unnamed" in c]
+
+    if len(unnamed_cols) > 3:
+        raise pd.errors.ParserError
 
     if len(_.columns) < 3:
         raise pd.errors.ParserError
+
     return _
+
+
+def _extract_df(request_content, file_name: str, separator: str) -> pd.DataFrame:
+    import copy
+
+    for encoding in ["utf_16", "ISO-8859-1"]:
+        try:
+            rc = copy.deepcopy(request_content)
+            # serialise the content
+            serialised_content = _serialise_content(rc)
+
+            # extract the file
+            raw_csv = _extract_zip(serialised_content, file_name)
+
+            # convert to a dataframe
+            return _raw2df(csv_file=raw_csv, sep=separator, encoding=encoding)
+        except pd.errors.ParserError:
+            logger.debut(f"{encoding} not valid")
+
+    raise pd.errors.ParserError
 
 
 def read_zip_content(
     request_content, file_name: str, priority_sep: str = "|"
 ) -> pd.DataFrame:
     """Read a zip file and return a DataFrame"""
-    import copy
-
-    rc = copy.deepcopy(request_content)
 
     try:
-        # serialise the content
-        serialised_content = _serialise_content(rc)
-
-        # extract the file
-        raw_csv = _extract_zip(serialised_content, file_name)
-
-        # convert to a dataframe
-        return _raw2df(csv_file=raw_csv, sep=priority_sep)
+        return _extract_df(
+            request_content=request_content, file_name=file_name, separator=priority_sep
+        )
 
     except UnicodeDecodeError:
-        return read_zip_content(rc, file_name=file_name, priority_sep=",")
+        return _extract_df(
+            request_content=request_content, file_name=file_name, separator=","
+        )
     except pd.errors.ParserError:
-        return read_zip_content(rc, file_name=file_name, priority_sep=",")
+        return _extract_df(
+            request_content=request_content, file_name=file_name, separator=","
+        )
 
 
 def extract_file_link_single(url: str) -> str:
