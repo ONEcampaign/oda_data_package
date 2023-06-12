@@ -59,7 +59,12 @@ def _extract_zip(serialised_content: io.BytesIO, file_name: str) -> csv:
 def _raw2df(csv_file: csv, sep: str, encoding: str) -> pd.DataFrame:
     """Convert a raw csv to a DataFrame. Check the result if requested"""
 
-    _ = pd.read_csv(csv_file, sep=sep, dtype="str", encoding=encoding, low_memory=False)
+    try:
+        _ = pd.read_csv(
+            csv_file, sep=sep, dtype="str", encoding=encoding, low_memory=False
+        )
+    except UnicodeError:
+        raise pd.errors.ParserError
 
     unnamed_cols = [c for c in _.columns if "unnamed" in c]
 
@@ -87,7 +92,7 @@ def _extract_df(request_content, file_name: str, separator: str) -> pd.DataFrame
             # convert to a dataframe
             return _raw2df(csv_file=raw_csv, sep=separator, encoding=encoding)
         except pd.errors.ParserError:
-            logger.debut(f"{encoding} not valid")
+            logger.debug(f"{encoding} not valid")
 
     raise pd.errors.ParserError
 
