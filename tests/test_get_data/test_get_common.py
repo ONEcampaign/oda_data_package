@@ -69,10 +69,10 @@ def test__raw2df():
     file_comma = config.OdaPATHS.test_files / "comma_df_raw.csv"
     file_tab = config.OdaPATHS.test_files / "tab_df_raw.csv"
 
-    df_comma = common._raw2df(file_comma, sep=",")
+    df_comma = common._raw2df(file_comma, sep=",", encoding="ISO-8859-1")
 
     with pytest.raises(pd.errors.ParserError):
-        common._raw2df(file_tab, sep="|")
+        common._raw2df(file_tab, sep="|", encoding="ISO-8859-1")
 
     assert isinstance(df_comma, pd.DataFrame)
     assert len(df_comma.columns) > 3
