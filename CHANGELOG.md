@@ -23,7 +23,7 @@
 * ...
 
 
-## [1.0.3] 2023-08-24
+## [1.0.4] 2023-08-24
 * Developed a backup solution to download bulk files from the OECD website. Given an insecure
 SSL certificate, the normal download using `requests` fails. The backup solution uses `selenium` to
 download the files using a browser. This is a bit slower, but it works.
