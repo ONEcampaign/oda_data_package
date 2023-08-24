@@ -22,6 +22,10 @@
 
 * ...
 
+## [1.0.5] 2023-08-24
+* Updated how the indicators that use the `multisystem` database work. The OECD quietly changed
+the output format of the database, which broke the parsing of the data. The new format is now
+supported.
 
 ## [1.0.4] 2023-08-24
 * Developed a backup solution to download bulk files from the OECD website. Given an insecure
