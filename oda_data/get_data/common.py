@@ -40,7 +40,7 @@ def _get_driver() -> webdriver.chrome:
     return webdriver.Chrome(service=Service(chrome), options=options)
 
 
-def _get_url_selenium(url: str) -> webdriver.chrome:
+def get_url_selenium(url: str) -> webdriver.chrome:
     """
     Get the url using selenium
 
@@ -233,7 +233,7 @@ def extract_file_link_single(url: str) -> str:
     try:
         response = requests.get(url, verify=True).text
     except requests.exceptions.SSLError:
-        response = _get_url_selenium(url).page_source
+        response = get_url_selenium(url).page_source
 
     # Get page content
     soup = BeautifulSoup(response, "html.parser")
@@ -255,7 +255,7 @@ def _fetch_page_multiple_links(url: str) -> bs4.ResultSet:
     try:
         response = requests.get(url, verify=True).text
     except requests.exceptions.SSLError:
-        response = _get_url_selenium(url).page_source
+        response = get_url_selenium(url).page_source
 
     soup = BeautifulSoup(response, "html.parser")
     return soup.find_all("a")

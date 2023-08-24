@@ -6,13 +6,20 @@ from lxml import etree as et
 
 from oda_data import config
 from oda_data.clean_data.common import clean_column_name
+from oda_data.get_data.common import get_url_selenium
 from oda_data.logger import logger
 from oda_data.read_data.read import read_crs
 from oda_data.tools.groupings import donor_groupings, recipient_groupings
 
 
 def _fetch_codes_xml(url: str = config.CODES_URL) -> et.Element:
-    return et.XML(requests.get(url).content)
+    """Fetch the CRS codes from the OECD website"""
+    try:
+        requested_content = requests.get(url).content
+    except requests.exceptions.SSLError:
+        requested_content = get_url_selenium(url).page_source
+
+    return et.XML(requested_content)
 
 
 def _extract_crs_elements(xml: et.Element) -> dict:
@@ -26,7 +33,6 @@ def _extract_crs_elements(xml: et.Element) -> dict:
 
         # for every item in the list, extract the name and description (if not inactive)
         for item in code_list.iter("codelist-item"):
-
             # if inactive, skip
             if item.attrib.get("status") not in ["active", "voluntary basis", None]:
                 continue
