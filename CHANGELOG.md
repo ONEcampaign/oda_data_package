@@ -21,6 +21,9 @@
 ### Breaking changes
 
 * ...
+* 
+## [1.0.5] 2023-08-24
+* Updated how the CRS codes are fetched given the connection issues outlined in the notes for 1.0.4.
 
 ## [1.0.5] 2023-08-24
 * Updated how the indicators that use the `multisystem` database work. The OECD quietly changed
