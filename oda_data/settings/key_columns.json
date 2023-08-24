@@ -71,13 +71,18 @@
       "channel_name_e",
       "recipient_code",
       "recipient_name_e",
+      "environment",
+      "biodiversity",
+      "climate_mitigation",
+      "climate_adaptation",
+      "desertification",
       "value"
     ],
     "rename": {
       "donor_name_e": "donor_name",
-      "flow_name_e": "flow_name",
       "channel_name_e": "channel_name",
-      "recipient_name_e": "recipient_name"
+      "recipient_name_e": "recipient_name",
+      "flow_name_e": "flow_name"
     }
   }
 }

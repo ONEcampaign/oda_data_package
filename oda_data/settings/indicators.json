@@ -923,9 +923,11 @@
     "filters": {
       "aid_to_or_thru": [
         "Core contributions to"
-      ]
+      ],
+      "flow_type": ["Disbursements"],
+      "amount_type": ["Current prices"]
     },
-    "value_column": "usd_extended",
+    "value_column": "amount",
     "share_of": "total_bi_multi_flow_disbursement_gross"
   },
   "multisystem_multilateral_contributions_commitments_gross": {
@@ -934,9 +936,11 @@
     "filters": {
       "aid_to_or_thru": [
         "Core contributions to"
-      ]
+      ],
+      "flow_type": ["Commitments"],
+      "amount_type": ["Current prices"]
     },
-    "value_column": "usd_commitment",
+    "value_column": "amount",
     "share_of": "total_bi_multi_flow_disbursement_gross"
   },
   "imputed_multi_flow_disbursement_gross": {
