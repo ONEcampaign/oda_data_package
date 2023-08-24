@@ -15,24 +15,20 @@
     "type": "category",
     "keep": true
   },
-  "region_name_e": {
+  "amount": {
+    "type": "float",
+    "keep": true
+  },
+  "flow_type": {
     "type": "category",
     "keep": true
   },
-  "usd_commitment": {
-    "type": "float",
+  "amount_type": {
+    "type": "category",
     "keep": true
   },
-  "usd_commitment_defl": {
-    "type": "float",
-    "keep": true
-  },
-  "usd_extended": {
-    "type": "float",
-    "keep": true
-  },
-  "usd_extended_defl": {
-    "type": "float",
+  "region_name_e": {
+    "type": "category",
     "keep": true
   },
   "flow_code": {
@@ -129,7 +125,7 @@
   },
   "environment": {
     "type": "category",
-    "keep": false
+    "keep": true
   },
   "freestanding_technical_cooperation": {
     "type": "category",
@@ -145,19 +141,19 @@
   },
   "biodiversity": {
     "type": "category",
-    "keep": false
+    "keep": true
   },
   "climate_mitigation": {
     "type": "category",
-    "keep": false
+    "keep": true
   },
   "climate_adaptation": {
     "type": "category",
-    "keep": false
+    "keep": true
   },
   "desertification": {
     "type": "category",
-    "keep": false
+    "keep": true
   },
   "income_group_name_e": {
     "type": "category",
