@@ -277,7 +277,10 @@ def _links_dict(results_set: bs4.ResultSet) -> dict[int, str]:
     for _ in results_set:
         link = _.attrs["onclick"][15:-3].replace("_", "-")
         url = f"https://stats.oecd.org/FileView2.aspx?IDFile={link}"
-        year = int(_.text[4:8])
+        try:
+            year = int(_.text[4:8])
+        except ValueError:
+            continue
         links_dict[year] = url
 
     return links_dict
