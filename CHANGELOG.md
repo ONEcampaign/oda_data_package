@@ -21,7 +21,10 @@
 ### Breaking changes
 
 * ...
-* 
+
+## [1.0.6] 2023-10-21
+* Fixed bug caused by new readme files in the bulk download service file.
+
 ## [1.0.5] 2023-08-24
 * Updated how the CRS codes are fetched given the connection issues outlined in the notes for 1.0.4.
 
