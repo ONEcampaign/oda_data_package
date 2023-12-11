@@ -44,4 +44,6 @@ def linked_indicator(
     df[new] = df[main].fillna(df[fallback])
 
     # Stack the indicator column back and return
-    return df.filter([new], axis=1).stack("indicator").reset_index()
+    return (
+        df.filter(set([new] + ["indicator"]), axis=1).stack("indicator").reset_index()
+    )
