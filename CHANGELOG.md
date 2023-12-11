@@ -1,26 +1,7 @@
 # Changes to the oda_data package
 
-## [1.0.5] unreleased
-
-### Changed
-
-* ...
-
-### Added
-
-* ...
-
-### Fixed
-
-* ...
-
-### Removed
-
-* ...
-
-### Breaking changes
-
-* ...
+## [1.0.7] 2023-12-11
+* Update requirements for security.
 
 ## [1.0.6] 2023-10-21
 * Fixed bug caused by new readme files in the bulk download service file.
