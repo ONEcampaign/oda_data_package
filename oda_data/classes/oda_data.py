@@ -246,7 +246,6 @@ class ODAData:
         )
 
     def _build_linked_indicator(self, indicator: str) -> pd.DataFrame:
-
         # Components dict
         components: dict = self._indicators_json[indicator]["components"]
         # Required indicators

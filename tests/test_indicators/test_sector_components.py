@@ -88,7 +88,6 @@ def test_add_multi_channel_ids():
 
 
 def test__get_indicator():
-
     indicator = "multisystem_multilateral_contributions_disbursement_gross"
     cols = ["donor_code", "channel_code", "year", "currency", "prices"]
 
@@ -109,7 +108,6 @@ def test__get_indicator():
 
 
 def test__rolling_period_total():
-
     result = sc._rolling_period_total(TEST_DF, 3)
 
     assert result.query("year == 2019 and donor_code == 807").value.sum() == 300
@@ -146,7 +144,6 @@ def test__purpose_share():
 
 
 def test__yearly_share():
-
     result = (
         TEST_DF.pipe(sc._rolling_period_total, 3)
         .query("value>0")
@@ -181,7 +178,6 @@ def test__spending_summary():
 
 
 def test_bilat_outflows_by_donor():
-
     oda = ODAData([2019, 2020], donors=[4, 12])
 
     result = sc.bilat_outflows_by_donor(oda)

@@ -1,22 +1,13 @@
-import json
-import zipfile
-
-import pandas as pd
 from unittest.mock import patch
 
-import pytest
-
-from oda_data.get_data.crs import _download
-from oda_data.tools import names
 import lxml.etree as et
+import pandas as pd
 
-from oda_data import set_data_path
-from oda_data import config
+from oda_data import set_data_path, config
+from oda_data.tools import names
 from oda_data.tools.names import (
     read_crs_names,
-    read_crs_codes,
     recipient_names,
-    download_crs_codes,
 )
 
 set_data_path(config.OdaPATHS.test_files)
@@ -66,7 +57,6 @@ def test_add_name():
 
 
 def test_read_crs_codes():
-
     with open(config.OdaPATHS.test_files / "crs_codes_raw", "rb") as f:
         raw_data = f.read()
 
@@ -112,7 +102,6 @@ def test_recipient_names():
 
 
 def test_return_recipient_names():
-
     loc_ = 4
     col_ = "recipient_code"
     s_ = pd.DataFrame({"recipient_code": [163, 189], "value": [2000, 3000]})
@@ -124,7 +113,6 @@ def test_return_recipient_names():
 
 
 def test_return_crs_names():
-
     loc_ = 4
     col_ = "purpose_code"
     s_ = pd.DataFrame({"purpose_code": [16001, 17001], "value": [2000, 3000]})
