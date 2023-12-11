@@ -96,7 +96,6 @@ def oda_gni_flow(
     recipients: list | None,
     **kwargs,
 ) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     return (
@@ -118,7 +117,6 @@ def oda_gni_ge(
     recipients: list | None,
     **kwargs,
 ) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     return (
@@ -137,7 +135,6 @@ def total_oda_official_definition(
     donors: list | None,
     **kwargs,
 ) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     indicators = ["total_oda_flow_net", "total_oda_ge"]
@@ -154,7 +151,6 @@ def total_oda_official_definition(
 def one_non_core_oda_ge_linked(
     years: list, donors: list | None, **kwargs
 ) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     indicators = [
@@ -181,7 +177,6 @@ def one_non_core_oda_ge_linked(
 
 
 def _core_oda(oda_obj, indicators: list) -> pd.DataFrame:
-
     oda_obj.load_indicator(indicators)
 
     total = oda_obj.get_data([i for i in indicators if "total" in i])
@@ -200,7 +195,6 @@ def _core_oda(oda_obj, indicators: list) -> pd.DataFrame:
 
 
 def one_core_oda_flow(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     indicators = ["total_oda_flow_net", "one_non_core_oda_flow"]
@@ -211,7 +205,6 @@ def one_core_oda_flow(years: list, donors: list | None, **kwargs) -> pd.DataFram
 
 
 def one_core_oda_ge(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     indicators = ["total_oda_ge", "one_non_core_oda_ge"]
@@ -222,7 +215,6 @@ def one_core_oda_ge(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
 
 
 def one_core_oda_ge_linked(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
-
     from oda_data import ODAData
 
     indicators = ["total_oda_ge", "one_non_core_oda_ge_linked"]
