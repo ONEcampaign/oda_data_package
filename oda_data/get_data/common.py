@@ -187,7 +187,7 @@ def _raw2df(csv_file: csv, sep: str, encoding: str) -> pd.DataFrame:
 def _extract_df(request_content, file_name: str, separator: str) -> pd.DataFrame:
     import copy
 
-    for encoding in ["utf_16", "ISO-8859-1"]:
+    for encoding in ["utf-8", "utf_16", "ISO-8859-1"]:
         try:
             if not isinstance(request_content, io.BytesIO):
                 rc = copy.deepcopy(request_content)
