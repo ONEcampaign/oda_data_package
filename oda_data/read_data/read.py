@@ -35,9 +35,11 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
 
     # Loop over years
     for year in years:
-        df = pd.concat(
-            [df, pd.read_feather(config.OdaPATHS.raw_data / f"crs_{year}_raw.feather")]
-        )
+        file = pd.read_feather(config.OdaPATHS.raw_data / f"crs_{year}_raw.feather")
+        if len(df) > 0:
+            df = pd.concat([df, file], ignore_index=True)
+        else:
+            df = file.copy()
     return df
 
 
