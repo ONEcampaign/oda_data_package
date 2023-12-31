@@ -387,7 +387,14 @@ class ODAData:
         # For each indicator, add the share data
         for indicator in data.indicator.unique():
             i_data = __add_indicator_share(object_=obj, d_=data, indicator=indicator)
-            share_data = pd.concat([share_data, i_data], ignore_index=True)
+            if not share_data.empty or not share_data.isna().all().all():
+                if share_data.share.notna().sum() < 1:
+                    share_data = share_data.assign(
+                        share=lambda d: pd.to_numeric(d.share, errors="coerce")
+                    )
+                share_data = pd.concat([share_data, i_data], ignore_index=True)
+            else:
+                share_data = i_data.copy()
 
         # If not requested drop the share_of column
         if not include_share_of:
