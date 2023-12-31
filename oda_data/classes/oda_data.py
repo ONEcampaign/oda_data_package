@@ -279,7 +279,7 @@ class ODAData:
 
         return (
             function_callable(**self.arguments)
-            .assign(indicators=indicator)
+            .assign(indicator=indicator)
             .pipe(_drop_name_cols)
         )
 
