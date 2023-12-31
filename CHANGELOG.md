@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.0.8] 2023-12-11
+* Add UTF8 encoding.
+
 ## [1.0.7] 2023-12-11
 * Update requirements for security.
 
