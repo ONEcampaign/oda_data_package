@@ -153,6 +153,9 @@ class ODAData:
         conditions: list = []
 
         # go through all the filters and add them to the query string
+        if "filters" not in self._indicators_json[indicator]:
+            self._indicators_json[indicator]["filters"] = {}
+
         for dimension, value in self._indicators_json[indicator]["filters"].items():
             if isinstance(value, list):
                 conditions.append(f"{dimension} in {value}")
@@ -193,10 +196,11 @@ class ODAData:
         names = column_settings[self._indicators_json[indicator]["source"]]["rename"]
 
         # Filter the data, keep only the important columns, assign the indicator name
+        if len(query) > 0:
+            data_ = data_.query(query)
 
         data = (
-            data_.query(query)
-            .filter(keep, axis=1)
+            data_.filter(keep, axis=1)
             .rename(columns=names)
             .assign(indicator=indicator)
             .reset_index(drop=True)
