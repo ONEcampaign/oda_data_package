@@ -222,3 +222,51 @@ def one_core_oda_ge_linked(years: list, donors: list | None, **kwargs) -> pd.Dat
     oda = ODAData(years=years, donors=donors)
 
     return _core_oda(oda, indicators).query("year >= 2018")
+
+
+def _covid19_pattern() -> str:
+    substrings = ["covid", "c19"]
+
+    return "|".join(substrings)
+
+
+def _covid19_total(data: pd.DataFrame) -> pd.DataFrame:
+    pattern = _covid19_pattern()
+
+    mask = data["keywords"].str.contains(pattern, na=False, case=False, regex=True)
+
+    df = data[mask].reset_index(drop=True)
+
+    grouper = ["year", "indicator", "donor_code", "currency", "prices"]
+
+    df = df.groupby(grouper, dropna=False, observed=True)["value"].sum().reset_index()
+
+    return df
+
+
+def covid_oda_ge(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
+    from oda_data import ODAData
+
+    indicators = ["crs_bilateral_ge"]
+
+    oda = ODAData(years=years, donors=donors).load_indicator(indicators=indicators)
+
+    df = oda.get_data().loc[lambda d: d.year >= 2018]
+
+    df = _covid19_total(data=df)
+
+    return df
+
+
+def covid_oda_flow(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
+    from oda_data import ODAData
+
+    indicators = ["crs_bilateral_flow_disbursement_gross"]
+
+    oda = ODAData(years=years, donors=donors).load_indicator(indicators=indicators)
+
+    df = oda.get_data()
+
+    df = _covid19_total(data=df)
+
+    return df

@@ -136,34 +136,16 @@
     "group": true
   },
   "total_covid_oda_ge": {
-    "source": "dac1",
-    "type": "dac",
-    "filters": {
-      "aidtype_code": 8851,
-      "flows_code": 1160,
-      "amounttype_code": "A"
-    },
+    "source": "crs",
+    "type": "one_research",
+    "function": "covid_oda_ge",
     "share_of": "total_oda_ge"
   },
   "total_covid_oda_flow": {
-    "source": "dac1",
-    "type": "dac",
-    "filters": {
-      "aidtype_code": 8851,
-      "flows_code": 1140,
-      "amounttype_code": "A"
-    },
+    "source": "crs",
+    "type": "one_research",
+    "function": "covid_oda_flow",
     "share_of": "total_oda_flow_net"
-  },
-  "total_covid_oda_ge_linked": {
-    "source": "dac1",
-    "type": "one_linked",
-    "components": {
-      "main": "total_covid_oda_ge",
-      "secondary": "total_covid_oda_flow",
-      "new": "total_covid_oda_ge_linked"
-    },
-    "share_of": "total_oda_ge"
   },
   "total_health_covid_oda_ge": {
     "source": "dac1",
@@ -738,6 +720,15 @@
       "category": 10
     },
     "value_column": "usd_disbursement",
+    "share_of": ""
+  },
+  "crs_bilateral_ge": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10
+    },
+    "value_column": "usd_grant_equiv",
     "share_of": ""
   },
   "crs_bilateral_all_flows_disbursement_gross": {
