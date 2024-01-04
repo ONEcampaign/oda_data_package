@@ -62,7 +62,7 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
             df.copy(deep=True)
             .loc[lambda d: d.year.isin(years)]
             .groupby(cols, observed=True, dropna=False)
-            .agg({"value": sum, "year": max})
+            .agg({"value": "sum", "year": "max"})
             .assign(year=y)
             .reset_index()
         )
