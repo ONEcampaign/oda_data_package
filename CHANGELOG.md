@@ -1,6 +1,9 @@
 # Changes to the oda_data package
 
-## [1.0.8] 2023-12-11
+## [1.0.11] 2024-01-04
+* Fix key COVID indicators.
+
+## [1.0.10] 2023-12-11
 * Add UTF8 encoding.
 
 ## [1.0.7] 2023-12-11
