@@ -39,7 +39,10 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
         file = pd.read_feather(config.OdaPATHS.raw_data / f"crs_{year}_raw.feather")
         file = file.pipe(set_default_types)
         if len(df) > 0:
-            df = pd.concat([df, file], ignore_index=True)
+            df = pd.concat(
+                [df.dropna(axis=1, how="all"), file.dropna(axis=1, how="all")],
+                ignore_index=True,
+            )
         else:
             df = file.copy()
     return df
