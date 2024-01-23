@@ -110,7 +110,9 @@ def _spending_summary(df: pd.DataFrame, purpose_column: str) -> pd.DataFrame:
     summary = df.pipe(add_multi_channel_ids).loc[lambda d: d.channel_code.notna()]
 
     valid_ids = (
-        summary.groupby(["year", "ids", "channel_code"])[["value", "share"]]
+        summary.groupby(["year", "ids", "channel_code"], dropna=False, observed=True)[
+            ["value", "share"]
+        ]
         .sum()
         .reset_index()
         .sort_values(["year", "channel_code", "value"])
@@ -213,7 +215,7 @@ def period_purpose_shares(
 ) -> pd.DataFrame:
     """ """
     # Indicator
-    indicator = "crs_bilateral_total_flow_gross_by_purpose"
+    indicator = "crs_bilateral_all_flows_disbursement_gross"
 
     # Columns to keep
     cols = [
