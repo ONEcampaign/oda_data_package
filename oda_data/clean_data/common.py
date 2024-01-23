@@ -5,6 +5,8 @@ from functools import partial
 import pandas as pd
 from pydeflate import deflate, exchange, set_pydeflate_path
 
+from oda_data.clean_data.dtypes import set_default_types, set_categorical_types
+from oda_data.clean_data.schema import CRS_MAPPING
 from oda_data.config import OdaPATHS
 from oda_data.logger import logger
 
@@ -106,18 +108,22 @@ def clean_raw_df(
 
     df = df.rename(columns=lambda c: clean_column_name(c))
 
-    # Extract data types and columns to keep
-    dtypes = {c: t["type"] for c, t in settings_dict.items()}
+    df = df.pipe(map_column_schema).pipe(set_default_types).pipe(set_categorical_types)
+
+    df = df.replace("\x1a", pd.NA)
+
+    # # Extract data types and columns to keep
+    # dtypes = {c: t["type"] for c, t in settings_dict.items()}
     keep_cols = [c for c, t in settings_dict.items() if t["keep"]]
-
-    # check that all columns are in the dtypes dictionary
-    dtypes = _validate_columns(df, dtypes)
-
-    # convert the columns to the correct type
-    try:
-        df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
-    except TypeError:
-        df = df.astype(dtypes, errors="ignore")
+    #
+    # # check that all columns are in the dtypes dictionary
+    # dtypes = _validate_columns(df, dtypes)
+    #
+    # # convert the columns to the correct type
+    # try:
+    #     df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
+    # except TypeError:
+    #     df = df.astype(dtypes, errors="ignore")
 
     # Optionally keep only the columns that are in the settings file
     if small_version:
@@ -197,3 +203,8 @@ dac_deflate = partial(
     target_column="value",
     date_column="year",
 )
+
+
+def map_column_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Map the column names to the schema"""
+    return df.rename(columns=CRS_MAPPING)
