@@ -4,9 +4,9 @@ from dataclasses import dataclass
 @dataclass
 class OdaSchema:
     YEAR: str = "year"
-    PROVIDER_CODE: str = "oecd_provider_code"
-    PROVIDER_NAME: str = "provider"
-    PROVIDER_TYPE: str = "provider_type"
+    PROVIDER_CODE: str = "oecd_donor_code"
+    PROVIDER_NAME: str = "donor_name"
+    PROVIDER_TYPE: str = "donor_type"
     PROVIDER_DETAILED: str = "provider_detailed"
     AGENCY_CODE: str = "oecd_agency_code"
     AGENCY_NAME: str = "agency"
@@ -17,6 +17,7 @@ class OdaSchema:
     RECIPIENT_REGION: str = "recipient_region"
     RECIPIENT_REGION_CODE: str = "oecd_recipient_region_code"
     RECIPIENT_INCOME: str = "oecd_recipient_income"
+    RECIPIENT_INCOME_CODE: str = "oecd_recipient_income_code"
     FLOW_MODALITY: str = "modality"
     ALLOCABLE_SHARE: str = "allocable_share"
     CONCESSIONALITY: str = "concessionality"
@@ -55,6 +56,7 @@ class OdaSchema:
     CLIMATE_SHARE_ROLLING: str = "climate_share_rolling"
     FLOW_CODE: str = "flow_code"
     FLOW_NAME: str = "flow_name"
+    BI_MULTI: str = "bi_multi"
     CATEGORY: str = "category"
     USD_COMMITMENT: str = "usd_commitment"
     USD_DISBURSEMENT: str = "usd_disbursement"
@@ -66,6 +68,58 @@ class OdaSchema:
     CONVERGED_REPORTING: str = "converged_reporting"
     COAL_FINANCING: str = "coal_related_financing"
     LEVEL: str = "level"
+    USD_COMMITMENT_DEFL: str = "usd_commitment_constant"
+    USD_DISBURSEMENT_DEFL: str = "usd_disbursement_constant"
+    USD_RECEIVED_DEFL: str = "usd_received_constant"
+    USD_ADJUSTMENT: str = "usd_adjustment"
+    USD_ADJUSTMENT_DEFL: str = "usd_adjustment_constant"
+    USD_AMOUNT_UNTIED: str = "usd_amount_untied"
+    USD_AMOUNT_UNTIED_DEFL: str = "usd_amount_untied_constant"
+    USD_AMOUNT_TIED: str = "usd_amount_tied"
+    USD_AMOUNT_TIED_DEFL: str = "usd_amount_tied_constant"
+    USD_AMOUNT_PARTIAL_TIED: str = "usd_amount_partial_tied"
+    USD_AMOUNT_PARTIAL_TIED_DEFL: str = "usd_amount_partial_tied_constant"
+    USD_IRTC_CODE: str = "usd_irtc_code"
+    USD_EXPERT_COMMITMENT: str = "usd_expert_commitment"
+    USD_EXPERT_EXTENDED: str = "usd_expert_extended"
+    USD_EXPORT_CREDIT: str = "usd_export_credit"
+    COMMITMENT_NATIONAL: str = "commitment_national"
+    DISBURSEMENT_NATIONAL: str = "disbursement_national"
+    GRANT_EQUIV_NATIONAL: str = "grant_equiv_national"
+    PARENT_CHANNEL_CODE: str = "parent_channel_code"
+    LDC_FLAG_CODE: str = "ldcflag_code"
+    LDC_FLAG: str = "ldcflag_name"
+    EXPECTED_START_DATE: str = "expected_start_date"
+    COMPLETION_DATE: str = "completion_date"
+    ENVIRONMENT: str = "environment"
+    DIG_CODE: str = "dig_code"
+    TRADE: str = "trade"
+    RMNCH_CODE: str = "rmnch_code"
+    DRR_CODE: str = "drr_code"
+    NUTRITION: str = "nutrition"
+    DISABILITY: str = "disability"
+    FTC_CODE: str = "ftc_code"
+    PBA_CODE: str = "pba_code"
+    INVESTMENT_PROJECT: str = "investment_project"
+    ASSOC_FINANCE: str = "assoc_finance"
+    BIODIVERSITY: str = "biodiversity"
+    DESERTIFICATION: str = "desertification"
+    COMMITMENT_DATE: str = "commitment_date"
+    TYPE_REPAYMENT: str = "type_repayment"
+    NUMBER_REPAYMENT: str = "number_repayment"
+    INTEREST1: str = "interest1"
+    INTEREST2: str = "interest2"
+    REPAYDATE1: str = "repaydate1"
+    REPAYDATE2: str = "repaydate2"
+    USD_INTEREST: str = "usd_interest"
+    USD_OUTSTANDING: str = "usd_outstanding"
+    USD_ARREARS_PRINCIPAL: str = "usd_arrears_principal"
+    USD_ARREARS_INTEREST: str = "usd_arrears_interest"
+    CAPITAL_EXPEND: str = "capital_expend"
+    PSI_FLAG: str = "psiflag"
+    PSI_ADD_TYPE: str = "psiadd_type"
+    PSI_ADD_ASSESS: str = "psiadd_assess"
+    PSI_ADD_DEV_OBJECTIVE: str = "psiadd_dev_obj"
 
 
 CRS_MAPPING: dict[str, str] = {
@@ -86,6 +140,7 @@ CRS_MAPPING: dict[str, str] = {
     "region_name": OdaSchema.RECIPIENT_REGION,
     "region_code": OdaSchema.RECIPIENT_REGION_CODE,
     "incomegoup_name": OdaSchema.RECIPIENT_INCOME,
+    "incomegroup_code": OdaSchema.RECIPIENT_INCOME_CODE,
     "recipient_income_group_oecd_classification": OdaSchema.RECIPIENT_INCOME,
     "development_cooperation_modality": OdaSchema.FLOW_MODALITY,
     "aid_t": OdaSchema.FLOW_MODALITY,
@@ -113,6 +168,7 @@ CRS_MAPPING: dict[str, str] = {
     "short_description": OdaSchema.PROJECT_DESCRIPTION_SHORT,
     "flow_code": OdaSchema.FLOW_CODE,
     "flow_name": OdaSchema.FLOW_NAME,
+    "bi_multi": OdaSchema.BI_MULTI,
     "gender": OdaSchema.GENDER,
     "category": OdaSchema.CATEGORY,
     "usd_commitment": OdaSchema.USD_COMMITMENT,
@@ -120,6 +176,58 @@ CRS_MAPPING: dict[str, str] = {
     "usd_received": OdaSchema.USD_RECEIVED,
     "usd_grant_equiv": OdaSchema.USD_GRANT_EQUIV,
     "usd_net_disbursement": OdaSchema.USD_NET_DISBURSEMENT,
+    "usd_commitment_defl": OdaSchema.USD_COMMITMENT_DEFL,
+    "usd_disbursement_defl": OdaSchema.USD_DISBURSEMENT_DEFL,
+    "usd_received_defl": OdaSchema.USD_RECEIVED_DEFL,
+    "usd_adjustment": OdaSchema.USD_ADJUSTMENT,
+    "usd_adjustment_defl": OdaSchema.USD_ADJUSTMENT_DEFL,
+    "usd_amount_untied": OdaSchema.USD_AMOUNT_UNTIED,
+    "usd_amount_untied_defl": OdaSchema.USD_AMOUNT_UNTIED_DEFL,
+    "usd_amount_tied": OdaSchema.USD_AMOUNT_TIED,
+    "usd_amount_tied_defl": OdaSchema.USD_AMOUNT_TIED_DEFL,
+    "usd_amount_partial_tied": OdaSchema.USD_AMOUNT_PARTIAL_TIED,
+    "usd_amount_partial_tied_defl": OdaSchema.USD_AMOUNT_PARTIAL_TIED_DEFL,
+    "usd_irtc_code": OdaSchema.USD_IRTC_CODE,
+    "usd_expert_commitment": OdaSchema.USD_EXPERT_COMMITMENT,
+    "usd_expert_extended": OdaSchema.USD_EXPERT_EXTENDED,
+    "usd_export_credit": OdaSchema.USD_EXPORT_CREDIT,
+    "commitment_national": OdaSchema.COMMITMENT_NATIONAL,
+    "disbursement_national": OdaSchema.DISBURSEMENT_NATIONAL,
+    "grant_equiv": OdaSchema.GRANT_EQUIV_NATIONAL,
+    "parent_channel_code": OdaSchema.PARENT_CHANNEL_CODE,
+    "ldcflag": OdaSchema.LDC_FLAG_CODE,
+    "ldcflag_name": OdaSchema.LDC_FLAG,
+    "expected_start_date": OdaSchema.EXPECTED_START_DATE,
+    "completion_date": OdaSchema.COMPLETION_DATE,
+    "environment": OdaSchema.ENVIRONMENT,
+    "dig_code": OdaSchema.DIG_CODE,
+    "trade": OdaSchema.TRADE,
+    "rmnch_code": OdaSchema.RMNCH_CODE,
+    "drr_code": OdaSchema.DRR_CODE,
+    "nutrition": OdaSchema.NUTRITION,
+    "disability": OdaSchema.DISABILITY,
+    "ftc_code": OdaSchema.FTC_CODE,
+    "pba_code": OdaSchema.PBA_CODE,
+    "investment_project": OdaSchema.INVESTMENT_PROJECT,
+    "assoc_finance": OdaSchema.ASSOC_FINANCE,
+    "biodiversity": OdaSchema.BIODIVERSITY,
+    "desertification": OdaSchema.DESERTIFICATION,
+    "commitment_date": OdaSchema.COMMITMENT_DATE,
+    "type_repayment": OdaSchema.TYPE_REPAYMENT,
+    "number_repayment": OdaSchema.NUMBER_REPAYMENT,
+    "interest1": OdaSchema.INTEREST1,
+    "interest2": OdaSchema.INTEREST2,
+    "repaydate1": OdaSchema.REPAYDATE1,
+    "repaydate2": OdaSchema.REPAYDATE2,
+    "usd_interest": OdaSchema.USD_INTEREST,
+    "usd_outstanding": OdaSchema.USD_OUTSTANDING,
+    "usd_arrears_principal": OdaSchema.USD_ARREARS_PRINCIPAL,
+    "usd_arrears_interest": OdaSchema.USD_ARREARS_INTEREST,
+    "capital_expend": OdaSchema.CAPITAL_EXPEND,
+    "psiflag": OdaSchema.PSI_FLAG,
+    "psiadd_type": OdaSchema.PSI_ADD_TYPE,
+    "psiadd_assess": OdaSchema.PSI_ADD_ASSESS,
+    "psiadd_dev_obj": OdaSchema.PSI_ADD_DEV_OBJECTIVE,
     "oecd_climate_total": OdaSchema.CLIMATE_UNSPECIFIED,
     "reporting_type": OdaSchema.REPORTING_METHOD,
     "type": OdaSchema.MULTILATERAL_TYPE,
