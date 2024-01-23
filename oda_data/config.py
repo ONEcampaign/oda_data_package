@@ -9,6 +9,7 @@ class OdaPATHS:
     raw_data = scripts / ".raw_data"
     pydeflate = raw_data / ".pydeflate"
     indicators = scripts / "indicators"
+    cleaning = scripts / "clean_data" / "crs_channel_mapping.csv"
     settings = scripts / "settings"
     sectors = indicators / "sectors"
     tests = project / "tests"
