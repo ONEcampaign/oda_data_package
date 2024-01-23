@@ -25,6 +25,8 @@ pydeflate = "^1"
 lxml = "^4.9.2"
 selenium = "^4.11.2"
 webdriver-manager = "^4.0.0"
+pyarrow = "^14"
+thefuzz = "^0.22.1"
 
 
 [tool.poetry.dev-dependencies]
