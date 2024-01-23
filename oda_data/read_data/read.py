@@ -1,6 +1,7 @@
 import pandas as pd
 
 from oda_data import config
+from oda_data.clean_data.dtypes import set_default_types
 from oda_data.get_data import common
 from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
@@ -36,6 +37,7 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
     # Loop over years
     for year in years:
         file = pd.read_feather(config.OdaPATHS.raw_data / f"crs_{year}_raw.feather")
+        file = file.pipe(set_default_types)
         if len(df) > 0:
             df = pd.concat([df, file], ignore_index=True)
         else:
