@@ -21,3 +21,7 @@ def download_multisystem(small_version: bool = False) -> None:
         config_file_path=config.OdaPATHS.settings / "multisystem_config.json",
         small_version=small_version,
     )
+
+
+if __name__ == "__main__":
+    download_multisystem()

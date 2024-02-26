@@ -120,6 +120,11 @@ class OdaSchema:
     PSI_ADD_TYPE: str = "psiadd_type"
     PSI_ADD_ASSESS: str = "psiadd_assess"
     PSI_ADD_DEV_OBJECTIVE: str = "psiadd_dev_obj"
+    CURRENCY: str = "currency"
+    PRICES: str = "prices"
+    AMOUNT: str = "amount"
+    AIDTYPE_CODE: str = "aidtype_code"
+    FLOWS_CODE: str = "flows_code"
 
 
 CRS_MAPPING: dict[str, str] = {
@@ -235,4 +240,6 @@ CRS_MAPPING: dict[str, str] = {
     "coal_related_financing": OdaSchema.COAL_FINANCING,
     "flow_type": OdaSchema.FLOW_TYPE,
     "type_of_flow": OdaSchema.FLOW_TYPE,
+    "aidtype_code": OdaSchema.AIDTYPE_CODE,
+    "flows_code": OdaSchema.FLOWS_CODE,
 }

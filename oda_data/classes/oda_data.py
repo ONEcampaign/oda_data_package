@@ -9,6 +9,7 @@ from oda_data import config
 from oda_data.classes.representations import _OdaList, _OdaDict
 from oda_data.clean_data import common as clean
 from oda_data.clean_data.common import reorder_columns
+from oda_data.clean_data.schema import OdaSchema
 from oda_data.get_data.common import check_integers
 from oda_data.indicators import research_indicators
 from oda_data.indicators.linked_indicators import linked_indicator
@@ -137,7 +138,7 @@ class ODAData:
         source: str = self._indicators_json[indicator]["source"]
 
         # Load the data if it is not already loaded
-        if source not in self._data.keys():
+        if source not in self._data.keys() and source != "":
             self._data[source] = READERS[source](years=self.years)
 
     def _filter_indicator_data(self, indicator: str) -> pd.DataFrame:
@@ -166,12 +167,14 @@ class ODAData:
 
         # Add the donor filters
         if self.donors is not None:
-            conditions.append(f"donor_code in {self.donors}")
+            conditions.append(f"oecd_donor_code in {self.donors}")
 
         # Add the recipient filter, checking that it is possible for this indicator
-        if self.recipients is not None and "recipient_code" in available_cols:
-            conditions.append(f"recipient_code in {self.recipients}")
-        elif self.recipients is not None and "recipient_code" not in available_cols:
+        if self.recipients is not None and "oecd_recipient_code" in available_cols:
+            conditions.append(f"oecd_recipient_code in {self.recipients}")
+        elif (
+            self.recipients is not None and "oecd_recipient_code" not in available_cols
+        ):
             logger.warning(f"Recipient filtering not available for {indicator}")
 
         # Build the query string
@@ -200,12 +203,14 @@ class ODAData:
             data_ = data_.query(query)
 
         data = (
-            data_.filter(keep, axis=1)
-            .rename(columns=names)
+            data_.rename(columns=names)
+            .filter(keep, axis=1)
             .assign(indicator=indicator)
             .reset_index(drop=True)
-            .pipe(_drop_name_cols)
         )
+
+        if not self.include_names:
+            data = data.pipe(_drop_name_cols)
 
         if "group" not in self._indicators_json[indicator]:
             return data
@@ -352,7 +357,9 @@ class ODAData:
             # Get the total data for the indicator
             total_data = (
                 object_.load_indicator(total_indicator)
-                .simplify_output_df(columns_to_keep=["year", "donor_code", "indicator"])
+                .simplify_output_df(
+                    columns_to_keep=["year", OdaSchema.PROVIDER_CODE, "indicator"]
+                )
                 .get_data(total_indicator)
                 .rename(columns={"indicator": "share_of", "value": "total_value"})
             )
@@ -420,13 +427,15 @@ class ODAData:
         gni_data = (
             obj.load_indicator("gni")
             .get_data("gni")
-            .filter(["year", "donor_code", "value"], axis=1)
-            .rename(columns={"value": "gni"})
+            .filter([OdaSchema.YEAR, OdaSchema.PROVIDER_CODE, OdaSchema.VALUE], axis=1)
+            .rename(columns={OdaSchema.VALUE: "gni"})
         )
 
         # Merge the GNI data with the indicator data, calculate share of GNI, drop GNI
         data = (
-            data.merge(gni_data, on=["year", "donor_code"], how="left")
+            data.merge(
+                gni_data, on=[OdaSchema.YEAR, OdaSchema.PROVIDER_CODE], how="left"
+            )
             .assign(gni_share=lambda d: round(100 * d.value / d.gni, 5))
             .drop(columns=["gni"])
         )

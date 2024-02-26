@@ -17,6 +17,15 @@ ADDITIONAL_PATTERNS: dict[str, int] = {
     r"\bafrican union\b": 47005,
     r"\bibrdesmap\b": 44001,
     r"\bkyoto protocol\b": 41316,
+    r"\beuropean development fund\b": 42003,
+    r"\binstitutions macro financial assistance\b": 42003,
+    r"\binsitutions development share\b": 42001,
+    r"\beu institutions\b": 44001,
+    r"\binstitutions miscellaneous\b": 42001,
+    r"\bimf concessional trust funds\b": 43001,
+    r"\bstrategic preparedness and response\b": 41321,
+    r"\bwto international trade centre\b": 45001,
+    r"\world trade organization\b": 45001,
     r"consultative group of international agricultural research": 47015,
     r"\b[a-zA-Z]{2,}ifc\b": 44004,
     r"\bconservation international\b": 21063,
@@ -175,6 +184,8 @@ def _fuzzy_match_name(name: str, channels_dict: dict[str, int], tolerance: int =
     Returns:
         int: The channel code if the match is above the tolerance, otherwise NA.
     """
+
+    name = str(name)
 
     # Do a fuzzy match for the name based on the dictionary keys
     match = process.extractOne(name, channels_dict.keys())
@@ -583,12 +594,14 @@ def add_channel_codes(
     """
     # Generate channel mapping dictionary
     mapping = generate_channel_mapping_dictionary(
-        raw_data=data,
+        raw_data=data.fillna({channel_names_column: "missing"}),
         channel_names_column=channel_names_column,
         export_missing_path=export_missing_path,
     )
 
     # Map channel names
-    data[target_column] = data[channel_names_column].map(mapping)
+    data[target_column] = (
+        data[channel_names_column].map(mapping).astype("Int32[pyarrow]")
+    )
 
     return data

@@ -6,7 +6,7 @@ import pandas as pd
 from pydeflate import deflate, exchange, set_pydeflate_path
 
 from oda_data.clean_data.dtypes import set_default_types, set_categorical_types
-from oda_data.clean_data.schema import CRS_MAPPING
+from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
 from oda_data.config import OdaPATHS
 from oda_data.logger import logger
 
@@ -108,26 +108,17 @@ def clean_raw_df(
 
     df = df.rename(columns=lambda c: clean_column_name(c))
 
-    df = df.pipe(map_column_schema).pipe(set_default_types).pipe(set_categorical_types)
+    if "amount" in df.columns:
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").astype(
+            "float64[pyarrow]"
+        )
 
-    df = df.replace("\x1a", pd.NA)
-
-    # # Extract data types and columns to keep
-    # dtypes = {c: t["type"] for c, t in settings_dict.items()}
     keep_cols = [c for c, t in settings_dict.items() if t["keep"]]
-    #
-    # # check that all columns are in the dtypes dictionary
-    # dtypes = _validate_columns(df, dtypes)
-    #
-    # # convert the columns to the correct type
-    # try:
-    #     df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
-    # except TypeError:
-    #     df = df.astype(dtypes, errors="ignore")
 
-    # Optionally keep only the columns that are in the settings file
     if small_version:
         df = df.filter(keep_cols, axis=1)
+
+    df = df.pipe(map_column_schema).replace("\x1a", pd.NA).pipe(set_default_types)
 
     return df
 
@@ -156,9 +147,9 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
         [
             "year",
             "indicator",
-            "donor_code",
+            "oecd_donor_code",
             "donor_name",
-            "recipient_code",
+            "oecd_recipient_code",
             "recipient_name",
         ],
     )
@@ -182,7 +173,7 @@ dac_exchange = partial(
     exchange,
     source_currency="USA",
     rates_source="oecd_dac",
-    id_column="donor_code",
+    id_column=OdaSchema.PROVIDER_CODE,
     id_type="DAC",
     value_column="value",
     target_column="value",
@@ -197,7 +188,7 @@ dac_deflate = partial(
     exchange_source="oecd_dac",
     exchange_method="implied",
     source_currency="USA",
-    id_column="donor_code",
+    id_column=OdaSchema.PROVIDER_CODE,
     id_type="DAC",
     source_column="value",
     target_column="value",

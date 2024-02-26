@@ -62,6 +62,7 @@ def schema_types() -> dict:
         OdaSchema.GENDER: "string[pyarrow]",
         OdaSchema.INDICATOR: "string[pyarrow]",
         OdaSchema.VALUE: "float64[pyarrow]",
+        OdaSchema.AMOUNT: "float64[pyarrow]",
         OdaSchema.TOTAL_VALUE: "float64[pyarrow]",
         OdaSchema.SHARE: "float64[pyarrow]",
         OdaSchema.CLIMATE_SHARE: "float64[pyarrow]",
@@ -132,6 +133,10 @@ def schema_types() -> dict:
         OdaSchema.PSI_ADD_TYPE: "string[pyarrow]",
         OdaSchema.PSI_ADD_ASSESS: "string[pyarrow]",
         OdaSchema.PSI_ADD_DEV_OBJECTIVE: "string[pyarrow]",
+        OdaSchema.PRICES: "string[pyarrow]",
+        OdaSchema.CURRENCY: "string[pyarrow]",
+        OdaSchema.AIDTYPE_CODE: "int32[pyarrow]",
+        OdaSchema.FLOWS_CODE: "int32[pyarrow]",
     }
 
     return defaultdict(lambda: "string[pyarrow]", types)

@@ -28,10 +28,10 @@ def test_multilateral_imputed_flows():
     years = list(df.year.unique())
     prices = list(df.prices.unique())
     currencies = list(df.currency.unique())
-    donors = list(df.donor_code.unique())
-    recipients = list(df.recipient_code.unique())
+    donors = list(df.oecd_donor_code.unique())
+    recipients = list(df.oecd_recipient_code.unique())
 
-    assert years == list(range(2014, 2021))
+    assert years == list(range(2020, 2013, -1))
 
     df2 = multilateral_imputed_flows(
         years=list(range(2012, 2021)),
@@ -44,8 +44,8 @@ def test_multilateral_imputed_flows():
 
     prices2 = list(df2.prices.unique())
     currencies2 = list(df2.currency.unique())
-    donors2 = list(df2.donor_code.unique())
-    recipients2 = list(df2.recipient_code.unique())
+    donors2 = list(df2.oecd_donor_code.unique())
+    recipients2 = list(df2.oecd_recipient_code.unique())
 
     assert prices == prices2
     assert currencies == currencies2
@@ -69,10 +69,10 @@ def test_total_bi_multi_flows():
     years = list(df.year.unique())
     prices = list(df.prices.unique())
     currencies = list(df.currency.unique())
-    donors = list(df.donor_code.unique())
-    recipients = list(df.recipient_code.unique())
+    donors = list(df.oecd_donor_code.unique())
+    recipients = list(df.oecd_recipient_code.unique())
 
-    assert years == list(range(2014, 2021))
+    assert years == list(range(2020, 2013, -1))
     assert donors == [4, 12]
     assert recipients == [189]
     assert prices == ["current"]

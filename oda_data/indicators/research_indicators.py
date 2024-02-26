@@ -1,5 +1,6 @@
 import pandas as pd
 
+from oda_data.clean_data.schema import OdaSchema
 from oda_data.indicators.sector_components import (
     bilat_outflows_by_donor,
     compute_imputations,
@@ -8,22 +9,40 @@ from oda_data.indicators.sector_components import (
 )
 
 
+def multilateral_spending_shares(
+    years: list, donors: list | None = None, recipients: list | None = None, **kwargs
+) -> pd.DataFrame:
+    from oda_data import ODAData
+
+    # Create the basic ODAData object
+    data_obj = ODAData(years=years, include_names=True, donors=donors)
+
+    # --- Multilateral spending by sector (as shares) ---
+    multi_spending_shares = period_purpose_shares(data=data_obj, period_length=3)
+
+    if recipients is not None:
+        multi_spending_shares = multi_spending_shares.loc[
+            lambda d: d.oecd_recipient_code.isin(recipients)
+        ]
+
+    return multi_spending_shares.reset_index(drop=True)
+
+
 def multilateral_imputed_flows(
     years: list, currency: str, donors: list | None, recipients: list | None, **kwargs
 ) -> pd.DataFrame:
     from oda_data import ODAData
 
     # Create the basic ODAData object
-    data_obj = ODAData(
-        years=years,
-        currency=currency,  # prices=prices, base_year=base_year
-    )
+    data_obj = ODAData(years=years, currency=currency)
 
     # --- Bilateral contributions to multilaterals ---
     core_contributions = multi_contributions_by_donor(data=data_obj)
 
     # --- Multilateral spending by sector (as shares) ---
-    multi_spending_shares = period_purpose_shares(data=data_obj, period_length=3)
+    multi_spending_shares = multilateral_spending_shares(years=years).drop(
+        columns=OdaSchema.VALUE
+    )
 
     # --- Multilateral spending by sector (as values) ---
     imputed = compute_imputations(
@@ -33,9 +52,9 @@ def multilateral_imputed_flows(
 
     # --- Filter by donor and recipient, if applicable ---
     if donors is not None:
-        imputed = imputed.loc[imputed.donor_code.isin(donors)]
+        imputed = imputed.loc[imputed.oecd_donor_code.isin(donors)]
     if recipients is not None:
-        imputed = imputed.loc[imputed.recipient_code.isin(recipients)]
+        imputed = imputed.loc[imputed.oecd_recipient_code.isin(recipients)]
 
     return imputed.reset_index(drop=True)
 
@@ -69,7 +88,7 @@ def total_bi_multi_flows(
     # --- Combine bilateral and multilateral spending ---
     df = (
         pd.concat([bilat_spending, imputed_spending], ignore_index=True)
-        .drop("channel_code", axis=1)
+        .drop(OdaSchema.CHANNEL_CODE, axis=1)
         .groupby(
             by=[c for c in bilat_spending.columns if c != "value"],
             observed=True,
@@ -81,9 +100,9 @@ def total_bi_multi_flows(
 
     # --- Filter by donor and recipient, if applicable ---
     if donors is not None:
-        df = df.loc[lambda d: d.donor_code.isin(donors)]
+        df = df.loc[lambda d: d[OdaSchema.PROVIDER_CODE].isin(donors)]
     if recipients is not None:
-        df = df.loc[lambda d: d.recipient_code.isin(recipients)]
+        df = df.loc[lambda d: d[OdaSchema.RECIPIENT_CODE].isin(recipients)]
 
     return df.reset_index(drop=True)
 
@@ -237,7 +256,7 @@ def _covid19_total(data: pd.DataFrame) -> pd.DataFrame:
 
     df = data[mask].reset_index(drop=True)
 
-    grouper = ["year", "indicator", "donor_code", "currency", "prices"]
+    grouper = ["year", "indicator", "oecd_donor_code", "currency", "prices"]
 
     df = df.groupby(grouper, dropna=False, observed=True)["value"].sum().reset_index()
 
