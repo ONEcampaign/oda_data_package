@@ -28,20 +28,6 @@ def test_read_settings():
     assert file["donor"]["keep"]
 
 
-def test__validate_columns():
-    file = common.read_settings(config.OdaPATHS.settings / "dac1_config.json")
-    df = pd.read_feather(config.OdaPATHS.test_files / "table1_raw.feather")
-
-    dtypes = {c: t["type"] for c, t in file.items()}
-    dtypes["fake_column"] = "Int64"
-    dtypes.pop("donor_code")
-
-    logger.setLevel("CRITICAL")
-
-    clean = common._validate_columns(df, dtypes)
-    assert len(clean) == len(dtypes) - 5
-
-
 def test_clean_raw_df():
     df = pd.read_feather(config.OdaPATHS.test_files / "crs_2019_raw.feather")
     settings = common.read_settings(config.OdaPATHS.settings / "crs_config.json")

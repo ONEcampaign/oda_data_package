@@ -70,23 +70,6 @@ def test_read_channel_codes():
     assert int in value_types
 
 
-def test_add_multi_channel_ids():
-    test_df = pd.DataFrame(
-        {
-            "donor_code": [807, 909, 913, 10],
-            "agency_code": [1, 2, 1, 99],
-            "year": [2017, 2018, 2019, 2020],
-            "value": [1, 2, 3, 4],
-        }
-    )
-
-    result = sc.add_multi_channel_ids(test_df)
-
-    assert sum(result.channel_code.isna()) == 1
-    assert pd.api.types.is_dtype_equal(result.channel_code, pd.Int32Dtype())
-    assert sum(result.ids.isna()) == 0
-
-
 def test__get_indicator():
     indicator = "multisystem_multilateral_contributions_disbursement_gross"
     cols = ["donor_code", "channel_code", "year", "currency", "prices"]

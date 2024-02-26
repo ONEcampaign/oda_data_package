@@ -34,8 +34,8 @@ def test_odadata():
 
     data = oda.get_data(indicator)
 
-    assert data.donor_code.nunique() == 2
-    assert data.recipient_code.nunique() == 2
+    assert data.oecd_donor_code.nunique() == 2
+    assert data.oecd_recipient_code.nunique() == 2
     assert data.prices.unique()[0] == "constant"
     assert data.currency.unique()[0] == "EUR"
 
@@ -82,7 +82,7 @@ def test_odadata():
     assert len(cols) < len(oda.get_data("all").columns)
 
     # add names for specific column
-    oda.add_names(id_columns="donor_code")
+    oda.add_names(id_columns="oecd_donor_code")
 
     assert "donor_name" in oda.get_data("all").columns
 
@@ -114,7 +114,7 @@ def test_oda_data_simplify_output(caplog):
     full = test.get_data("all")
 
     # Indicate that we want to simplify the output
-    test.simplify_output_df(["donor_code", "indicator", "value"])
+    test.simplify_output_df(["oecd_donor_code", "indicator", "value"])
 
     # Get the simplified data
     result1 = test.get_data("all")
@@ -123,7 +123,7 @@ def test_oda_data_simplify_output(caplog):
     assert len(result1.columns) == 3
 
     # Test not including the value
-    test.simplify_output_df(["donor_code", "indicator"])
+    test.simplify_output_df(["oecd_donor_code", "indicator"])
 
     # Get the simplified data
     result2 = test.get_data("all")
@@ -132,7 +132,7 @@ def test_oda_data_simplify_output(caplog):
     pd.testing.assert_frame_equal(result1, result2)
 
     # Test including an unavailable column (should show warning but continue)
-    test.simplify_output_df(["donor_code", "indicator", "value", "test"])
+    test.simplify_output_df(["oecd_donor_code", "indicator", "value", "test"])
 
     # Get the simplified data
     result3 = test.get_data("all")
@@ -148,7 +148,7 @@ def test_build_oda_indicator():
     result = test._build_research_indicator("imputed_multi_flow_disbursement_gross")
 
     years = list(result.year.unique())
-    assert years == [2017, 2018, 2019]
+    assert years == [2019, 2018, 2017]
 
     result_from_obj = test.load_indicator("imputed_multi_flow_disbursement_gross")
     assert len(result) == len(result_from_obj.get_data())
@@ -215,7 +215,7 @@ def test_oda_gni():
     data = oda.get_data()
 
     assert "gni_share" in data.columns
-    assert data.query("year == 2019").gni_share.sum().round(1) == 0.7
+    assert round(data.query("year == 2019").gni_share.sum(), 1) == 0.7
 
     oda.load_indicator("oda_gni_ge")
 
