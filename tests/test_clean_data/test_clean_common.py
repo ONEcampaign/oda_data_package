@@ -21,18 +21,10 @@ def test_clean_column_name():
     assert common.clean_column_name(text_snake) == expected_snake
 
 
-def test_read_settings():
-    file = common.read_settings(config.OdaPATHS.settings / "dac1_config.json")
-    assert isinstance(file, dict)
-    assert "donor_code" in file.keys()
-    assert file["donor"]["keep"]
-
-
 def test_clean_raw_df():
     df = pd.read_feather(config.OdaPATHS.test_files / "crs_2019_raw.feather")
-    settings = common.read_settings(config.OdaPATHS.settings / "crs_config.json")
 
     logger.setLevel("CRITICAL")
-    result = common.clean_raw_df(df, settings, small_version=True)
+    result = common.clean_raw_df(df)
 
     assert isinstance(result, pd.DataFrame)

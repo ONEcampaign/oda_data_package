@@ -16,15 +16,15 @@ set_data_path(config.OdaPATHS.test_files)
 def test_add_name():
     test_df = pd.DataFrame(
         {
-            "donor_code": [5, 12],
-            "agency_code": [2, 1],
-            "recipient_code": [189, 189],
+            "oecd_donor_code": [5, 12],
+            "oecd_agency_code": [2, 10],
+            "oecd_recipient_code": [189, 189],
             "purpose_code": [11110, 11120],
             "value": [2000, 3000],
         }
     )
 
-    result = names.add_name(test_df, "donor_code")
+    result = names.add_name(test_df, "oecd_donor_code")
 
     assert all(
         result.donor_name.values
@@ -34,17 +34,17 @@ def test_add_name():
         ]
     )
 
-    result = names.add_name(test_df, ["donor_code", "agency_code"])
+    result = names.add_name(test_df, ["oecd_donor_code", "oecd_agency_code"])
 
     assert all(
-        result.agency_name.values
+        result.agency.values
         == [
             "Kreditanstalt für Wiederaufbau",
-            "Department for International Development",
+            "Department of Health  and Social Care",
         ]
     )
 
-    result = names.add_name(test_df, ["recipient_code"])
+    result = names.add_name(test_df, ["oecd_recipient_code"])
 
     assert result.recipient_name.unique()[0] == "North of Sahara, regional"
 

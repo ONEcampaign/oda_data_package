@@ -90,17 +90,12 @@ def _validate_columns(df: pd.DataFrame, dtypes: dict) -> dict:
     return clean_types
 
 
-def clean_raw_df(
-    df: pd.DataFrame, settings_dict: dict, small_version: bool
-) -> pd.DataFrame:
+def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Clean a raw dataframe by renaming columns, setting correct data types,
     and optionally dropping columns.
 
     Args:
         df (pd.DataFrame): The raw dataframe to clean.
-        settings_dict (dict): A dictionary containing the settings for cleaning the dataframe.
-        small_version (bool): A flag indicating whether to keep only the columns
-            specified in the settings.
 
     Returns:
         pd.DataFrame: The cleaned dataframe.
@@ -112,11 +107,6 @@ def clean_raw_df(
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce").astype(
             "float64[pyarrow]"
         )
-
-    keep_cols = [c for c, t in settings_dict.items() if t["keep"]]
-
-    if small_version:
-        df = df.filter(keep_cols, axis=1)
 
     df = df.pipe(map_column_schema).replace("\x1a", pd.NA).pipe(set_default_types)
 
@@ -199,3 +189,12 @@ dac_deflate = partial(
 def map_column_schema(df: pd.DataFrame) -> pd.DataFrame:
     """Map the column names to the schema"""
     return df.rename(columns=CRS_MAPPING)
+
+
+def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
+    from oda_data import donor_groupings
+
+    bilateral = donor_groupings()["all_bilateral"]
+    df = df.loc[lambda d: ~d[OdaSchema.PROVIDER_CODE].isin(bilateral)]
+
+    return df

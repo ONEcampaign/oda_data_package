@@ -12,7 +12,7 @@ def test_read_crs():
     assert crs.year.dropna().unique() == [2019]
 
     # Check that agency is a column (only available in crs)
-    assert "agency_code" in crs.columns
+    assert "oecd_agency_code" in crs.columns
 
     # load multiple years
     crs = read.read_crs([2012, 2019])
@@ -27,7 +27,7 @@ def test_read_dac1():
     assert dac1.year.dropna().unique() == [2019]
 
     # Check that agency is not a column (not available in dac1)
-    assert "agency_code" not in dac1.columns
+    assert "oecd_agency_code" not in dac1.columns
 
 
 def test_read_dac2a():
@@ -36,7 +36,7 @@ def test_read_dac2a():
     assert dac2a.year.dropna().unique() == [2019]
 
     # Check that recipient is a column
-    assert "recipient_code" in dac2a.columns
+    assert "oecd_recipient_code" in dac2a.columns
 
 
 def test_read_multisystem():
