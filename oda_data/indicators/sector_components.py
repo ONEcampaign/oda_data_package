@@ -68,8 +68,13 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
 
 def _purpose_share(df_: pd.DataFrame) -> pd.Series:
     """Function to calculate the share of total for per purpose code."""
-    cols = ["year", "currency", "prices", "oecd_channel_code"]
-    return df_.groupby(cols, observed=True, dropna=False)["value"].transform(
+    cols = [
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
+        OdaSchema.CHANNEL_CODE,
+    ]
+    return df_.groupby(cols, observed=True, dropna=False)[OdaSchema.VALUE].transform(
         lambda p: p / p.sum()
     )
 
@@ -190,15 +195,15 @@ def period_purpose_shares(
 
     # Columns to keep
     cols = [
-        "oecd_donor_code",
-        "donor_name",
-        "oecd_agency_code",
-        "agency",
+        OdaSchema.PROVIDER_CODE,
+        OdaSchema.PROVIDER_NAME,
+        OdaSchema.AGENCY_CODE,
+        OdaSchema.AGENCY_NAME,
         purpose_column,
-        "oecd_recipient_code",
-        "year",
-        "currency",
-        "prices",
+        OdaSchema.RECIPIENT_CODE,
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
     ]
 
     df = _get_indicator(data=data, indicator=indicator, columns=cols)

@@ -167,13 +167,14 @@ class ODAData:
 
         # Add the donor filters
         if self.donors is not None:
-            conditions.append(f"oecd_donor_code in {self.donors}")
+            conditions.append(f"{OdaSchema.PROVIDER_CODE} in {self.donors}")
 
         # Add the recipient filter, checking that it is possible for this indicator
-        if self.recipients is not None and "oecd_recipient_code" in available_cols:
-            conditions.append(f"oecd_recipient_code in {self.recipients}")
+        if self.recipients is not None and OdaSchema.RECIPIENT_CODE in available_cols:
+            conditions.append(f"{OdaSchema.RECIPIENT_CODE} in {self.recipients}")
         elif (
-            self.recipients is not None and "oecd_recipient_code" not in available_cols
+            self.recipients is not None
+            and OdaSchema.RECIPIENT_CODE not in available_cols
         ):
             logger.warning(f"Recipient filtering not available for {indicator}")
 
@@ -186,7 +187,9 @@ class ODAData:
         # If settings detail a value column, use that. This is useful for the CRS
         if "value_column" in self._indicators_json[indicator]:
             data_ = data_.rename(
-                columns={self._indicators_json[indicator]["value_column"]: "value"}
+                columns={
+                    self._indicators_json[indicator]["value_column"]: OdaSchema.VALUE
+                }
             )
 
         # Column settings
@@ -233,7 +236,9 @@ class ODAData:
         required_indicators: list = self._indicators_json[indicator]["indicators"]
 
         # Columns which should be ignored when grouping
-        exclude_from_group = self._indicators_json[indicator]["group_by"] + ["value"]
+        exclude_from_group = self._indicators_json[indicator]["group_by"] + [
+            OdaSchema.VALUE
+        ]
 
         # combined data
         combined: pd.DataFrame = pd.concat(

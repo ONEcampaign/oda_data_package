@@ -57,7 +57,7 @@ print(df.head(6))
 ```
 This would result in the following dataframe:
 
-| oecd_donor_code | donor_name   |   year |   value | indicator          | currency   | prices   |
+|      donor_code | donor_name   |   year |   value | indicator          | currency   | prices   |
 |----------------:|:-------------|-------:|--------:|:-------------------|:-----------|:---------|
 |               1 | Austria      |   2021 | 1261.76 | total_oda_flow_net | EUR        | constant |
 |               1 | Austria      |   2021 | 1240.31 | total_oda_ge       | EUR        | constant |

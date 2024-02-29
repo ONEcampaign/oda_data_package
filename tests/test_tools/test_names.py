@@ -4,6 +4,7 @@ import lxml.etree as et
 import pandas as pd
 
 from oda_data import set_data_path, config
+from oda_data.clean_data.schema import OdaSchema
 from oda_data.tools import names
 from oda_data.tools.names import (
     read_crs_names,
@@ -16,41 +17,41 @@ set_data_path(config.OdaPATHS.test_files)
 def test_add_name():
     test_df = pd.DataFrame(
         {
-            "oecd_donor_code": [5, 12],
-            "oecd_agency_code": [2, 10],
-            "oecd_recipient_code": [189, 189],
-            "purpose_code": [11110, 11120],
-            "value": [2000, 3000],
+            OdaSchema.PROVIDER_CODE: [5, 12],
+            OdaSchema.AGENCY_CODE: [2, 10],
+            OdaSchema.RECIPIENT_CODE: [189, 189],
+            OdaSchema.PURPOSE_CODE: [11110, 11120],
+            OdaSchema.VALUE: [2000, 3000],
         }
     )
 
-    result = names.add_name(test_df, "oecd_donor_code")
+    result = names.add_name(test_df, OdaSchema.PROVIDER_CODE)
 
     assert all(
-        result.donor_name.values
+        result[OdaSchema.PROVIDER_NAME].values
         == [
             "Germany",
             "United Kingdom",
         ]
     )
 
-    result = names.add_name(test_df, ["oecd_donor_code", "oecd_agency_code"])
+    result = names.add_name(test_df, [OdaSchema.PROVIDER_CODE, OdaSchema.AGENCY_CODE])
 
     assert all(
-        result.agency.values
+        result[OdaSchema.AGENCY_NAME].values
         == [
             "Kreditanstalt für Wiederaufbau",
             "Department of Health  and Social Care",
         ]
     )
 
-    result = names.add_name(test_df, ["oecd_recipient_code"])
+    result = names.add_name(test_df, [OdaSchema.RECIPIENT_CODE])
 
-    assert result.recipient_name.unique()[0] == "North of Sahara, regional"
+    assert result[OdaSchema.RECIPIENT_NAME].unique()[0] == "North of Sahara, regional"
 
-    result = names.add_name(test_df, ["purpose_code"])
+    result = names.add_name(test_df, [OdaSchema.PURPOSE_CODE])
 
-    assert list(result.purpose_name.unique()) == [
+    assert list(result[OdaSchema.PURPOSE_NAME].unique()) == [
         "Education policy and administrative management",
         "Education facilities and training",
     ]

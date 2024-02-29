@@ -1,10 +1,12 @@
 # Changes to the oda_data package
 
-## [1.1] 2024-02-29
-* Introduces important, and potentially-breaking changes:
+## [1.1.1] 2024-02-29
+* Security updates to dependencies
+
+## [1.1.0] 2024-02-29
+* Introduces important changes:
   - New indicators to separately produce multilateral sector spending shares and imputed multilateral spending totals.
   - Introduces an improved, automated method to map multilateral CRS spending (by agency) to the multilateral "channels" used in the multisystem database.
-  - Changes to the backend to enforce a naming schema across DAC sources. OECD codes for donors, recipients, and agencies are now prefixed with "oecd_"
   - Introduces tools to group purpose codes following ONE's sector groupings.
 
 ## [1.0.11] 2024-01-04
