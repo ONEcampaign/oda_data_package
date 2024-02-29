@@ -934,8 +934,14 @@
     "value_column": "amount",
     "share_of": "total_bi_multi_flow_disbursement_gross"
   },
+  "multilateral_purpose_spending_shares": {
+    "source": "",
+    "type": "one_research",
+    "function": "multilateral_spending_shares",
+    "share_of": ""
+  },
   "imputed_multi_flow_disbursement_gross": {
-    "source": "multisystem",
+    "source": "",
     "type": "one_research",
     "function": "multilateral_imputed_flows",
     "share_of": "total_bi_multi_flow_disbursement_gross"

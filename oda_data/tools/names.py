@@ -6,6 +6,7 @@ from lxml import etree as et
 
 from oda_data import config
 from oda_data.clean_data.common import clean_column_name
+from oda_data.clean_data.schema import OdaSchema
 from oda_data.get_data.common import get_url_selenium
 from oda_data.logger import logger
 from oda_data.read_data.read import read_crs
@@ -101,7 +102,7 @@ def donor_names() -> dict:
 
 
 def _return_donor_names(df, col, loc) -> tuple:
-    return loc, "donor_name", df[col].map(donor_names())
+    return loc, OdaSchema.PROVIDER_NAME, df[col].map(donor_names())
 
 
 def recipient_names() -> dict:
@@ -117,8 +118,11 @@ def agency_names() -> pd.DataFrame:
     """Return a dictionary with the agency codes and their names"""
 
     return (
-        read_crs(years=[2020])
-        .filter(["donor_code", "agency_code", "agency_name"], axis=1)
+        read_crs(years=[2021])
+        .filter(
+            [OdaSchema.PROVIDER_CODE, OdaSchema.AGENCY_CODE, OdaSchema.AGENCY_NAME],
+            axis=1,
+        )
         .drop_duplicates()
     )
 
@@ -128,12 +132,14 @@ def _return_agency_names(df, col, loc) -> tuple:
     agency = agency_names()
 
     series = (
-        df.filter(["donor_code", col], axis=1)
-        .astype("Int16")
-        .merge(agency, how="left", on=["donor_code", col])["agency_name"]
+        df.filter([OdaSchema.PROVIDER_CODE, col], axis=1)
+        .astype("Int16[pyarrow]")
+        .merge(agency, how="left", on=[OdaSchema.PROVIDER_CODE, col])[
+            OdaSchema.AGENCY_NAME
+        ]
     )
 
-    return loc, "agency_name", series
+    return loc, OdaSchema.AGENCY_NAME, series
 
 
 def _return_crs_names(df, col, loc) -> tuple:

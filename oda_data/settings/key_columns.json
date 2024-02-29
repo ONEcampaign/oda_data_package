@@ -1,13 +1,14 @@
 {
   "dac1": {
     "keep": [
-      "donor_code",
       "donor",
+      "donor_code",
       "year",
       "value"
     ],
     "rename": {
-      "donor": "donor_name"
+      "donor": "donor_name",
+      "donor_code": "donor_code"
     }
   },
   "dac2a": {
@@ -16,12 +17,14 @@
       "donor",
       "recipient_code",
       "recipient",
+      "recipient_name",
       "year",
       "value"
     ],
     "rename": {
-      "donor_code": "donor_code",
       "donor": "donor_name",
+      "donor_code": "donor_code",
+      "recipient_code": "recipient_code",
       "recipient": "recipient_name"
     }
   },
@@ -83,7 +86,10 @@
       "donor_name_e": "donor_name",
       "channel_name_e": "channel_name",
       "recipient_name_e": "recipient_name",
-      "flow_name_e": "flow_name"
+      "flow_name_e": "flow_name",
+      "channel_code": "channel_code",
+      "donor_code": "donor_code",
+      "recipient_code": "recipient_code"
     }
   }
 }

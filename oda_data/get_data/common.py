@@ -293,12 +293,7 @@ def extract_file_link_multiple(url: str) -> dict[int, str]:
 
 
 def download_single_table(
-    bulk_url: str,
-    raw_file_name: str,
-    output_file_name: str,
-    save_path: pathlib.Path,
-    config_file_path: pathlib.Path,
-    small_version: bool = False,
+    bulk_url: str, raw_file_name: str, output_file_name: str, save_path: pathlib.Path
 ) -> None:
     """Download a single table from the DAC bulk download website and save it as a feather file
 
@@ -320,11 +315,8 @@ def download_single_table(
     # Load the file into a DataFrame
     df = read_zip_content(request_content=file_content, file_name=raw_file_name)
 
-    # settings
-    settings = read_settings(config_file_path)
-
     # Clean the DataFrame
-    df = clean_raw_df(df, settings, small_version)
+    df = clean_raw_df(df)
 
     # save the file
     df.to_feather(save_path / f"{output_file_name}.feather")

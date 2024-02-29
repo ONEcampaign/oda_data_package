@@ -3,6 +3,7 @@ import pytest
 
 from oda_data import set_data_path, config
 from oda_data.classes.oda_data import ODAData
+from oda_data.clean_data.schema import OdaSchema
 
 set_data_path(config.OdaPATHS.test_files)
 
@@ -34,10 +35,10 @@ def test_odadata():
 
     data = oda.get_data(indicator)
 
-    assert data.donor_code.nunique() == 2
-    assert data.recipient_code.nunique() == 2
-    assert data.prices.unique()[0] == "constant"
-    assert data.currency.unique()[0] == "EUR"
+    assert data[OdaSchema.PROVIDER_CODE].nunique() == 2
+    assert data[OdaSchema.RECIPIENT_CODE].nunique() == 2
+    assert data[OdaSchema.PRICES].unique()[0] == "constant"
+    assert data[OdaSchema.CURRENCY].unique()[0] == "EUR"
 
     # load a second indicator
     oda.load_indicator("recipient_total_flow_net")
@@ -54,8 +55,8 @@ def test_odadata():
     oda.load_indicator("recipient_total_flow_net")
     data = oda.get_data("recipient_total_flow_net")
 
-    assert data.currency.unique()[0] == "EUR"
-    assert data.prices.unique()[0] == "current"
+    assert data[OdaSchema.CURRENCY].unique()[0] == "EUR"
+    assert data[OdaSchema.PRICES].unique()[0] == "current"
 
     with pytest.raises(ValueError):
         ODAData(years=2019, currency="YEN")
@@ -82,9 +83,9 @@ def test_odadata():
     assert len(cols) < len(oda.get_data("all").columns)
 
     # add names for specific column
-    oda.add_names(id_columns="donor_code")
+    oda.add_names(id_columns=OdaSchema.PROVIDER_CODE)
 
-    assert "donor_name" in oda.get_data("all").columns
+    assert OdaSchema.PROVIDER_NAME in oda.get_data("all").columns
 
 
 def test_multiple_indicators():
@@ -114,7 +115,13 @@ def test_oda_data_simplify_output(caplog):
     full = test.get_data("all")
 
     # Indicate that we want to simplify the output
-    test.simplify_output_df(["donor_code", "indicator", "value"])
+    test.simplify_output_df(
+        [
+            OdaSchema.PROVIDER_CODE,
+            OdaSchema.INDICATOR,
+            OdaSchema.VALUE,
+        ]
+    )
 
     # Get the simplified data
     result1 = test.get_data("all")
@@ -123,7 +130,7 @@ def test_oda_data_simplify_output(caplog):
     assert len(result1.columns) == 3
 
     # Test not including the value
-    test.simplify_output_df(["donor_code", "indicator"])
+    test.simplify_output_df([OdaSchema.PROVIDER_CODE, OdaSchema.INDICATOR])
 
     # Get the simplified data
     result2 = test.get_data("all")
@@ -132,7 +139,9 @@ def test_oda_data_simplify_output(caplog):
     pd.testing.assert_frame_equal(result1, result2)
 
     # Test including an unavailable column (should show warning but continue)
-    test.simplify_output_df(["donor_code", "indicator", "value", "test"])
+    test.simplify_output_df(
+        [OdaSchema.PROVIDER_CODE, OdaSchema.INDICATOR, OdaSchema.VALUE, "test"]
+    )
 
     # Get the simplified data
     result3 = test.get_data("all")
@@ -148,7 +157,7 @@ def test_build_oda_indicator():
     result = test._build_research_indicator("imputed_multi_flow_disbursement_gross")
 
     years = list(result.year.unique())
-    assert years == [2017, 2018, 2019]
+    assert years == [2019, 2018, 2017]
 
     result_from_obj = test.load_indicator("imputed_multi_flow_disbursement_gross")
     assert len(result) == len(result_from_obj.get_data())
@@ -215,7 +224,7 @@ def test_oda_gni():
     data = oda.get_data()
 
     assert "gni_share" in data.columns
-    assert data.query("year == 2019").gni_share.sum().round(1) == 0.7
+    assert round(data.query("year == 2019").gni_share.sum(), 1) == 0.7
 
     oda.load_indicator("oda_gni_ge")
 

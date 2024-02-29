@@ -15,13 +15,7 @@ def test__download():
     new_path = path.test_files / "crs_2019_raw.feather"
     before = os.path.getmtime(new_path)
 
-    crs._save(
-        df,
-        config_file_path=path.settings / "crs_config.json",
-        save_path=path.test_files,
-        year=2019,
-        small_version=True,
-    )
+    crs._save(df, save_path=path.test_files, year=2019)
 
     after = os.path.getmtime(new_path)
 

@@ -1,5 +1,14 @@
 # Changes to the oda_data package
 
+## [1.1.1] 2024-02-29
+* Security updates to dependencies
+
+## [1.1.0] 2024-02-29
+* Introduces important changes:
+  - New indicators to separately produce multilateral sector spending shares and imputed multilateral spending totals.
+  - Introduces an improved, automated method to map multilateral CRS spending (by agency) to the multilateral "channels" used in the multisystem database.
+  - Introduces tools to group purpose codes following ONE's sector groupings.
+
 ## [1.0.11] 2024-01-04
 * Fix key COVID indicators.
 
