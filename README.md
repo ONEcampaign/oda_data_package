@@ -57,14 +57,14 @@ print(df.head(6))
 ```
 This would result in the following dataframe:
 
-|   donor_code | donor_name   |   year |   value | indicator          | currency   | prices   |
-|-------------:|:-------------|-------:|--------:|:-------------------|:-----------|:---------|
-|            1 | Austria      |   2021 | 1261.76 | total_oda_flow_net | EUR        | constant |
-|            1 | Austria      |   2021 | 1240.31 | total_oda_ge       | EUR        | constant |
-|            2 | Belgium      |   2021 | 2176.38 | total_oda_flow_net | EUR        | constant |
-|            2 | Belgium      |   2021 | 2174.38 | total_oda_ge       | EUR        | constant |
-|            3 | Denmark      |   2021 | 2424.51 | total_oda_flow_net | EUR        | constant |
-|            3 | Denmark      |   2021 | 2430.65 | total_oda_ge       | EUR        | constant |
+|      donor_code | donor_name   |   year |   value | indicator          | currency   | prices   |
+|----------------:|:-------------|-------:|--------:|:-------------------|:-----------|:---------|
+|               1 | Austria      |   2021 | 1261.76 | total_oda_flow_net | EUR        | constant |
+|               1 | Austria      |   2021 | 1240.31 | total_oda_ge       | EUR        | constant |
+|               2 | Belgium      |   2021 | 2176.38 | total_oda_flow_net | EUR        | constant |
+|               2 | Belgium      |   2021 | 2174.38 | total_oda_ge       | EUR        | constant |
+|               3 | Denmark      |   2021 | 2424.51 | total_oda_flow_net | EUR        | constant |
+|               3 | Denmark      |   2021 | 2430.65 | total_oda_ge       | EUR        | constant |
 
 
 To print the full list of available indicators, you can call `.get_available_indicators()`.

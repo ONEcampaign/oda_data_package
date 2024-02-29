@@ -5,6 +5,8 @@ from functools import partial
 import pandas as pd
 from pydeflate import deflate, exchange, set_pydeflate_path
 
+from oda_data.clean_data.dtypes import set_default_types, set_categorical_types
+from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
 from oda_data.config import OdaPATHS
 from oda_data.logger import logger
 
@@ -88,17 +90,12 @@ def _validate_columns(df: pd.DataFrame, dtypes: dict) -> dict:
     return clean_types
 
 
-def clean_raw_df(
-    df: pd.DataFrame, settings_dict: dict, small_version: bool
-) -> pd.DataFrame:
+def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     """Clean a raw dataframe by renaming columns, setting correct data types,
     and optionally dropping columns.
 
     Args:
         df (pd.DataFrame): The raw dataframe to clean.
-        settings_dict (dict): A dictionary containing the settings for cleaning the dataframe.
-        small_version (bool): A flag indicating whether to keep only the columns
-            specified in the settings.
 
     Returns:
         pd.DataFrame: The cleaned dataframe.
@@ -106,22 +103,12 @@ def clean_raw_df(
 
     df = df.rename(columns=lambda c: clean_column_name(c))
 
-    # Extract data types and columns to keep
-    dtypes = {c: t["type"] for c, t in settings_dict.items()}
-    keep_cols = [c for c, t in settings_dict.items() if t["keep"]]
+    if "amount" in df.columns:
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").astype(
+            "float64[pyarrow]"
+        )
 
-    # check that all columns are in the dtypes dictionary
-    dtypes = _validate_columns(df, dtypes)
-
-    # convert the columns to the correct type
-    try:
-        df = df.replace("\x1a", pd.NA).astype(dtypes, errors="ignore")
-    except TypeError:
-        df = df.astype(dtypes, errors="ignore")
-
-    # Optionally keep only the columns that are in the settings file
-    if small_version:
-        df = df.filter(keep_cols, axis=1)
+    df = df.pipe(map_column_schema).replace("\x1a", pd.NA).pipe(set_default_types)
 
     return df
 
@@ -148,18 +135,26 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
     reorder_b = _cols_in_list(
         all_columns,
         [
-            "year",
-            "indicator",
-            "donor_code",
-            "donor_name",
-            "recipient_code",
-            "recipient_name",
+            OdaSchema.YEAR,
+            OdaSchema.INDICATOR,
+            OdaSchema.PROVIDER_CODE,
+            OdaSchema.PROVIDER_NAME,
+            OdaSchema.RECIPIENT_CODE,
+            OdaSchema.RECIPIENT_NAME,
         ],
     )
 
     # Columns to appear last
     reorder_l = _cols_in_list(
-        all_columns, ["currency", "prices", "value", "share", "total_of", "gni_share"]
+        all_columns,
+        [
+            OdaSchema.CURRENCY,
+            OdaSchema.PRICES,
+            OdaSchema.VALUE,
+            OdaSchema.SHARE,
+            "total_of",
+            "gni_share",
+        ],
     )
 
     new_order = (
@@ -176,7 +171,7 @@ dac_exchange = partial(
     exchange,
     source_currency="USA",
     rates_source="oecd_dac",
-    id_column="donor_code",
+    id_column=OdaSchema.PROVIDER_CODE,
     id_type="DAC",
     value_column="value",
     target_column="value",
@@ -191,9 +186,23 @@ dac_deflate = partial(
     exchange_source="oecd_dac",
     exchange_method="implied",
     source_currency="USA",
-    id_column="donor_code",
+    id_column=OdaSchema.PROVIDER_CODE,
     id_type="DAC",
     source_column="value",
     target_column="value",
     date_column="year",
 )
+
+
+def map_column_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Map the column names to the schema"""
+    return df.rename(columns=CRS_MAPPING)
+
+
+def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
+    from oda_data import donor_groupings
+
+    bilateral = donor_groupings()["all_bilateral"]
+    df = df.loc[lambda d: ~d[OdaSchema.PROVIDER_CODE].isin(bilateral)]
+
+    return df

@@ -9,18 +9,9 @@ from oda_data.get_data import common
 from oda_data.logger import logger
 
 
-def _save(
-    df: pd.DataFrame,
-    year: int,
-    config_file_path: pathlib.Path,
-    save_path: pathlib.Path,
-    small_version: bool,
-) -> None:
-    # settings
-    settings = read_settings(config_file_path)
-
+def _save(df: pd.DataFrame, year: int, save_path: pathlib.Path) -> None:
     # Clean the DataFrame
-    df = clean_raw_df(df, settings, small_version)
+    df = clean_raw_df(df)
 
     # Save the DataFrame
     df.to_feather(save_path / f"crs_{year}_raw.feather")
@@ -62,10 +53,4 @@ def download_crs(years: int | list | range, small_version: bool = False) -> None
 
     for year in _years(years, crs_dict):
         df = _download(file_url=crs_dict[year], year=year)
-        _save(
-            df=df,
-            year=year,
-            config_file_path=config.OdaPATHS.settings / "crs_config.json",
-            save_path=config.OdaPATHS.raw_data,
-            small_version=small_version,
-        )
+        _save(df=df, year=year, save_path=config.OdaPATHS.raw_data)

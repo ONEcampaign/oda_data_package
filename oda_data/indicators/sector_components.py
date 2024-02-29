@@ -4,6 +4,10 @@ import json
 import pandas as pd
 
 from oda_data import config
+from oda_data.clean_data.channels import add_multi_channel_codes
+from oda_data.clean_data.common import keep_multi_donors_only
+from oda_data.clean_data.dtypes import set_default_types
+from oda_data.clean_data.schema import OdaSchema
 
 # For typing purposes
 ODAData: callable = "ODAData"
@@ -19,19 +23,6 @@ def read_channel_codes() -> dict:
     Multisystem database. Return them as a dictionary."""
     with open(config.OdaPATHS.settings / "channel_codes.json") as f:
         return json.load(f)
-
-
-def add_multi_channel_ids(df: pd.DataFrame) -> pd.DataFrame:
-    """Add the multichannel ids to the dataframe. It adds a new channel_code
-    column, which maps the ids to the multichannel ids."""
-    channels_dict = read_channel_codes()
-    return df.assign(
-        ids=lambda m: "D."
-        + m.donor_code.astype(str)
-        + ".A."
-        + m.agency_code.astype(str),
-        channel_code=lambda d: d.ids.map(channels_dict).fillna(pd.NA).astype("Int32"),
-    )
 
 
 # -----------------------------------------------------------------------------
@@ -69,7 +60,7 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
         data = pd.concat([data, _], ignore_index=True)
 
     return (
-        data.assign(year=lambda d: d.year.astype("Int32"))
+        data.assign(year=lambda d: d.year.astype("int16[pyarrow]"))
         .loc[lambda d: d.year.notna()]
         .reset_index(drop=True)
     )
@@ -77,8 +68,13 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
 
 def _purpose_share(df_: pd.DataFrame) -> pd.Series:
     """Function to calculate the share of total for per purpose code."""
-    cols = ["year", "currency", "prices", "donor_code", "agency_code"]
-    return df_.groupby(cols, observed=True, dropna=False)["value"].transform(
+    cols = [
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
+        OdaSchema.CHANNEL_CODE,
+    ]
+    return df_.groupby(cols, observed=True, dropna=False)[OdaSchema.VALUE].transform(
         lambda p: p / p.sum()
     )
 
@@ -93,61 +89,30 @@ def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _spending_summary(df: pd.DataFrame, purpose_column: str) -> pd.DataFrame:
-    """Calculate the yearly share of the total value for each purpose code."""
-
-    cols = [
-        "year",
-        "channel_code",
-        "recipient_code",
-        purpose_column,
-        "currency",
-        "prices",
-        "value",
-        "share",
-    ]
-
-    summary = df.pipe(add_multi_channel_ids).loc[lambda d: d.channel_code.notna()]
-
-    valid_ids = (
-        summary.groupby(["year", "ids", "channel_code"])[["value", "share"]]
-        .sum()
-        .reset_index()
-        .sort_values(["year", "channel_code", "value"])
-        .drop_duplicates(["year", "channel_code"], keep="last")
-        .filter(["year", "ids"], axis=1)
-        .assign(keep=True)
-    )
-
-    summary = (
-        summary.merge(valid_ids, on=["year", "ids"], how="left")
-        .loc[lambda d: d.keep.notna()]
-        .filter(cols, axis=1)
-        .sort_values(["year", "channel_code", "value"])
-        .drop_duplicates(
-            subset=[
-                "year",
-                "channel_code",
-                "recipient_code",
-                "purpose_code",
-                "currency",
-                "prices",
+def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
+    df = (
+        df.groupby(
+            [
+                c
+                for c in df.columns
+                if c
+                not in [
+                    OdaSchema.PROVIDER_NAME,
+                    OdaSchema.PROVIDER_CODE,
+                    OdaSchema.AGENCY_CODE,
+                    OdaSchema.AGENCY_NAME,
+                    "name",
+                    OdaSchema.VALUE,
+                ]
             ],
-            keep="last",
-        )
-    )
-
-    summary = (
-        summary.groupby(
-            [c for c in cols if c not in ["value", "share"]],
             observed=True,
             dropna=False,
-        )[["share"]]
+        )[[OdaSchema.VALUE]]
         .sum()
-        .reset_index(drop=False)
+        .reset_index()
     )
 
-    return summary
+    return df
 
 
 # -----------------------------------------------------------------------------
@@ -163,12 +128,17 @@ def compute_imputations(
     return (
         multi_spending_shares.merge(
             core_contributions,
-            on=["channel_code", "year", "currency", "prices"],
+            on=[
+                OdaSchema.CHANNEL_CODE,
+                OdaSchema.YEAR,
+                OdaSchema.CURRENCY,
+                OdaSchema.PRICES,
+            ],
             how="left",
         )
-        .assign(value=lambda d: d.value * d.share)
-        .drop("share", axis=1)
-        .loc[lambda d: d.value > 0]
+        .assign(value=lambda d: d[OdaSchema.VALUE] * d[OdaSchema.SHARE])
+        .drop(labels=[OdaSchema.SHARE], axis=1)
+        .loc[lambda d: d[OdaSchema.VALUE] != 0]
         .reset_index(drop=True)
     )
 
@@ -180,9 +150,17 @@ def multi_contributions_by_donor(
     multilaterals (grouped by channel code)"""
 
     indicator = "multisystem_multilateral_contributions_disbursement_gross"
-    cols = ["donor_code", "channel_code", "year", "currency", "prices"]
+    cols = [
+        OdaSchema.PROVIDER_CODE,
+        OdaSchema.CHANNEL_CODE,
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
+    ]
 
-    return _get_indicator(data=data, indicator=indicator, columns=cols)
+    return _get_indicator(data=data, indicator=indicator, columns=cols).pipe(
+        set_default_types
+    )
 
 
 def bilat_outflows_by_donor(
@@ -195,12 +173,12 @@ def bilat_outflows_by_donor(
     indicator = "crs_bilateral_total_flow_gross_by_purpose"
 
     cols = [
-        "donor_code",
+        OdaSchema.PROVIDER_CODE,
         purpose_column,
-        "recipient_code",
-        "year",
-        "currency",
-        "prices",
+        OdaSchema.RECIPIENT_CODE,
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
     ]
 
     return _get_indicator(data=data, indicator=indicator, columns=cols)
@@ -213,22 +191,30 @@ def period_purpose_shares(
 ) -> pd.DataFrame:
     """ """
     # Indicator
-    indicator = "crs_bilateral_total_flow_gross_by_purpose"
+    indicator = "crs_bilateral_all_flows_disbursement_gross"
 
     # Columns to keep
     cols = [
-        "donor_code",
-        "agency_code",
+        OdaSchema.PROVIDER_CODE,
+        OdaSchema.PROVIDER_NAME,
+        OdaSchema.AGENCY_CODE,
+        OdaSchema.AGENCY_NAME,
         purpose_column,
-        "recipient_code",
-        "year",
-        "currency",
-        "prices",
+        OdaSchema.RECIPIENT_CODE,
+        OdaSchema.YEAR,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
     ]
 
+    df = _get_indicator(data=data, indicator=indicator, columns=cols)
+
+    if data.donors is not None:
+        df = df.loc[lambda d: d[OdaSchema.PROVIDER_CODE].isin(data.donors)]
+
     return (
-        _get_indicator(data=data, indicator=indicator, columns=cols)
+        df.pipe(keep_multi_donors_only)
+        .pipe(add_multi_channel_codes)
+        .pipe(_group_by_mapped_channel)
         .pipe(_rolling_period_total, period_length)
         .pipe(_yearly_share)
-        .pipe(_spending_summary, purpose_column=purpose_column)
     )
