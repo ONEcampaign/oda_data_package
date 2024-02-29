@@ -1,11 +1,11 @@
 import copy
 import json
 
-import numpy as np
 import pandas as pd
 
 from oda_data import config
-from oda_data.clean_data.channels import add_channel_codes
+from oda_data.clean_data.channels import add_multi_channel_codes
+from oda_data.clean_data.common import keep_multi_donors_only
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import OdaSchema
 
@@ -82,32 +82,6 @@ def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
         .loc[lambda d: d.share.notna()]
         .reset_index(drop=True)
     )
-
-
-def _add_multi_channel_codes(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy(deep=True)
-
-    df["name"] = np.where(
-        df[OdaSchema.AGENCY_NAME].fillna("missing")
-        == df[OdaSchema.PROVIDER_NAME].fillna("missing"),
-        df[OdaSchema.PROVIDER_NAME],
-        df[OdaSchema.PROVIDER_NAME].fillna("")
-        + " "
-        + df[OdaSchema.AGENCY_NAME].fillna(""),
-    )
-
-    df = add_channel_codes(data=df, channel_names_column="name")
-
-    return df
-
-
-def _keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
-    from oda_data import donor_groupings
-
-    bilateral = donor_groupings()["all_bilateral"]
-    df = df.loc[lambda d: ~d[OdaSchema.PROVIDER_CODE].isin(bilateral)]
-
-    return df
 
 
 def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
@@ -233,8 +207,8 @@ def period_purpose_shares(
         df = df.loc[lambda d: d[OdaSchema.PROVIDER_CODE].isin(data.donors)]
 
     return (
-        df.pipe(_keep_multi_donors_only)
-        .pipe(_add_multi_channel_codes)
+        df.pipe(keep_multi_donors_only)
+        .pipe(add_multi_channel_codes)
         .pipe(_group_by_mapped_channel)
         .pipe(_rolling_period_total, period_length)
         .pipe(_yearly_share)

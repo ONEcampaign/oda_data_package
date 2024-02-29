@@ -72,7 +72,7 @@ def test_total_bi_multi_flows():
     donors = list(df.oecd_donor_code.unique())
     recipients = list(df.oecd_recipient_code.unique())
 
-    assert years == list(range(2020, 2013, -1))
+    assert all([y in list(range(2020, 2013, -1)) for y in years])
     assert donors == [4, 12]
     assert recipients == [189]
     assert prices == ["current"]

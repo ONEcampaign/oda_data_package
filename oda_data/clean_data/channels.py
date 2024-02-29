@@ -1,9 +1,11 @@
 import re
 import string
 
+import numpy as np
 import pandas as pd
 from thefuzz import process
 
+from oda_data.clean_data.common import keep_multi_donors_only
 from oda_data.clean_data.schema import OdaSchema
 from oda_data.config import OdaPATHS
 
@@ -20,7 +22,7 @@ ADDITIONAL_PATTERNS: dict[str, int] = {
     r"\beuropean development fund\b": 42003,
     r"\binstitutions macro financial assistance\b": 42003,
     r"\binsitutions development share\b": 42001,
-    r"\beu institutions\b": 44001,
+    r"\beu institutions\b": 42001,
     r"\binstitutions miscellaneous\b": 42001,
     r"\bimf concessional trust funds\b": 43001,
     r"\bstrategic preparedness and response\b": 41321,
@@ -439,12 +441,20 @@ def regex_to_code_dictionary(
 
     # Return a single dictionary with all the regexes: english acronyms,
     # full channel names, partial channel names, and additional patterns (manual)
-    return (
+    to_match = (
         english_acronyms
         | full_channel_names
         | partial_channel_names
         | ADDITIONAL_PATTERNS
     )
+
+    return {
+        k: v
+        for k, v in sorted(
+            to_match.items(),
+            key=lambda item: -len(item[0]),
+        )
+    }
 
 
 def _regex_match_channel_name_to_code(channel: str, regex_dict: dict):
@@ -605,3 +615,62 @@ def add_channel_codes(
     )
 
     return data
+
+
+def add_multi_channel_codes(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy(deep=True)
+
+    df["name"] = np.where(
+        df[OdaSchema.AGENCY_NAME].fillna("missing")
+        == df[OdaSchema.PROVIDER_NAME].fillna("missing"),
+        df[OdaSchema.PROVIDER_NAME],
+        df[OdaSchema.PROVIDER_NAME].fillna("")
+        + " "
+        + df[OdaSchema.AGENCY_NAME].fillna(""),
+    )
+
+    df = add_channel_codes(data=df, channel_names_column="name")
+
+    return df
+
+
+def get_spending_channel_mapping(years: int | list[int]) -> pd.DataFrame:
+    """Get a DataFrame which shows the automatic mapping of
+    spending donors/agencies from the CRS with OECD Channel codes. This is
+    done only for multilateral agencies.
+
+    Args:
+        years: A integer or list of integers indicating the CRS years used
+        to produce the mapping.
+
+    Returns:
+        DataFrame: a pandas dataFrame
+    """
+    from oda_data import ODAData
+
+    # Columns to keep
+    cols = [
+        OdaSchema.PROVIDER_CODE,
+        OdaSchema.PROVIDER_NAME,
+        OdaSchema.AGENCY_CODE,
+        OdaSchema.AGENCY_NAME,
+    ]
+
+    data = ODAData(years=years, include_names=True)
+
+    df = (
+        data.load_indicator("crs_bilateral_all_flows_disbursement_gross")
+        .simplify_output_df(columns_to_keep=cols)
+        .get_data()
+    )
+
+    df = df.pipe(keep_multi_donors_only).pipe(add_multi_channel_codes)
+
+    # clean
+    df = (
+        df.sort_values([OdaSchema.CHANNEL_CODE])
+        .drop(columns=[OdaSchema.VALUE])
+        .reset_index(drop=True)
+    )
+
+    return df
