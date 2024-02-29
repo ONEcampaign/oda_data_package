@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.1.3] 2024-02-29
+* Fix sorting bug (arrow)
+
 ## [1.1.2] 2024-02-29
 * Reading the CRS from 1973-2004 is now possible.
 * Removed a warning on pandas stack (for future behaviour)
