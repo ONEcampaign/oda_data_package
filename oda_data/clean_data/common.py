@@ -163,7 +163,18 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
         + reorder_l
     )
 
-    return df.filter(new_order, axis=1).sort_values(by=new_order).reset_index(drop=True)
+    new_order = list(dict.fromkeys(new_order))
+
+    # Keep columns in right order
+    df = df.filter(new_order, axis=1)
+
+    # Try sorting
+    try:
+        df = df.sort_values(by=new_order).reset_index(drop=True)
+    except:
+        pass
+
+    return df
 
 
 # Create a helper function to consistently exchange data
