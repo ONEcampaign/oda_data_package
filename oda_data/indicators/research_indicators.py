@@ -22,7 +22,7 @@ def multilateral_spending_shares(
 
     if recipients is not None:
         multi_spending_shares = multi_spending_shares.loc[
-            lambda d: d.oecd_recipient_code.isin(recipients)
+            lambda d: d[OdaSchema.RECIPIENT_CODE].isin(recipients)
         ]
 
     return multi_spending_shares.reset_index(drop=True)
@@ -52,9 +52,9 @@ def multilateral_imputed_flows(
 
     # --- Filter by donor and recipient, if applicable ---
     if donors is not None:
-        imputed = imputed.loc[imputed.oecd_donor_code.isin(donors)]
+        imputed = imputed.loc[imputed[OdaSchema.PROVIDER_CODE].isin(donors)]
     if recipients is not None:
-        imputed = imputed.loc[imputed.oecd_recipient_code.isin(recipients)]
+        imputed = imputed.loc[imputed[OdaSchema.RECIPIENT_CODE].isin(recipients)]
 
     return imputed.reset_index(drop=True)
 
@@ -256,9 +256,19 @@ def _covid19_total(data: pd.DataFrame) -> pd.DataFrame:
 
     df = data[mask].reset_index(drop=True)
 
-    grouper = ["year", "indicator", "oecd_donor_code", "currency", "prices"]
+    grouper = [
+        OdaSchema.YEAR,
+        OdaSchema.INDICATOR,
+        OdaSchema.PROVIDER_CODE,
+        OdaSchema.CURRENCY,
+        OdaSchema.PRICES,
+    ]
 
-    df = df.groupby(grouper, dropna=False, observed=True)["value"].sum().reset_index()
+    df = (
+        df.groupby(grouper, dropna=False, observed=True)[OdaSchema.VALUE]
+        .sum()
+        .reset_index()
+    )
 
     return df
 
@@ -270,7 +280,7 @@ def covid_oda_ge(years: list, donors: list | None, **kwargs) -> pd.DataFrame:
 
     oda = ODAData(years=years, donors=donors).load_indicator(indicators=indicators)
 
-    df = oda.get_data().loc[lambda d: d.year >= 2018]
+    df = oda.get_data().loc[lambda d: d[OdaSchema.YEAR] >= 2018]
 
     df = _covid19_total(data=df)
 

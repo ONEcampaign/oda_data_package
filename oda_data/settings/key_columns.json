@@ -1,7 +1,6 @@
 {
   "dac1": {
     "keep": [
-      "oecd_donor_code",
       "donor",
       "donor_code",
       "year",
@@ -9,32 +8,33 @@
     ],
     "rename": {
       "donor": "donor_name",
-      "donor_code": "oecd_donor_code"
+      "donor_code": "donor_code"
     }
   },
   "dac2a": {
     "keep": [
-      "oecd_donor_code",
+      "donor_code",
       "donor",
-      "oecd_recipient_code",
+      "recipient_code",
       "recipient",
+      "recipient_name",
       "year",
       "value"
     ],
     "rename": {
       "donor": "donor_name",
-      "donor_code": "oecd_donor_code",
-      "recipient_code": "oecd_recipient_code",
+      "donor_code": "donor_code",
+      "recipient_code": "recipient_code",
       "recipient": "recipient_name"
     }
   },
   "crs": {
     "keep": [
-      "oecd_donor_code",
+      "donor_code",
       "donor_name",
-      "oecd_agency_code",
-      "agency",
-      "oecd_recipient_code",
+      "agency_code",
+      "agency_name",
+      "recipient_code",
       "recipient_name",
       "region_code",
       "region_name",
@@ -63,7 +63,7 @@
   "multisystem": {
     "keep": [
       "year",
-      "oecd_donor_code",
+      "donor_code",
       "donor_name_e",
       "usd_commitment",
       "usd_extended",
@@ -71,7 +71,7 @@
       "flow_name_e",
       "aid_t",
       "aid_to_or_thru",
-      "oecd_channel_code",
+      "channel_code",
       "channel_name_e",
       "recipient_code",
       "recipient_name_e",
@@ -87,9 +87,9 @@
       "channel_name_e": "channel_name",
       "recipient_name_e": "recipient_name",
       "flow_name_e": "flow_name",
-      "channel_code": "oecd_channel_code",
-      "donor_code": "oecd_donor_code",
-      "recipient_code": "oecd_recipient_code"
+      "channel_code": "channel_code",
+      "donor_code": "donor_code",
+      "recipient_code": "recipient_code"
     }
   }
 }

@@ -135,18 +135,26 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
     reorder_b = _cols_in_list(
         all_columns,
         [
-            "year",
-            "indicator",
-            "oecd_donor_code",
-            "donor_name",
-            "oecd_recipient_code",
-            "recipient_name",
+            OdaSchema.YEAR,
+            OdaSchema.INDICATOR,
+            OdaSchema.PROVIDER_CODE,
+            OdaSchema.PROVIDER_NAME,
+            OdaSchema.RECIPIENT_CODE,
+            OdaSchema.RECIPIENT_NAME,
         ],
     )
 
     # Columns to appear last
     reorder_l = _cols_in_list(
-        all_columns, ["currency", "prices", "value", "share", "total_of", "gni_share"]
+        all_columns,
+        [
+            OdaSchema.CURRENCY,
+            OdaSchema.PRICES,
+            OdaSchema.VALUE,
+            OdaSchema.SHARE,
+            "total_of",
+            "gni_share",
+        ],
     )
 
     new_order = (

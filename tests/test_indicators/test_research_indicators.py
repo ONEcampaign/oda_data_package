@@ -1,3 +1,4 @@
+from oda_data.clean_data.schema import OdaSchema
 from oda_data.indicators.research_indicators import (
     multilateral_imputed_flows,
     one_core_oda_flow,
@@ -25,11 +26,11 @@ def test_multilateral_imputed_flows():
         other_data="test",
     )
 
-    years = list(df.year.unique())
-    prices = list(df.prices.unique())
-    currencies = list(df.currency.unique())
-    donors = list(df.oecd_donor_code.unique())
-    recipients = list(df.oecd_recipient_code.unique())
+    years = list(df[OdaSchema.YEAR].unique())
+    prices = list(df[OdaSchema.PRICES].unique())
+    currencies = list(df[OdaSchema.CURRENCY].unique())
+    donors = list(df[OdaSchema.PROVIDER_CODE].unique())
+    recipients = list(df[OdaSchema.RECIPIENT_CODE].unique())
 
     assert years == list(range(2020, 2013, -1))
 
@@ -42,10 +43,10 @@ def test_multilateral_imputed_flows():
         base_year=None,
     )
 
-    prices2 = list(df2.prices.unique())
-    currencies2 = list(df2.currency.unique())
-    donors2 = list(df2.oecd_donor_code.unique())
-    recipients2 = list(df2.oecd_recipient_code.unique())
+    prices2 = list(df2[OdaSchema.PRICES].unique())
+    currencies2 = list(df2[OdaSchema.CURRENCY].unique())
+    donors2 = list(df2[OdaSchema.PROVIDER_CODE].unique())
+    recipients2 = list(df2[OdaSchema.RECIPIENT_CODE].unique())
 
     assert prices == prices2
     assert currencies == currencies2
@@ -66,11 +67,11 @@ def test_total_bi_multi_flows():
         other_data="test",
     )
 
-    years = list(df.year.unique())
-    prices = list(df.prices.unique())
-    currencies = list(df.currency.unique())
-    donors = list(df.oecd_donor_code.unique())
-    recipients = list(df.oecd_recipient_code.unique())
+    years = list(df[OdaSchema.YEAR].unique())
+    prices = list(df[OdaSchema.PRICES].unique())
+    currencies = list(df[OdaSchema.CURRENCY].unique())
+    donors = list(df[OdaSchema.PROVIDER_CODE].unique())
+    recipients = list(df[OdaSchema.RECIPIENT_CODE].unique())
 
     assert all([y in list(range(2020, 2013, -1)) for y in years])
     assert donors == [4, 12]
@@ -91,21 +92,21 @@ def test_oda_non_core_linked():
     df = one_non_core_oda_ge_linked(years=[2017, 2018, 2021], donors=[4, 12])
 
     # Check that only 1 indicator is returned
-    assert df.indicator.nunique() == 1
+    assert df[OdaSchema.INDICATOR].nunique() == 1
 
 
 def test_one_core_oda_flow():
     df = one_core_oda_flow(years=[2017, 2018, 2021], donors=[4, 12])
 
     # Check that data for all years is returned
-    assert df.year.nunique() == 3
+    assert df[OdaSchema.YEAR].nunique() == 3
 
 
 def test_one_core_oda_ge():
     df = one_core_oda_ge(years=[2014, 2017, 2018, 2021], donors=[4, 12])
 
     # Check that no data is provided for 2014 or 2017
-    assert df.year.nunique() == 2
+    assert df[OdaSchema.YEAR].nunique() == 2
 
 
 def test_one_core_oda_ge_linked():

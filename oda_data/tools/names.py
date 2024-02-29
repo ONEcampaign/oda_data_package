@@ -102,7 +102,7 @@ def donor_names() -> dict:
 
 
 def _return_donor_names(df, col, loc) -> tuple:
-    return loc, "donor_name", df[col].map(donor_names())
+    return loc, OdaSchema.PROVIDER_NAME, df[col].map(donor_names())
 
 
 def recipient_names() -> dict:
