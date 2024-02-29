@@ -30,8 +30,8 @@ thefuzz = "^0.22.1"
 
 
 [tool.poetry.dev-dependencies]
-black = "^23"
-pytest = "^7.2.0"
+black = "^24"
+pytest = "^8"
 pytest-cov = "^4.0.0"
 bump2version = "^1.0.1"
 pytest-mock = "^3.10.0"
