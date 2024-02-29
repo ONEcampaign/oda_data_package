@@ -45,5 +45,7 @@ def linked_indicator(
 
     # Stack the indicator column back and return
     return (
-        df.filter(set([new] + ["indicator"]), axis=1).stack("indicator").reset_index()
+        df.filter(set([new] + ["indicator"]), axis=1)
+        .stack("indicator", future_stack=True)
+        .reset_index()
     )

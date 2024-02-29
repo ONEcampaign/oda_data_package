@@ -3,6 +3,7 @@ import pandas as pd
 from oda_data import config
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.get_data import common
+from oda_data.get_data.common import resolve_crs_year_name
 from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
 from oda_data.get_data.dac2a import download_dac2a
@@ -27,7 +28,8 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
 
     # check that all years are available. If not, download the missing years
     for year in years:
-        if not (config.OdaPATHS.raw_data / f"crs_{year}_raw.feather").exists():
+        year_, name = resolve_crs_year_name(year)
+        if not (config.OdaPATHS.raw_data / f"crs_{name}_raw.feather").exists():
             logger.info(f"CRS data for {year} not found. Downloading...")
             download_crs(years=year)
 
@@ -36,7 +38,8 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
 
     # Loop over years
     for year in years:
-        file = pd.read_feather(config.OdaPATHS.raw_data / f"crs_{year}_raw.feather")
+        year_, name = resolve_crs_year_name(year)
+        file = pd.read_feather(config.OdaPATHS.raw_data / f"crs_{name}_raw.feather")
         file = file.pipe(set_default_types)
         if len(df) > 0:
             df = pd.concat(

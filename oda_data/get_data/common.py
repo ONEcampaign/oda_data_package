@@ -323,3 +323,24 @@ def download_single_table(
 
     # log a message confirming the operation
     logger.info(f"{raw_file_name} data downloaded and saved.")
+
+
+def resolve_crs_year_name(year: int) -> tuple[int, int | str]:
+    name = year
+    if year in [2004, 2005]:
+        year = 2004
+        name = "2004-05"
+    if year in [2002, 2003]:
+        year = 2002
+        name = "2002-03"
+    if year in [2000, 2001]:
+        year = 2000
+        name = "2000-01"
+    if year in range(1995, 2000):
+        year = 1995
+        name = "1995-99"
+    if year in range(1973, 1995):
+        year = 1973
+        name = "1973-94"
+
+    return year, name

@@ -4,8 +4,9 @@ import pandas as pd
 import requests
 
 from oda_data import config
-from oda_data.clean_data.common import read_settings, clean_raw_df
+from oda_data.clean_data.common import clean_raw_df
 from oda_data.get_data import common
+from oda_data.get_data.common import resolve_crs_year_name
 from oda_data.logger import logger
 
 
@@ -33,10 +34,10 @@ def _years(years: int | list | range, crs_dict: dict) -> list:
     years = common.check_integers(years)
 
     for year in years:
-        if year not in crs_dict:
+        if year not in crs_dict and (year not in range(1973, 2005)):
             logger.info(f"CRS data for {year} is not available.")
 
-    return [y for y in years if y in crs_dict]
+    return [y for y in years if y in crs_dict or y in range(1973, 2005)]
 
 
 def download_crs(years: int | list | range, small_version: bool = False) -> None:
@@ -52,5 +53,6 @@ def download_crs(years: int | list | range, small_version: bool = False) -> None
     crs_dict = common.extract_file_link_multiple(config.CRS_URL)
 
     for year in _years(years, crs_dict):
-        df = _download(file_url=crs_dict[year], year=year)
-        _save(df=df, year=year, save_path=config.OdaPATHS.raw_data)
+        year, name = resolve_crs_year_name(year)
+        df = _download(file_url=crs_dict[year], year=name)
+        _save(df=df, year=name, save_path=config.OdaPATHS.raw_data)
