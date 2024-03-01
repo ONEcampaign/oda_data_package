@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.1.4] 2024-01-01
+* Fix constant non-USD currencies bug for imputed sectors calculations.
+
 ## [1.1.3] 2024-02-29
 * Fix sorting bug (arrow)
 

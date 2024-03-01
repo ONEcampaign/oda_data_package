@@ -29,12 +29,12 @@ def multilateral_spending_shares(
 
 
 def multilateral_imputed_flows(
-    years: list, currency: str, donors: list | None, recipients: list | None, **kwargs
+    years: list, donors: list | None, recipients: list | None, **kwargs
 ) -> pd.DataFrame:
     from oda_data import ODAData
 
     # Create the basic ODAData object
-    data_obj = ODAData(years=years, currency=currency)
+    data_obj = ODAData(years=years)
 
     # --- Bilateral contributions to multilaterals ---
     core_contributions = multi_contributions_by_donor(data=data_obj)
@@ -60,14 +60,11 @@ def multilateral_imputed_flows(
 
 
 def total_bi_multi_flows(
-    years: list, currency: str, donors: list | None, recipients: list | None, **kwargs
+    years: list, donors: list | None, recipients: list | None, **kwargs
 ) -> pd.DataFrame:
     from oda_data import ODAData
 
-    multi_data_obj = ODAData(
-        years=years,
-        currency=currency,  # prices=prices, base_year=base_year
-    )
+    multi_data_obj = ODAData(years=years)
 
     # --- Multilateral spending by sector (as values) ---
     multi_indicator = "imputed_multi_flow_disbursement_gross"
@@ -76,10 +73,8 @@ def total_bi_multi_flows(
     )
 
     # Create the basic ODAData object
-    bilat_data_obj = ODAData(
-        years=years,
-        currency=currency,  # prices=prices, base_year=base_year
-    )
+    bilat_data_obj = ODAData(years=years)
+
     # --- Bilateral spending by sector ---
     bilat_spending = bilat_outflows_by_donor(
         data=bilat_data_obj, purpose_column="purpose_code"
