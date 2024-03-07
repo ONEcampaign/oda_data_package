@@ -1,6 +1,9 @@
 # Changes to the oda_data package
 
-## [1.1.4] 2024-01-01
+## [1.1.5] 2024-03-07
+* Fixed a bug introduced by changes in the OECD bulk download service.
+
+## [1.1.4] 2024-03-01
 * Fix constant non-USD currencies bug for imputed sectors calculations.
 
 ## [1.1.3] 2024-02-29

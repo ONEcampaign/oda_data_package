@@ -237,7 +237,14 @@ def extract_file_link_single(url: str) -> str:
 
     # Get page content
     soup = BeautifulSoup(response, "html.parser")
-    link = list(soup.find_all("a"))[0].attrs["onclick"][15:-3].replace("_", "-")
+    links = list(soup.find_all("a"))
+
+    # Get the right link for the right file
+    links = [link for link in links if "xml" not in link.text.lower()]
+
+    # Get the link
+    link = links[0].attrs["onclick"][15:-3].replace("_", "-")
+
     return f"https://stats.oecd.org/FileView2.aspx?IDFile={link}"
 
 
