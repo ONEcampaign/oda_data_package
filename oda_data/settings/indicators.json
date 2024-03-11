@@ -765,6 +765,29 @@
     "value_column": "usd_disbursement",
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
+  "crs_gender_significant_flow_commitment_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B031",
+        "B032",
+        "B033",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "1"
+    },
+    "value_column": "usd_commitment",
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
+  },
   "crs_gender_principal_flow_disbursement_gross": {
     "source": "crs",
     "type": "dac",
@@ -787,6 +810,29 @@
     },
     "value_column": "usd_disbursement",
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
+  },
+  "crs_gender_principal_flow_commitment_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B031",
+        "B032",
+        "B033",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "2"
+    },
+    "value_column": "usd_commitment",
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
   },
   "crs_gender_not_targeted_flow_disbursement_gross": {
     "source": "crs",
@@ -811,6 +857,29 @@
     "value_column": "usd_disbursement",
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
+  "crs_gender_not_targeted_flow_commitment_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B031",
+        "B032",
+        "B033",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "0"
+    },
+    "value_column": "usd_commitment",
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
+  },
   "crs_gender_not_screened_flow_disbursement_gross": {
     "source": "crs",
     "type": "dac",
@@ -834,6 +903,29 @@
     "value_column": "usd_disbursement",
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
+  "crs_gender_not_screened_flow_commitment_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B031",
+        "B032",
+        "B033",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ],
+      "gender": "99"
+    },
+    "value_column": "usd_commitment",
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
+  },
   "crs_gender_allocable_flow_disbursement_gross": {
     "source": "crs",
     "type": "dac",
@@ -855,6 +947,28 @@
     },
     "value_column": "usd_disbursement",
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
+  },
+  "crs_gender_allocable_flow_commitment_gross": {
+    "source": "crs",
+    "type": "dac",
+    "filters": {
+      "category": 10,
+      "aid_t": [
+        "A02",
+        "B01",
+        "B03",
+        "B031",
+        "B032",
+        "B033",
+        "B04",
+        "C01",
+        "D01",
+        "D02",
+        "E01"
+      ]
+    },
+    "value_column": "usd_commitment",
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
   },
   "crs_gender_allocable_total_flow_disbursement_gross": {
     "source": "crs",
@@ -878,6 +992,28 @@
     ],
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
+  "crs_gender_allocable_total_flow_commitment_gross": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_gender_allocable_flow_commitment_gross"
+    ],
+    "group_by": [
+      "category",
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
+    ],
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
+  },
   "crs_gender_total_flow_gross": {
     "source": "crs",
     "type": "one",
@@ -900,6 +1036,29 @@
       "desertification"
     ],
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
+  },
+  "crs_gender_total_flow_gross": {
+    "source": "crs",
+    "type": "one",
+    "indicators": [
+      "crs_gender_significant_flow_commitment_gross",
+      "crs_gender_principal_flow_commitment_gross"
+    ],
+    "group_by": [
+      "category",
+      "aid_t",
+      "finance_t",
+      "flow_code",
+      "sector_code",
+      "gender",
+      "environment",
+      "nutrition",
+      "climate_mitigation",
+      "climate_adaptation",
+      "biodiversity",
+      "desertification"
+    ],
+    "share_of": "crs_gender_allocable_flow_commitment_gross"
   },
   "crs_bilateral_total_flow_gross_by_purpose": {
     "source": "crs",
