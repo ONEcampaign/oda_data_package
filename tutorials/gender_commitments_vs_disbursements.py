@@ -51,9 +51,9 @@ def calculate_total_commitments_disbursements(
     return df.groupby(groupby, observed=True, dropna=False)["value"].sum().reset_index()
 
 
-def shape_for_flourish(df: pd.DataFrame) -> pd.DataFrame:
+def shape_for_observable(df: pd.DataFrame) -> pd.DataFrame:
 
-    index = ["donor_name", "year", "currency", "prices"]
+    index = ["donor_name", "currency", "prices"]
 
     return df.pivot(index=index, columns="indicator", values="value").reset_index()
 
@@ -67,21 +67,35 @@ def add_disbursements_as_share_of_commitments_column(df: pd.DataFrame) -> pd.Dat
 
     return df
 
+
 def add_dac_total_row(df: pd.DataFrame) -> pd.DataFrame:
+    df_copy = df.copy()
 
-    df = df.copy()
+    sums = df_copy[
+        [
+            "crs_gender_total_flow_commitment_gross",
+            "crs_gender_total_flow_disbursement_gross",
+        ]
+    ].sum()
 
-    groupby = ["currency", "prices", "indicator"]
-
-    df_total = (
-        df.groupby(groupby, observed=True, dropna=False)["value"].sum().reset_index()
+    df_total = pd.DataFrame(
+        [
+            {
+                "donor_name": "dac_members",
+                "currency": df_copy["currency"].iloc[0],
+                "prices": df_copy["prices"].iloc[0],
+                "crs_gender_total_flow_commitment_gross": sums[
+                    "crs_gender_total_flow_commitment_gross"
+                ],
+                "crs_gender_total_flow_disbursement_gross": sums[
+                    "crs_gender_total_flow_disbursement_gross"
+                ],
+            }
+        ]
     )
 
-    df_total["donor_name"] = "dac_members"
-
-    df_total = df_total[["donor_name", "currency", "prices", "indicator", "value"]]
-
-    return pd.concat([df, df_total], ignore_index=True)
+    # Concatenate the original DataFrame with the new total row
+    return pd.concat([df_copy, df_total], ignore_index=True)
 
 
 if __name__ == "__main__":
@@ -100,9 +114,12 @@ if __name__ == "__main__":
         total_gender_oda(oda=oda)
         .pipe(annual_commitments_vs_disbursements_by_donor)
         .pipe(calculate_total_commitments_disbursements)
+        .pipe(shape_for_observable)
     )
 
     total_dac_difference_2013_2022 = add_dac_total_row(total_by_country)
 
     total_by_country.to_csv(r"../tutorials/output/total_by_country.csv", index=False)
-    total_dac_difference_2013_2022.to_csv(r"../tutorials/output/total_dac_diffeence_2013_2022.csv", index=False)
+    total_dac_difference_2013_2022.to_csv(
+        r"../tutorials/output/total_dac_diffeence_2013_2022.csv", index=False
+    )
