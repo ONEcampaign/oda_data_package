@@ -117,7 +117,7 @@ if __name__ == "__main__":
         .pipe(shape_for_observable)
     )
 
-    total_dac_difference_2013_2022 = add_dac_total_row(total_by_country)
+    total_dac_difference_2013_2022 = add_dac_total_row(total_by_country).pipe(add_disbursements_as_share_of_commitments_column)
 
     total_by_country.to_csv(r"../tutorials/output/total_by_country.csv", index=False)
     total_dac_difference_2013_2022.to_csv(
