@@ -747,7 +747,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -770,7 +770,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -793,7 +793,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -816,7 +816,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -839,7 +839,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -862,7 +862,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -885,7 +885,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -908,7 +908,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -931,7 +931,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -953,7 +953,7 @@
     "type": "dac",
     "filters": {
       "category": 10,
-      "aid_t": [
+      "modality": [
         "A02",
         "B01",
         "B03",
@@ -978,7 +978,7 @@
     ],
     "group_by": [
       "category",
-      "aid_t",
+      "modality",
       "finance_t",
       "flow_code",
       "sector_code",
@@ -1000,7 +1000,7 @@
     ],
     "group_by": [
       "category",
-      "aid_t",
+      "modality",
       "finance_t",
       "flow_code",
       "sector_code",
@@ -1014,7 +1014,7 @@
     ],
     "share_of": "crs_gender_allocable_flow_commitment_gross"
   },
-  "crs_gender_total_flow_gross": {
+  "crs_gender_total_flow_disbursement_gross": {
     "source": "crs",
     "type": "one",
     "indicators": [
@@ -1023,7 +1023,7 @@
     ],
     "group_by": [
       "category",
-      "aid_t",
+      "modality",
       "finance_t",
       "flow_code",
       "sector_code",
@@ -1037,7 +1037,7 @@
     ],
     "share_of": "crs_gender_allocable_flow_disbursement_gross"
   },
-  "crs_gender_total_flow_gross": {
+  "crs_gender_total_flow_commitment_gross": {
     "source": "crs",
     "type": "one",
     "indicators": [
@@ -1046,7 +1046,7 @@
     ],
     "group_by": [
       "category",
-      "aid_t",
+      "modality",
       "finance_t",
       "flow_code",
       "sector_code",
