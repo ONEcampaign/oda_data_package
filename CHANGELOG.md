@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.1.6] 2024-03-14
+* Update pydeflate dependency to deal with data download issue.
+
 ## [1.1.5] 2024-03-07
 * Fixed a bug introduced by changes in the OECD bulk download service.
 
