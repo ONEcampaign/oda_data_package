@@ -20,6 +20,9 @@ lxml = "^5"
 pyarrow = ">=14, <17"
 thefuzz = "^0.22.1"
 oda-reader = "^0.2.1"
+beautifulsoup4 = "^4.12.3"
+selenium = "^4.20.0"
+webdriver-manager = "^4.0.1"
 
 
 [tool.poetry.dev-dependencies]
