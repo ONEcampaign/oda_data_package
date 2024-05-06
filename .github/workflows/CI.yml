@@ -23,6 +23,7 @@ jobs:
           cache: 'poetry'
       - name: Install packages
         run: |
+          pip install poetry
           poetry install
       - name: Check formatting
         run: |
