@@ -1,5 +1,11 @@
 # Changes to the oda_data package
 
+## [1.2] 2024-04-05
+* This release uses `oda_reader` to download data for DAC1 and DAC2a directly from the API.
+For now, the data is converted to the .Stat schema in order to ensure full backwards compatibility.
+A future version of `oda_data` will deprecated the .Stat schema in favor of the explorer API schema.
+* Other dependencies are updated.
+
 ## [1.1.6] 2024-03-14
 * Update pydeflate dependency to deal with data download issue.
 

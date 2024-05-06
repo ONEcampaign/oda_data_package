@@ -11,9 +11,16 @@ from oda_data.get_data.multisystem import download_multisystem
 from oda_data.logger import logger
 
 
-def __read_table(years: int | list | range, file_name: str) -> pd.DataFrame:
+def __read_table(
+    years: int | list | range, file_name: str, check_years: bool = False
+) -> pd.DataFrame:
     # Check that list of years is valid
     years = common.check_integers(years)
+
+    if check_years:
+        start_year = min(years)
+        end_year = max(years)
+        file_name = f"{file_name.split('.')[0]}_{start_year}_{end_year}.feather"
 
     # Read the table
     df = pd.read_feather(config.OdaPATHS.raw_data / file_name)
@@ -55,22 +62,34 @@ def read_dac1(years: int | list | range) -> pd.DataFrame:
     """Read the DAC1 data for the specified years."""
     # Check that list of years is valid
     try:
-        return __read_table(years=years, file_name="table1_raw.feather")
+        return __read_table(
+            years=years, file_name="table1_raw.feather", check_years=True
+        )
     except FileNotFoundError:
-        logger.info("DAC1 data not found. Downloading...")
-        download_dac1()
-        return __read_table(years=years, file_name="table1_raw.feather")
+        years = common.check_integers(years)
+        start_year = min(years)
+        end_year = max(years)
+        download_dac1(start_year=start_year, end_year=end_year)
+        return __read_table(
+            years=years, file_name="table1_raw.feather", check_years=True
+        )
 
 
 def read_dac2a(years: int | list | range) -> pd.DataFrame:
     """Read the DAC2a data for the specified years."""
     # Check that list of years is valid
     try:
-        return __read_table(years=years, file_name="table2a_raw.feather")
+        return __read_table(
+            years=years, file_name="table2a_raw.feather", check_years=True
+        )
     except FileNotFoundError:
-        logger.info("DAC2a data not found. Downloading...")
-        download_dac2a()
-        return __read_table(years=years, file_name="table2a_raw.feather")
+        years = common.check_integers(years)
+        start_year = min(years)
+        end_year = max(years)
+        download_dac2a(start_year=start_year, end_year=end_year)
+        return __read_table(
+            years=years, file_name="table2a_raw.feather", check_years=True
+        )
 
 
 def read_multisystem(years: int | list | range) -> pd.DataFrame:

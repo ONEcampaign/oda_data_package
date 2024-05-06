@@ -142,3 +142,4 @@ dmypy.json
 /tutorials/output/*.csv
 /oda_data/local_tests.py
 oda_data/get_data/sectors.py
+oda_data/dev_test.py
