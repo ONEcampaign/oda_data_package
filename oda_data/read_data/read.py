@@ -66,6 +66,7 @@ def read_dac1(years: int | list | range) -> pd.DataFrame:
             years=years, file_name="table1_raw.feather", check_years=True
         )
     except FileNotFoundError:
+        years = common.check_integers(years)
         start_year = min(years)
         end_year = max(years)
         download_dac1(start_year=start_year, end_year=end_year)
@@ -82,6 +83,7 @@ def read_dac2a(years: int | list | range) -> pd.DataFrame:
             years=years, file_name="table2a_raw.feather", check_years=True
         )
     except FileNotFoundError:
+        years = common.check_integers(years)
         start_year = min(years)
         end_year = max(years)
         download_dac2a(start_year=start_year, end_year=end_year)
