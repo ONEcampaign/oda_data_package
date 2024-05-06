@@ -20,12 +20,9 @@ python = "^3.10"
 pandas = "^2"
 bblocks = "^1"
 requests = "^2"
-beautifulsoup4 = "^4"
 pydeflate = "^1"
 lxml = "^5"
-selenium = "^4.11.2"
-webdriver-manager = "^4.0.0"
-pyarrow = "^15"
+pyarrow = ">=14, <17"
 thefuzz = "^0.22.1"
 
 
