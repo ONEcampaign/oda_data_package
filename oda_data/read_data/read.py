@@ -36,9 +36,25 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
     # check that all years are available. If not, download the missing years
     for year in years:
         year_, name = resolve_crs_year_name(year)
-        if not (config.OdaPATHS.raw_data / f"crs_{name}_raw.feather").exists():
+        if not (
+            (config.OdaPATHS.raw_data / f"crs_{name}_raw.feather").exists()
+            or (config.OdaPATHS.raw_data / "fullCRS.parquet").exists()
+        ):
             logger.info(f"CRS data for {year} not found. Downloading...")
             download_crs(years=year)
+
+    # If using the parquet file, use predicate pushdown to filter the data by year
+    # and avoid reading too much data into memory
+    if (config.OdaPATHS.raw_data / "fullCRS.parquet").exists():
+        filters = [("year", "in", years)]
+
+        df = pd.read_parquet(
+            config.OdaPATHS.raw_data / "fullCRS.parquet",
+            filters=filters,
+            engine="pyarrow",
+        )
+
+        return df.pipe(set_default_types)
 
     # Create an empty dataframe
     df = pd.DataFrame()
