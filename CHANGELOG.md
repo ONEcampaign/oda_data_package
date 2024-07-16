@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [1.3.1] 2024-07-16
+* This release aligns the schema of the temporary fix with the expected CRS schema from the bulk download service.
+
+
 ## [1.3.0] 2024-07-16
 * This release includes a workaround for the OECD bulk download service, which is down following the release of the new OECD website. The workaround uses a full CRS file shared by the OECD, which
 can take a long time to download, especially on slow connections (its nearly 1GB).
