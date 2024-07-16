@@ -264,6 +264,9 @@ def _fetch_page_multiple_links(url: str) -> bs4.ResultSet:
     except requests.exceptions.SSLError:
         response = get_url_selenium(url).page_source
 
+    if len(response) == 0:
+        raise ConnectionError("Could not fetch page content. The page may be down")
+
     soup = BeautifulSoup(response, "html.parser")
     return soup.find_all("a")
 
