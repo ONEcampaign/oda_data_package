@@ -1,6 +1,7 @@
 import pandas as pd
 
 from oda_data import config
+from oda_data.clean_data.common import clean_raw_df
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.get_data import common
 from oda_data.get_data.common import resolve_crs_year_name
@@ -52,7 +53,7 @@ def read_crs(years: int | list | range) -> pd.DataFrame:
             config.OdaPATHS.raw_data / "fullCRS.parquet",
             filters=filters,
             engine="pyarrow",
-        )
+        ).pipe(clean_raw_df)
 
         return df.pipe(set_default_types)
 
