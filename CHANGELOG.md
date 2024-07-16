@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [1.3.0] 2024-07-16
+* This release includes a workaround for the OECD bulk download service, which is down following the release of the new OECD website. The workaround uses a full CRS file shared by the OECD, which
+can take a long time to download, especially on slow connections (its nearly 1GB).
+
 ## [1.2] 2024-04-05
 * This release uses `oda_reader` to download data for DAC1 and DAC2a directly from the API.
 For now, the data is converted to the .Stat schema in order to ensure full backwards compatibility.
