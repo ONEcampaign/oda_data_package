@@ -144,4 +144,4 @@ dmypy.json
 oda_data/get_data/sectors.py
 oda_data/dev_test.py
 oda_data/.raw_data/fullCRS.parquet
-/oda_data
+/tutorials/data
