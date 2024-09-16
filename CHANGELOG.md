@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [1.3.2] 2024-09-16
+* This release fixes issues reading bulk files from the OECD (given that the bulk download service doesn't exist as such anymore)
+
+
 ## [1.3.1] 2024-07-16
 * This release aligns the schema of the temporary fix with the expected CRS schema from the bulk download service.
 
