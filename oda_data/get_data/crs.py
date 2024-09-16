@@ -1,3 +1,4 @@
+import io
 import pathlib
 
 import pandas as pd
@@ -6,7 +7,6 @@ import requests
 from oda_data import config
 from oda_data.clean_data.common import clean_raw_df
 from oda_data.get_data import common
-from oda_data.get_data.common import resolve_crs_year_name
 from oda_data.logger import logger
 
 
@@ -38,6 +38,19 @@ def _years(years: int | list | range, crs_dict: dict) -> list:
             logger.info(f"CRS data for {year} is not available.")
 
     return [y for y in years if y in crs_dict or y in range(1973, 2005)]
+
+
+def cloud_crs_download():
+    file_content = common.fetch_file_from_url_selenium(config.FULL_CRS_URL)
+
+    if isinstance(file_content, io.BytesIO):
+        file_content = file_content.getvalue()
+
+    # Open the local file in write-binary mode
+    with open(config.OdaPATHS.raw_data / "fullCRS.parquet", "wb") as file:
+        file.write(file_content)
+
+        logger.info("Full CRS data downloaded successfully.")
 
 
 def alternative_crs_download() -> None:
@@ -82,9 +95,10 @@ def alternative_crs_download() -> None:
         logger.error("Failed to download the CRS data from the alternative source.")
 
 
-def download_crs(years: int | list | range, small_version: bool = False) -> None:
-    """Download CRS files for the specified year(s) from the OECD and store
-     them as feather files.
+def download_crs(years: int | list | range = None, small_version: bool = False) -> None:
+    """Download full CRS file.
+
+    The years parameter is no longer in use.
 
 
     Args:
@@ -93,12 +107,11 @@ def download_crs(years: int | list | range, small_version: bool = False) -> None
     """
 
     try:
-        crs_dict = common.extract_file_link_multiple(config.CRS_URL)
-
-        for year in _years(years, crs_dict):
-            year, name = resolve_crs_year_name(year)
-            df = _download(file_url=crs_dict[year], year=name)
-            _save(df=df, year=name, save_path=config.OdaPATHS.raw_data)
+        logger.info(
+            "The full, detailed CRS is only available as a large file (>1GB). "
+            "The package will now download the data, but it may take a while."
+        )
+        cloud_crs_download()
 
     except ConnectionError:
         logger.warning(
