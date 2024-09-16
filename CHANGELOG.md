@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [1.3.2] 2024-09-16
+## [1.3.3] 2024-09-16
 * This release fixes issues reading bulk files from the OECD (given that the bulk download service doesn't exist as such anymore)
 
 

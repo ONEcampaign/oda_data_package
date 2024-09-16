@@ -4,6 +4,7 @@ import os
 import pathlib
 import tempfile
 import time
+import zipfile
 import zipfile as zf
 
 import bs4
@@ -108,8 +109,10 @@ def fetch_file_from_url_selenium(url: str) -> io.BytesIO:
 
         # Once downloaded, read the file into memory
         downloaded_file = os.path.join(download_dir, os.listdir(download_dir)[0])
+
         with open(downloaded_file, "rb") as file:
             file_data = io.BytesIO(file.read())
+
     finally:
         driver.quit()
         if downloaded_file is not None:
@@ -140,6 +143,36 @@ def check_integers(values: list | int) -> list[int]:
         return list(values)
 
     return _checktype(values, int)
+
+
+def get_zip_to_parquet(url: str) -> pd.DataFrame:
+    """Download a zip file from the web and save it as a parquet file.
+
+    Args:
+        url: The URL of the zip file to download.
+
+    """
+
+    # download the zip file from the website
+    file_content = requests.get(url)
+
+    if file_content.status_code != 200:
+        raise ConnectionError(f"Could not download file from {url}")
+
+    zip_file_bytes = io.BytesIO(file_content.content)
+
+    with zipfile.ZipFile(zip_file_bytes, "r") as zip_file:
+        parquet_file_name = None
+        for filename in zip_file.namelist():
+            if filename.endswith(".parquet"):
+                parquet_file_name = filename
+                break
+        if parquet_file_name is None:
+            raise FileNotFoundError("No parquet file found in the zip file")
+
+        with zip_file.open(parquet_file_name) as parquet_file:
+            df = pd.read_parquet(parquet_file)
+            return df
 
 
 def get_zip(url) -> requests.Response | io.BytesIO:

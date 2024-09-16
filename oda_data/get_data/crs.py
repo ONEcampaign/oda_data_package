@@ -41,16 +41,15 @@ def _years(years: int | list | range, crs_dict: dict) -> list:
 
 
 def cloud_crs_download():
-    file_content = common.fetch_file_from_url_selenium(config.FULL_CRS_URL)
 
-    if isinstance(file_content, io.BytesIO):
-        file_content = file_content.getvalue()
+    # Load the file into a DataFrame
+    df = common.get_zip_to_parquet(url=config.FULL_CRS_URL)
 
-    # Open the local file in write-binary mode
-    with open(config.OdaPATHS.raw_data / "fullCRS.parquet", "wb") as file:
-        file.write(file_content)
+    # Clean the DataFrame
+    df = common.clean_raw_df(df)
 
-        logger.info("Full CRS data downloaded successfully.")
+    df.to_parquet(config.OdaPATHS.raw_data / "fullCRS.parquet")
+    logger.info("Full CRS data downloaded successfully.")
 
 
 def alternative_crs_download() -> None:
