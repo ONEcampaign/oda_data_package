@@ -1,4 +1,4 @@
-__version__ = "1.3.3"
+__version__ = "1.4.0"
 
 from oda_data import tools
 from oda_data.classes.oda_data import ODAData
