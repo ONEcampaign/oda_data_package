@@ -5,7 +5,7 @@ from oda_data import config
 
 def download_dac1(start_year: int | None = None, end_year: int | None = None) -> None:
     """Download the DAC1 file from OECD.Stat. Data for all years is downloaded at once.
-    This function stores the raw data as a feather file in the raw data folder.
+    This function stores the raw data as a parquet file in the raw data folder.
 
     Args:
         start_year: optionally specify the start year for the data download.
@@ -23,4 +23,4 @@ def download_dac1(start_year: int | None = None, end_year: int | None = None) ->
     df = api_download_dac1(start_year=start_year, end_year=end_year)
 
     # save the file
-    df.to_feather(config.OdaPATHS.raw_data / f"table1_raw{suffix}.feather")
+    df.to_parquet(config.OdaPATHS.raw_data / f"table1_raw{suffix}.parquet")
