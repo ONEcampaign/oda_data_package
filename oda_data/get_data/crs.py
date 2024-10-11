@@ -1,4 +1,5 @@
 from pandas.util._decorators import deprecate_kwarg
+from typing_extensions import deprecated
 
 from oda_data import config
 from oda_data.get_data import common
@@ -18,15 +19,15 @@ def save_clean_crs():
     logger.info("Full CRS data downloaded successfully.")
 
 
-@deprecate_kwarg(old_arg_name="method", new_arg_name=None)
-def download_crs() -> None:
+@deprecate_kwarg(old_arg_name="years", new_arg_name=None)
+@deprecate_kwarg(old_arg_name="small_version", new_arg_name=None)
+def download_crs(years: deprecated = None) -> None:
     """Download full CRS file.
 
     Args:
         years: The year(s) for which to download the CRS data.
-        small_version: If True, only save a small version of the CRS data (default is False).
-    """
 
+    """
     logger.info(
         "The full, detailed CRS is only available as a large file (>1GB). "
         "The package will now download the data, but it may take a while."
