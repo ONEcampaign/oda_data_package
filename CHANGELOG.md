@@ -1,5 +1,10 @@
 # Changes to the oda_data package
 
+## [1.4.0] 2024-10-11
+* This release introduces significant changes to how raw data files are managed. Instead of storing as feather files, the default is now parquet. This allows oda_data to leverage predicate pushdown and more efficiently load only the data it needs.
+* This release removes data download tools from oda_data in favour of using the tools via oda-reader. Our oda-reader package uses the new data-explorer API and bulk downloads to get the data, instead of relying on the old (and now inaccessible) bulk download service.
+* It is strongly recommended that all users update to this version.
+
 ## [1.3.3] 2024-09-16
 * This release fixes issues reading bulk files from the OECD (given that the bulk download service doesn't exist as such anymore)
 

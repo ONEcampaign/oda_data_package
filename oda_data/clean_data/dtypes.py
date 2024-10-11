@@ -142,35 +142,6 @@ def schema_types() -> dict:
     return defaultdict(lambda: "string[pyarrow]", types)
 
 
-CATEGORICAL = [
-    OdaSchema.PROVIDER_NAME,
-    OdaSchema.AGENCY_NAME,
-    OdaSchema.RECIPIENT_NAME,
-    OdaSchema.RECIPIENT_REGION,
-    OdaSchema.RECIPIENT_INCOME,
-    OdaSchema.FLOW_NAME,
-    OdaSchema.PURPOSE_NAME,
-    OdaSchema.SECTOR_NAME,
-]
-
-
-def set_categorical_types(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Set the types of the columns in the dataframe.
-
-    Args:
-        df (pd.DataFrame): The input dataframe.
-
-    Returns:
-        pd.DataFrame: The dataframe with the types set.
-
-    """
-
-    converted_types = {c: "category" for c in df.columns if c in CATEGORICAL}
-
-    return df.astype(converted_types)
-
-
 def set_default_types(df: pd.DataFrame) -> pd.DataFrame:
     """
     Set the types of the columns in the dataframe.
