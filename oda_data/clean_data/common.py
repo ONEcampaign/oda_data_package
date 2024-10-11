@@ -5,7 +5,7 @@ from functools import partial
 import pandas as pd
 from pydeflate import deflate, exchange, set_pydeflate_path
 
-from oda_data.clean_data.dtypes import set_default_types, set_categorical_types
+from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
 from oda_data.config import OdaPATHS
 from oda_data.logger import logger
