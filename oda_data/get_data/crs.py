@@ -33,4 +33,4 @@ def download_crs(years: deprecated = None) -> None:
         "The package will now download the data, but it may take a while."
     )
 
-    return save_clean_crs()
+    save_clean_crs()
