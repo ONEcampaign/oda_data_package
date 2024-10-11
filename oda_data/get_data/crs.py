@@ -2,7 +2,7 @@ from pandas.util._decorators import deprecate_kwarg
 from typing_extensions import deprecated
 
 from oda_data import config
-from oda_data.get_data import common
+from oda_data.clean_data.common import clean_raw_df
 from oda_data.logger import logger
 
 
@@ -13,7 +13,7 @@ def save_clean_crs():
     df = bulk_download_crs()
 
     # Clean the DataFrame
-    df = common.clean_raw_df(df)
+    df = clean_raw_df(df)
 
     df.to_parquet(config.OdaPATHS.raw_data / "fullCRS.parquet")
     logger.info("Full CRS data downloaded successfully.")
