@@ -1,8 +1,8 @@
 from pandas.util._decorators import deprecate_kwarg
 
 from oda_data import config
+from oda_data.clean_data.common import clean_raw_df
 
-from oda_data.get_data import common
 from oda_data.logger import logger
 
 
@@ -13,7 +13,7 @@ def save_clean_multisystem() -> None:
     df = bulk_download_multisystem()
 
     # Clean the DataFrame
-    df = common.clean_raw_df(df)
+    df = clean_raw_df(df)
 
     # save the file
     df.to_parquet(config.OdaPATHS.raw_data / f"multisystem_raw.parquet")
