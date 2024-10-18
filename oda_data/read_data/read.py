@@ -34,7 +34,7 @@ def __read_table(
     if check_years:
         start_year = min(years)
         end_year = max(years)
-        file_name = f"{file_name.split('.')[0]}_{start_year}_{end_year}.feather"
+        file_name = f"{file_name.split('.')[0]}_{start_year}_{end_year}.parquet"
 
     filters = add_years_to_filter(filters, years)
 

@@ -8,7 +8,7 @@ this is a much faster approach than using the official OECD.Stat API.
 
 The downside of this approach is the need to store fairly large files. In total, if data is downloaded for a couple of
 decades, the storage necessary is around 400mb (each file is a max of 30mb).
-The files are stored as `.feather` files, which is a compressed binary format.
+The files are stored as `.parquet` files, which is a compressed binary format.
 This is a much more efficient format than `.csv` files, and is also much faster to read into memory.
 
 ## Usage
