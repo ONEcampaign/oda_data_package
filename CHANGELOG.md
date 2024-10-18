@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.4.1] 2024-10-11
+* Fixes a bug with how certain files are stored, to move them from feather to parquet.
+
 ## [1.4.0] 2024-10-11
 * This release introduces significant changes to how raw data files are managed. Instead of storing as feather files, the default is now parquet. This allows oda_data to leverage predicate pushdown and more efficiently load only the data it needs.
 * This release removes data download tools from oda_data in favour of using the tools via oda-reader. Our oda-reader package uses the new data-explorer API and bulk downloads to get the data, instead of relying on the old (and now inaccessible) bulk download service.
