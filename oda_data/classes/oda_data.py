@@ -313,13 +313,13 @@ class ODAData:
 
         elif self.prices == "current":
             self.indicators_data[indicator] = clean.dac_exchange(
-                df=self.indicators_data[indicator],
+                data=self.indicators_data[indicator],
                 target_currency=CURRENCIES[self.currency],
             ).assign(currency=self.currency, prices=self.prices)
 
         else:
             self.indicators_data[indicator] = clean.dac_deflate(
-                df=self.indicators_data[indicator],
+                data=self.indicators_data[indicator],
                 base_year=self.base_year,
                 target_currency=CURRENCIES[self.currency],
             ).assign(currency=self.currency, prices=self.prices)
