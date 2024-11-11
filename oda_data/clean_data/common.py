@@ -3,7 +3,7 @@ import pathlib
 from functools import partial
 
 import pandas as pd
-from pydeflate import deflate, exchange, set_pydeflate_path
+from pydeflate import set_pydeflate_path, oecd_dac_deflate, oecd_dac_exchange
 
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
@@ -179,29 +179,24 @@ def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 # Create a helper function to consistently exchange data
 dac_exchange = partial(
-    exchange,
+    oecd_dac_exchange,
     source_currency="USA",
-    rates_source="oecd_dac",
     id_column=OdaSchema.PROVIDER_CODE,
-    id_type="DAC",
+    use_source_codes=True,
     value_column="value",
-    target_column="value",
-    date_column="year",
+    target_value_column="value",
+    year_column="year",
 )
 
 # Create a helper function to consistently deflate data
 dac_deflate = partial(
-    deflate,
-    deflator_source="oecd_dac",
-    deflator_method="dac_deflator",
-    exchange_source="oecd_dac",
-    exchange_method="implied",
+    oecd_dac_deflate,
     source_currency="USA",
     id_column=OdaSchema.PROVIDER_CODE,
-    id_type="DAC",
-    source_column="value",
-    target_column="value",
-    date_column="year",
+    use_source_codes=True,
+    value_column="value",
+    target_value_column="value",
+    year_column="year",
 )
 
 
