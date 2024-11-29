@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.4.3] 2024-11-29
+* Fixes a json validation error for recipient groupings
+
 ## [1.4.2] 2024-11-26
 * Fixes donors and recipient groupings to fully align with recent schemas.
 
