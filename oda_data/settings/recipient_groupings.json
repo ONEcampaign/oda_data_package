@@ -225,7 +225,6 @@
     "975": "Other UN",
     "988": "IFAD",
     "989": "Other Multilateral",
-    "1031": "Caribbean, regional",
     "9998": "Developing countries, unspecified",
     "10001": "Africa, Total",
     "10002": "North of Sahara, Total",
@@ -273,7 +272,14 @@
     "10202": "Small island states, Total",
     "10203": "Fragile states, Total",
     "1027": "Eastern Africa, regional",
-    "1030": "Western Africa, regional"
+    "1028": "Middle Africa, regional",
+    "1029": "Southern Africa, regional",
+    "1030": "Western Africa, regional",
+    "1031": "Caribbean, regional",
+    "1032": "Central America, regional",
+    "1033": "Melanesia, regional",
+    "1034": "Micronesia, regional",
+    "1035": "Polynesia, regional"
   },
   "all_developing_countries_regions": {
     "30": "Cyprus",
@@ -456,9 +462,16 @@
     "876": "Wallis and Futuna",
     "880": "Samoa",
     "889": "Oceania, regional",
-    "1031": "Caribbean, regional",
     "1027": "Eastern Africa, regional",
-    "1030": "Western Africa, regional"
+    "1031": "Caribbean, regional",
+    "1028": "Middle Africa, regional",
+    "1029": "Southern Africa, regional",
+    "1030": "Western Africa, regional",
+    "1032": "Central America, regional",
+    "1033": "Melanesia, regional",
+    "1034": "Micronesia, regional",
+    "1035": "Polynesia, regional"
+
   },
   "african_countries": {
     "130": "Algeria",
