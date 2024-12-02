@@ -1,5 +1,10 @@
 # Changes to the oda_data package
 
+## [1.5.0] 2024-11-29
+* Updated requirements to pydeflate >=2.0
+* Updated indicators to remove climate indicators (given the methodological challenges inherent in OECD data). For access to climate data, please see the climate-finance package.
+
+
 ## [1.4.3] 2024-11-29
 * Fixes a json validation error for recipient groupings
 
