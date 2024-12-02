@@ -47,7 +47,9 @@ def __read_table(
 
 
 def read_crs(
-    years: int | list | range, filters: list[tuple] | None = None
+    years: int | list | range,
+    filters: list[tuple] | None = None,
+    columns: list[str] | None = None,
 ) -> pd.DataFrame:
     """Read the CRS data for the specified years."""
     # Check that list of years is valid
@@ -67,6 +69,7 @@ def read_crs(
             config.OdaPATHS.raw_data / "fullCRS.parquet",
             filters=filters,
             engine="pyarrow",
+            columns=columns,
         ).pipe(clean_raw_df)
 
         return df.pipe(set_default_types)

@@ -16,10 +16,11 @@ def schema_types(save: bool = False) -> dict:
     """
     category = "category" if save else "string[pyarrow]"
     numerical_cat = "category" if save else "int16[pyarrow]"
+    long_numerical_cat = "category" if save else "int32[pyarrow]"
 
     types = {
         OdaSchema.YEAR: numerical_cat,
-        OdaSchema.PROVIDER_CODE: category,
+        OdaSchema.PROVIDER_CODE: long_numerical_cat,
         OdaSchema.PROVIDER_NAME: category,
         OdaSchema.PROVIDER_TYPE: category,
         OdaSchema.PROVIDER_DETAILED: category,
@@ -40,8 +41,8 @@ def schema_types(save: bool = False) -> dict:
         OdaSchema.FLOW_TYPE: category,
         OdaSchema.FINANCE_TYPE: numerical_cat,
         OdaSchema.CHANNEL_NAME_DELIVERY: category,
-        OdaSchema.CHANNEL_CODE_DELIVERY: "int32[pyarrow]",
-        OdaSchema.CHANNEL_CODE: "int32[pyarrow]",
+        OdaSchema.CHANNEL_CODE_DELIVERY: long_numerical_cat,
+        OdaSchema.CHANNEL_CODE: long_numerical_cat,
         OdaSchema.CHANNEL_NAME: category,
         OdaSchema.ADAPTATION: numerical_cat,
         OdaSchema.MITIGATION: numerical_cat,
@@ -55,9 +56,9 @@ def schema_types(save: bool = False) -> dict:
         OdaSchema.NOT_CLIMATE: "float64[pyarrow]",
         OdaSchema.CLIMATE_UNSPECIFIED: "float64[pyarrow]",
         OdaSchema.CLIMATE_UNSPECIFIED_SHARE: "float64[pyarrow]",
-        OdaSchema.PURPOSE_CODE: "int32[pyarrow]",
+        OdaSchema.PURPOSE_CODE: long_numerical_cat,
         OdaSchema.PURPOSE_NAME: category,
-        OdaSchema.SECTOR_CODE: "int32[pyarrow]",
+        OdaSchema.SECTOR_CODE: long_numerical_cat,
         OdaSchema.SECTOR_NAME: category,
         OdaSchema.PROJECT_TITLE: "string[pyarrow]",
         OdaSchema.PROJECT_DESCRIPTION: "string[pyarrow]",
