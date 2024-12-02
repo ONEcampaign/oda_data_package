@@ -915,8 +915,12 @@
       "aid_to_or_thru": [
         "Core contributions to"
       ],
-      "flow_type": ["Disbursements"],
-      "amount_type": ["Current prices"]
+      "flow_type": [
+        "Disbursements"
+      ],
+      "amount_type": [
+        "Current prices"
+      ]
     },
     "value_column": "amount",
     "share_of": "total_bi_multi_flow_disbursement_gross"
@@ -928,8 +932,12 @@
       "aid_to_or_thru": [
         "Core contributions to"
       ],
-      "flow_type": ["Commitments"],
-      "amount_type": ["Current prices"]
+      "flow_type": [
+        "Commitments"
+      ],
+      "amount_type": [
+        "Current prices"
+      ]
     },
     "value_column": "amount",
     "share_of": "total_bi_multi_flow_disbursement_gross"
@@ -951,251 +959,5 @@
     "type": "one_research",
     "function": "total_bi_multi_flows",
     "share_of": "total_bi_multi_flow_disbursement_gross"
-  },
-  "crs_climate_allocable_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ]
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_significant_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": "1"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_principal_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": "2"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_not_targeted_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": "0"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_not_screened_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": "99"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_total_flow_gross": {
-    "source": "crs",
-    "type": "one",
-    "indicators": [
-      "crs_climate_mitigation_significant_flow_disbursement_gross",
-      "crs_climate_mitigation_principal_flow_disbursement_gross"
-    ],
-    "group_by": [
-      "category",
-      "aid_t",
-      "finance_t",
-      "flow_code",
-      "sector_code",
-      "gender",
-      "environment",
-      "nutrition",
-      "climate_mitigation",
-      "climate_adaptation",
-      "biodiversity",
-      "desertification"
-    ],
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_adaptation_significant_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_adaptation": "1"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_adaptation_principal_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_adaptation": "2"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_adaptation_not_targeted_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_adaptation": "0"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_adaptation_not_screened_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_adaptation": "99"
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_adaptation_total_flow_gross": {
-    "source": "crs",
-    "type": "one",
-    "indicators": [
-      "crs_climate_adaptation_significant_flow_disbursement_gross",
-      "crs_climate_adaptation_principal_flow_disbursement_gross"
-    ],
-    "group_by": [
-      "category",
-      "aid_t",
-      "finance_t",
-      "flow_code",
-      "sector_code",
-      "gender",
-      "environment",
-      "nutrition",
-      "climate_mitigation",
-      "climate_adaptation",
-      "biodiversity",
-      "desertification"
-    ],
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
-  },
-  "crs_climate_mitigation_adaptation_overlap_significant_flow_disbursement_gross": {
-    "source": "crs",
-    "type": "dac",
-    "filters": {
-      "category": 10,
-      "aid_t": [
-        "A02",
-        "B01",
-        "B03",
-        "B04",
-        "C01",
-        "D01",
-        "D02",
-        "E01"
-      ],
-      "climate_mitigation": ["1", "2"],
-      "climate_adaptation": ["1", "2"]
-    },
-    "value_column": "usd_disbursement",
-    "share_of": "crs_climate_allocable_flow_disbursement_gross"
   }
 }

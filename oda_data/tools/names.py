@@ -118,10 +118,13 @@ def agency_names() -> pd.DataFrame:
     """Return a dictionary with the agency codes and their names"""
 
     return (
-        read_crs(years=[2021])
-        .filter(
-            [OdaSchema.PROVIDER_CODE, OdaSchema.AGENCY_CODE, OdaSchema.AGENCY_NAME],
-            axis=1,
+        read_crs(
+            years=[2022, 2023],
+            columns=[
+                OdaSchema.PROVIDER_CODE,
+                OdaSchema.AGENCY_CODE,
+                OdaSchema.AGENCY_NAME,
+            ],
         )
         .drop_duplicates()
     )
@@ -133,7 +136,7 @@ def _return_agency_names(df, col, loc) -> tuple:
 
     series = (
         df.filter([OdaSchema.PROVIDER_CODE, col], axis=1)
-        .astype("Int16[pyarrow]")
+        .astype("Int32[pyarrow]")
         .merge(agency, how="left", on=[OdaSchema.PROVIDER_CODE, col])[
             OdaSchema.AGENCY_NAME
         ]
