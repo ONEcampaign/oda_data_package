@@ -300,13 +300,21 @@ class ODAData:
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
 
+        # make sure donor_code is int
+        if OdaSchema.PROVIDER_CODE in self.indicators_data[indicator].columns:
+            self.indicators_data[indicator][OdaSchema.PROVIDER_CODE] = (
+                self.indicators_data[indicator][OdaSchema.PROVIDER_CODE].astype(
+                    "int32[pyarrow]"
+                )
+            )
+
         if self.currency == "USD" and self.prices == "current":
             self.indicators_data[indicator] = self.indicators_data[indicator].assign(
                 currency=self.currency, prices=self.prices
             )
 
         # If indicator is a ratio, don't convert
-        if indicator in ["oda_gni_flow", "oda_gni_ge"]:
+        elif indicator in ["oda_gni_flow", "oda_gni_ge"]:
             self.indicators_data[indicator] = self.indicators_data[indicator].assign(
                 currency=self.currency, prices=self.prices
             )

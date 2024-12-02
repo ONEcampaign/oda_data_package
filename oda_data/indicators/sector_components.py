@@ -14,18 +14,6 @@ ODAData: callable = "ODAData"
 
 
 # -----------------------------------------------------------------------------
-#                               Channel codes
-# -----------------------------------------------------------------------------
-
-
-def read_channel_codes() -> dict:
-    """Get the mapping between CRS-like identifiers and channel codes from the
-    Multisystem database. Return them as a dictionary."""
-    with open(config.OdaPATHS.settings / "channel_codes.json") as f:
-        return json.load(f)
-
-
-# -----------------------------------------------------------------------------
 #                               Helper functions
 # -----------------------------------------------------------------------------
 
