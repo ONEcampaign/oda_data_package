@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oda_data"
-version = "1.4.3"
+version = "1.5.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 readme = "README.md"
 authors = ["Jorge Rivera <jorge.rivera@one.org>"]
@@ -15,7 +15,6 @@ python = "^3.10"
 pandas = "^2"
 bblocks = "^1"
 requests = "^2"
-pydeflate = "^1"
 lxml = "^5"
 pyarrow = ">=14, <17"
 thefuzz = "^0.22.1"
@@ -23,6 +22,7 @@ oda-reader = "^1"
 beautifulsoup4 = "^4.12.3"
 selenium = "^4.20.0"
 webdriver-manager = "^4.0.1"
+pydeflate = "^2.0.1"
 
 
 [tool.poetry.dev-dependencies]
