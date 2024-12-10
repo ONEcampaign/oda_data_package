@@ -549,6 +549,36 @@
     },
     "share_of": "total_oda_ge"
   },
+  "un_core_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2101,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "un_core_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2101,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "un_core_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "un_core_ge",
+      "secondary": "un_core_flow",
+      "new": "un_core_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
   "one_non_core_oda_flow": {
     "source": "dac1",
     "type": "one",
