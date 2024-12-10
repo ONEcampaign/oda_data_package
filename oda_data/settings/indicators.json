@@ -439,6 +439,36 @@
     },
     "share_of": "total_oda_ge"
   },
+  "development_awareness_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1810,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "development_awareness_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1810,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "development_awareness_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "development_awareness_ge",
+      "secondary": "development_awareness_flow",
+      "new": "development_awareness_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
   "debt_relief_flow": {
     "source": "dac1",
     "type": "dac",
