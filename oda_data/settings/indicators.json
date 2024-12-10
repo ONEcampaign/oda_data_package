@@ -409,6 +409,36 @@
     },
     "share_of": "total_oda_ge"
   },
+  "admin_costs_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1700,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "admin_costs_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 1700,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "admin_costs_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "admin_costs_ge",
+      "secondary": "admin_costs_flow",
+      "new": "admin_costs_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
   "debt_relief_flow": {
     "source": "dac1",
     "type": "dac",
