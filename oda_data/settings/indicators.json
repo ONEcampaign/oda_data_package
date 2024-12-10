@@ -609,6 +609,37 @@
     },
     "share_of": "total_oda_ge"
   },
+  "wb_ibrd_ifc_miga_core_flow": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2104,
+      "flows_code": 1140,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_flow_net"
+  },
+  "wb_ibrd_ifc_miga_core_ge": {
+    "source": "dac1",
+    "type": "dac",
+    "filters": {
+      "aidtype_code": 2104,
+      "flows_code": 1160,
+      "amounttype_code": "A"
+    },
+    "share_of": "total_oda_ge"
+  },
+  "wb_ibrd_ifc_miga_core_ge_linked": {
+    "source": "dac1",
+    "type": "one_linked",
+    "components": {
+      "main": "wb_ibrd_ifc_miga_core_ge",
+      "secondary": "wb_ibrd_ifc_miga_core_flow",
+      "new": "wb_ibrd_ifc_miga_core_ge_linked"
+    },
+    "share_of": "total_oda_ge"
+  },
+
   "one_non_core_oda_flow": {
     "source": "dac1",
     "type": "one",
