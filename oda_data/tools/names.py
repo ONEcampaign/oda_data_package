@@ -117,17 +117,14 @@ def _return_recipient_names(df, col, loc) -> tuple:
 def agency_names() -> pd.DataFrame:
     """Return a dictionary with the agency codes and their names"""
 
-    return (
-        read_crs(
-            years=[2022, 2023],
-            columns=[
-                OdaSchema.PROVIDER_CODE,
-                OdaSchema.AGENCY_CODE,
-                OdaSchema.AGENCY_NAME,
-            ],
-        )
-        .drop_duplicates()
-    )
+    return read_crs(
+        years=[2022, 2023],
+        columns=[
+            OdaSchema.PROVIDER_CODE,
+            OdaSchema.AGENCY_CODE,
+            OdaSchema.AGENCY_NAME,
+        ],
+    ).drop_duplicates()
 
 
 def _return_agency_names(df, col, loc) -> tuple:
