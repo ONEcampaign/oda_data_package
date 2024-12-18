@@ -1,0 +1,550 @@
+{
+  "1": {
+    "aidtype_name": "Gross National Income (GNI)",
+    "flow_type": 40
+  },
+  "3": {
+    "aidtype_name": "Flows as per cent of GNI, net disbursements",
+    "flow_type": 40
+  },
+  "4": {
+    "aidtype_name": "Population",
+    "flow_type": 40
+  },
+  "5": {
+    "aidtype_name": "Official and private flows",
+    "flow_type": 50
+  },
+  "200": {
+    "aidtype_name": "Other Official Flows (OOF)",
+    "flow_type": 21
+  },
+  "207": {
+    "aidtype_name": "Total participation in peacebuilding operations (incl. non-ODA)",
+    "flow_type": 50
+  },
+  "210": {
+    "aidtype_name": "Other official bilateral flows",
+    "flow_type": 21
+  },
+  "295": {
+    "aidtype_name": "Other bilateral securities and claims",
+    "flow_type": 21
+  },
+  "298": {
+    "aidtype_name": "Other claims and grants (includes developmental OOF loans)",
+    "flow_type": 21
+  },
+  "300": {
+    "aidtype_name": "Debt rescheduling",
+    "flow_type": 21
+  },
+  "301": {
+    "aidtype_name": "Non-concessional rescheduling",
+    "flow_type": 21
+  },
+  "303": {
+    "aidtype_name": "OOF component of debt service reduction",
+    "flow_type": 21
+  },
+  "304": {
+    "aidtype_name": "OOF claims (capitalised interest)",
+    "flow_type": 21
+  },
+  "305": {
+    "aidtype_name": "Claims of officially supported export credits",
+    "flow_type": 22
+  },
+  "307": {
+    "aidtype_name": "Offsetting entry for PSI reported using the institutional approach",
+    "flow_type": 60
+  },
+  "325": {
+    "aidtype_name": "Transactions with multilateral agencies at market terms",
+    "flow_type": 21
+  },
+  "326": {
+    "aidtype_name": "Purchase of securities from issuing agencies",
+    "flow_type": 21
+  },
+  "327": {
+    "aidtype_name": "Other transactions",
+    "flow_type": 21
+  },
+  "340": {
+    "aidtype_name": "Direct investment",
+    "flow_type": 36
+  },
+  "345": {
+    "aidtype_name": "Direct investment, of which: New capital outflows",
+    "flow_type": 36
+  },
+  "359": {
+    "aidtype_name": "Multilateral private flows",
+    "flow_type": 50
+  },
+  "388": {
+    "aidtype_name": "Bonds (non-banks)",
+    "flow_type": 37
+  },
+  "415": {
+    "aidtype_name": "Private grants, net",
+    "flow_type": 37
+  },
+  "420": {
+    "aidtype_name": "Support received from official sector",
+    "flow_type": 50
+  },
+  "425": {
+    "aidtype_name": "Gross outflow from private sources",
+    "flow_type": 50
+  },
+  "751": {
+    "aidtype_name": "Bonds (banks)",
+    "flow_type": 37
+  },
+  "805": {
+    "aidtype_name": "Memo: - Interest received on OOF (Multilateral)",
+    "flow_type": 21
+  },
+  "1010": {
+    "aidtype_name": "Official Development Assistance (ODA)",
+    "flow_type": 10
+  },
+  "1015": {
+    "aidtype_name": "Bilateral ODA",
+    "flow_type": 10
+  },
+  "1020": {
+    "aidtype_name": "Offsetting entry for debt relief (OOF claims, principal)",
+    "flow_type": 10
+  },
+  "1100": {
+    "aidtype_name": "Budget support",
+    "flow_type": 10
+  },
+  "1110": {
+    "aidtype_name": "General budget support",
+    "flow_type": 10
+  },
+  "1120": {
+    "aidtype_name": "Sector budget support",
+    "flow_type": 10
+  },
+  "1200": {
+    "aidtype_name": "Bilateral core contributions & pooled programmes & funds",
+    "flow_type": 10
+  },
+  "1210": {
+    "aidtype_name": "Core support to NGOs, other private bodies, PPPs & research institutes",
+    "flow_type": 10
+  },
+  "1211": {
+    "aidtype_name": "Core support to donor country-based NGOs & civil society",
+    "flow_type": 10
+  },
+  "1212": {
+    "aidtype_name": "Core support to international NGOs (including developing country-based NGOs)",
+    "flow_type": 10
+  },
+  "1213": {
+    "aidtype_name": "Core support to Public-Private Partnerships (including networks)",
+    "flow_type": 10
+  },
+  "1214": {
+    "aidtype_name": "Other core contributions & pooled programmes & funds",
+    "flow_type": 10
+  },
+  "1220": {
+    "aidtype_name": "Specific-purpose programmes & funds managed by international organisations",
+    "flow_type": 10
+  },
+  "1230": {
+    "aidtype_name": "Basket funds/pooled funding",
+    "flow_type": 10
+  },
+  "1300": {
+    "aidtype_name": "Project-type interventions",
+    "flow_type": 10
+  },
+  "1301": {
+    "aidtype_name": "Memo: Cost of donor experts included in projects (optional reporting)",
+    "flow_type": 10
+  },
+  "1310": {
+    "aidtype_name": "Investment projects",
+    "flow_type": 10
+  },
+  "1320": {
+    "aidtype_name": "Other projects",
+    "flow_type": 10
+  },
+  "1330": {
+    "aidtype_name": "Memo: Projects qualifying as programme-based approaches",
+    "flow_type": 10
+  },
+  "1400": {
+    "aidtype_name": "Experts and other technical assistance",
+    "flow_type": 10
+  },
+  "1410": {
+    "aidtype_name": "Donor personnel",
+    "flow_type": 10
+  },
+  "1420": {
+    "aidtype_name": "Other technical assistance",
+    "flow_type": 10
+  },
+  "1500": {
+    "aidtype_name": "Scholarships and student costs in donor countries",
+    "flow_type": 10
+  },
+  "1510": {
+    "aidtype_name": "Scholarships/training in donor country",
+    "flow_type": 10
+  },
+  "1520": {
+    "aidtype_name": "Imputed student costs",
+    "flow_type": 10
+  },
+  "1600": {
+    "aidtype_name": "Debt relief",
+    "flow_type": 10
+  },
+  "1610": {
+    "aidtype_name": "Debt forgiveness and debt rescheduling",
+    "flow_type": 10
+  },
+  "1611": {
+    "aidtype_name": "Debt forgiveness and rescheduling, ODA claims (for loans, only capitalised interest)",
+    "flow_type": 10
+  },
+  "1614": {
+    "aidtype_name": "Memo: Grants for debt service reduction",
+    "flow_type": 10
+  },
+  "1615": {
+    "aidtype_name": "Debt forgiveness and rescheduling, OOF claims",
+    "flow_type": 10
+  },
+  "1616": {
+    "aidtype_name": "Debt forgiveness and rescheduling, claims of officially supported export credits",
+    "flow_type": 10
+  },
+  "1617": {
+    "aidtype_name": "Debt forgiveness and rescheduling, private claims",
+    "flow_type": 10
+  },
+  "1620": {
+    "aidtype_name": "Other action on debt",
+    "flow_type": 10
+  },
+  "1621": {
+    "aidtype_name": "Service payments to third parties",
+    "flow_type": 10
+  },
+  "1622": {
+    "aidtype_name": "Debt conversion",
+    "flow_type": 10
+  },
+  "1624": {
+    "aidtype_name": "Other action on debt, other",
+    "flow_type": 10
+  },
+  "1630": {
+    "aidtype_name": "Offsetting entry for debt forgiveness (principal ODA claim)",
+    "flow_type": 10
+  },
+  "1640": {
+    "aidtype_name": "Memo: Offsetting entry for forgiven interest (interest ODA claim)",
+    "flow_type": 10
+  },
+  "1700": {
+    "aidtype_name": "Administrative costs not included elsewhere",
+    "flow_type": 10
+  },
+  "1800": {
+    "aidtype_name": "Other in-donor expenditures",
+    "flow_type": 10
+  },
+  "1810": {
+    "aidtype_name": "Development awareness",
+    "flow_type": 10
+  },
+  "1820": {
+    "aidtype_name": "Refugees in donor countries",
+    "flow_type": 10
+  },
+  "1826": {
+    "aidtype_name": "Refugees in donor countries, of which: Support to refugees and asylum seekers in other provider countries",
+    "flow_type": 10
+  },
+  "1900": {
+    "aidtype_name": "Recoveries on bilateral ODA grants / negative commitments",
+    "flow_type": 10
+  },
+  "1901": {
+    "aidtype_name": "Memo: Programme-based approaches (PBAs)",
+    "flow_type": 10
+  },
+  "1902": {
+    "aidtype_name": "Memo: Free-standing technical co-operation (FTC)",
+    "flow_type": 10
+  },
+  "1903": {
+    "aidtype_name": "Memo: ODA channelled through private entities",
+    "flow_type": 10
+  },
+  "1904": {
+    "aidtype_name": "Memo: ODA channelled through multilateral organisations",
+    "flow_type": 10
+  },
+  "1905": {
+    "aidtype_name": "Memo: Post-conflict peacebuilding operations",
+    "flow_type": 10
+  },
+  "1906": {
+    "aidtype_name": "Memo: Relief food aid",
+    "flow_type": 10
+  },
+  "1999": {
+    "aidtype_name": "Other loans repayments",
+    "flow_type": 10
+  },
+  "2000": {
+    "aidtype_name": "Multilateral ODA (capital subscriptions are included with grants)",
+    "flow_type": 10
+  },
+  "2100": {
+    "aidtype_name": "Multilateral contributions to:",
+    "flow_type": 10
+  },
+  "2101": {
+    "aidtype_name": "UN agencies",
+    "flow_type": 10
+  },
+  "2102": {
+    "aidtype_name": "EU institutions",
+    "flow_type": 10
+  },
+  "2103": {
+    "aidtype_name": "IDA",
+    "flow_type": 10
+  },
+  "2104": {
+    "aidtype_name": "Other World Bank (IBRD, IFC, MIGA)",
+    "flow_type": 10
+  },
+  "2105": {
+    "aidtype_name": "Regional development banks",
+    "flow_type": 10
+  },
+  "2106": {
+    "aidtype_name": "Global Environment Facility (96%)",
+    "flow_type": 10
+  },
+  "2107": {
+    "aidtype_name": "Montreal Protocol",
+    "flow_type": 10
+  },
+  "2108": {
+    "aidtype_name": "Other agencies",
+    "flow_type": 10
+  },
+  "2110": {
+    "aidtype_name": "Recoveries on multilateral ODA grants and capital subscriptions / negative commitments",
+    "flow_type": 10
+  },
+  "2210": {
+    "aidtype_name": "OOF Budget support",
+    "flow_type": 21
+  },
+  "2220": {
+    "aidtype_name": "Investment-related transactions",
+    "flow_type": 21
+  },
+  "2221": {
+    "aidtype_name": "Through debt",
+    "flow_type": 21
+  },
+  "2222": {
+    "aidtype_name": "Through equity investments",
+    "flow_type": 21
+  },
+  "2223": {
+    "aidtype_name": "Through equity investments, of which shares in CIVs",
+    "flow_type": 21
+  },
+  "2224": {
+    "aidtype_name": "Through mezzanine finance",
+    "flow_type": 21
+  },
+  "2225": {
+    "aidtype_name": "Memo: Investment-related transactions, of which to the private sector",
+    "flow_type": 21
+  },
+  "2231": {
+    "aidtype_name": "Memo: 1. Development finance in blended finance packages",
+    "flow_type": 50
+  },
+  "2232": {
+    "aidtype_name": "Memo: 1. Development finance in blended finance packages, of which through funds and facilities",
+    "flow_type": 50
+  },
+  "2233": {
+    "aidtype_name": "Memo: 2. Amounts mobilised from the private sector",
+    "flow_type": 50
+  },
+  "2234": {
+    "aidtype_name": "Memo: 2. Amounts mobilised from the private sector, of which through guarantees",
+    "flow_type": 50
+  },
+  "2901": {
+    "aidtype_name": "Memo: HIPC Initiative",
+    "flow_type": 10
+  },
+  "2902": {
+    "aidtype_name": "Memo: IDA Debt Reduction Facility",
+    "flow_type": 10
+  },
+  "2999": {
+    "aidtype_name": "Other reimbursements on previously OOF rescheduled loans",
+    "flow_type": 21
+  },
+  "3000": {
+    "aidtype_name": "Officially supported export credits",
+    "flow_type": 22
+  },
+  "3100": {
+    "aidtype_name": "Official direct export credits",
+    "flow_type": 22
+  },
+  "3102": {
+    "aidtype_name": "Offsetting entry for debt relief (export credit claims, principal)",
+    "flow_type": 22
+  },
+  "3200": {
+    "aidtype_name": "Officially guaranteed or insured export credits",
+    "flow_type": 22
+  },
+  "3300": {
+    "aidtype_name": "Private flows at market terms",
+    "flow_type": 50
+  },
+  "3320": {
+    "aidtype_name": "Bilateral private flows",
+    "flow_type": 50
+  },
+  "3530": {
+    "aidtype_name": "Other securities and claims",
+    "flow_type": 50
+  },
+  "3840": {
+    "aidtype_name": "Total banks (long-term)",
+    "flow_type": 50
+  },
+  "3860": {
+    "aidtype_name": "Non-banks",
+    "flow_type": 50
+  },
+  "3890": {
+    "aidtype_name": "Other securities (incl. equities)",
+    "flow_type": 50
+  },
+  "7530": {
+    "aidtype_name": "Other bank",
+    "flow_type": 50
+  },
+  "7860": {
+    "aidtype_name": "Memo: - Offsetting entry for forgiven interest (OOF claims, interest)",
+    "flow_type": 21
+  },
+  "7950": {
+    "aidtype_name": "Memo: - Interest received on OOF, total (bilat.+multilat.)",
+    "flow_type": 21
+  },
+  "8000": {
+    "aidtype_name": "Memo: - Interest received on OOF (Bilateral)",
+    "flow_type": 21
+  },
+  "11002": {
+    "aidtype_name": "ODA as percent of GNI, grant equivalent",
+    "flow_type": 10
+  },
+  "11010": {
+    "aidtype_name": "Official Development Assistance (ODA), grant equivalent",
+    "flow_type": 10
+  },
+  "11015": {
+    "aidtype_name": "Bilateral ODA, grant equivalent",
+    "flow_type": 10
+  },
+  "11016": {
+    "aidtype_name": "Bilateral grants, grant equivalent",
+    "flow_type": 10
+  },
+  "11017": {
+    "aidtype_name": "Bilateral loans, grant equivalent",
+    "flow_type": 10
+  },
+  "11018": {
+    "aidtype_name": "Other bilateral ODA, net flows",
+    "flow_type": 10
+  },
+  "11019": {
+    "aidtype_name": "Bilateral loans to LDCs & OLICs, grant equivalent",
+    "flow_type": 10
+  },
+  "11020": {
+    "aidtype_name": "Bilateral loans to LMICs, grant equivalent",
+    "flow_type": 10
+  },
+  "11021": {
+    "aidtype_name": "Bilateral loans to UMICs, grant equivalent",
+    "flow_type": 10
+  },
+  "11022": {
+    "aidtype_name": "Bilateral loans for multi-country agreements, grant equivalent",
+    "flow_type": 10
+  },
+  "11023": {
+    "aidtype_name": "Private sector instruments - institutional approach",
+    "flow_type": 60
+  },
+  "11024": {
+    "aidtype_name": "Private sector instruments - instrument approach",
+    "flow_type": 60
+  },
+  "11026": {
+    "aidtype_name": "Debt relief, grant equivalent",
+    "flow_type": 10
+  },
+  "11030": {
+    "aidtype_name": "Private sector instruments",
+    "flow_type": 60
+  },
+  "11040": {
+    "aidtype_name": "Private sector instruments (PSI), grant equivalent",
+    "flow_type": 60
+  },
+  "11041": {
+    "aidtype_name": "PSI institutional approach, capital increases of ODA-eligible PSI vehicles, grant equivalents",
+    "flow_type": 60
+  },
+  "11042": {
+    "aidtype_name": "PSI instrument approach, individual PSI activities, grant equivalents",
+    "flow_type": 60
+  },
+  "12000": {
+    "aidtype_name": "Multilateral ODA, grant equivalent",
+    "flow_type": 10
+  },
+  "12100": {
+    "aidtype_name": "Multilateral grants and capital subscriptions, Grant equivalent",
+    "flow_type": 10
+  },
+  "12110": {
+    "aidtype_name": "Multilateral loans, grant equivalent",
+    "flow_type": 10
+  }
+}
