@@ -13,7 +13,7 @@
   },
   "5": {
     "aidtype_name": "Official and private flows",
-    "flowtype_code": "/"
+    "flowtype_code": 5
   },
   "200": {
     "aidtype_name": "Other Official Flows (OOF)",
@@ -81,7 +81,7 @@
   },
   "359": {
     "aidtype_name": "Multilateral private flows",
-    "flowtype_code": 30
+    "flowtype_code": 37
   },
   "388": {
     "aidtype_name": "Bonds (non-banks)",
@@ -118,6 +118,10 @@
   "1020": {
     "aidtype_name": "Offsetting entry for debt relief (OOF claims, principal)",
     "flowtype_code": 10
+  },
+  "1030": {
+    "aidtype_name": "Offsetting entry for debt relief (private claims, principal)",
+    "flowtype_code": 37
   },
   "1100": {
     "aidtype_name": "Budget support",
@@ -245,6 +249,10 @@
   },
   "1622": {
     "aidtype_name": "Debt conversion",
+    "flowtype_code": 10
+  },
+  "1623": {
+    "aidtype_name": "Debt buybacks",
     "flowtype_code": 10
   },
   "1624": {
@@ -385,19 +393,19 @@
   },
   "2231": {
     "aidtype_name": "Memo: 1. Development finance in blended finance packages",
-    "flowtype_code": "/"
+    "flowtype_code": 1021
   },
   "2232": {
     "aidtype_name": "Memo: 1. Development finance in blended finance packages, of which through funds and facilities",
-    "flowtype_code": "/"
+    "flowtype_code": 1021
   },
   "2233": {
     "aidtype_name": "Memo: 2. Amounts mobilised from the private sector",
-    "flowtype_code": "/"
+    "flowtype_code": 1021
   },
   "2234": {
     "aidtype_name": "Memo: 2. Amounts mobilised from the private sector, of which through guarantees",
-    "flowtype_code": "/"
+    "flowtype_code": 1021
   },
   "2901": {
     "aidtype_name": "Memo: HIPC Initiative",
@@ -429,11 +437,11 @@
   },
   "3300": {
     "aidtype_name": "Private flows at market terms",
-    "flowtype_code": 30
+    "flowtype_code": 37
   },
   "3320": {
     "aidtype_name": "Bilateral private flows",
-    "flowtype_code": 30
+    "flowtype_code": 37
   },
   "3530": {
     "aidtype_name": "Other securities and claims",
