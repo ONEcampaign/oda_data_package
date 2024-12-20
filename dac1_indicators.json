@@ -1,0 +1,1922 @@
+{
+  "DAC": {
+    "DAC1.40.1": {
+      "code": "DAC1.40.1",
+      "name": "Gross National Income (GNI)",
+      "description": "DAC1 data for Gross National Income (GNI) [Non flow]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.40.3": {
+      "code": "DAC1.40.3",
+      "name": "Flows as per cent of GNI, net disbursements",
+      "description": "DAC1 data for Flows as per cent of GNI, net disbursements [Non flow]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.40.4": {
+      "code": "DAC1.40.4",
+      "name": "Population",
+      "description": "DAC1 data for Population [Non flow]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 4
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.5": {
+      "code": "DAC1.50.5",
+      "name": "Official and private flows",
+      "description": "DAC1 data for Official and private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 5
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.200": {
+      "code": "DAC1.21.200",
+      "name": "Other Official Flows (OOF)",
+      "description": "DAC1 data for Other Official Flows (OOF) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 200
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.207": {
+      "code": "DAC1.50.207",
+      "name": "Total participation in peacebuilding operations (incl. non-ODA)",
+      "description": "DAC1 data for Total participation in peacebuilding operations (incl. non-ODA) [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 207
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.210": {
+      "code": "DAC1.21.210",
+      "name": "Other official bilateral flows",
+      "description": "DAC1 data for Other official bilateral flows [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 210
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.295": {
+      "code": "DAC1.21.295",
+      "name": "Other bilateral securities and claims",
+      "description": "DAC1 data for Other bilateral securities and claims [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 295
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.298": {
+      "code": "DAC1.21.298",
+      "name": "Other claims and grants (includes developmental OOF loans)",
+      "description": "DAC1 data for Other claims and grants (includes developmental OOF loans) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 298
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.300": {
+      "code": "DAC1.21.300",
+      "name": "Debt rescheduling",
+      "description": "DAC1 data for Debt rescheduling [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 300
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.301": {
+      "code": "DAC1.21.301",
+      "name": "Non-concessional rescheduling",
+      "description": "DAC1 data for Non-concessional rescheduling [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 301
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.303": {
+      "code": "DAC1.21.303",
+      "name": "OOF component of debt service reduction",
+      "description": "DAC1 data for OOF component of debt service reduction [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 303
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.304": {
+      "code": "DAC1.21.304",
+      "name": "OOF claims (capitalised interest)",
+      "description": "DAC1 data for OOF claims (capitalised interest) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 304
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.22.305": {
+      "code": "DAC1.22.305",
+      "name": "Claims of officially supported export credits",
+      "description": "DAC1 data for Claims of officially supported export credits [Officially supported export credits]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 305
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.307": {
+      "code": "DAC1.60.307",
+      "name": "Offsetting entry for PSI reported using the institutional approach",
+      "description": "DAC1 data for Offsetting entry for PSI reported using the institutional approach [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 307
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.325": {
+      "code": "DAC1.21.325",
+      "name": "Transactions with multilateral agencies at market terms",
+      "description": "DAC1 data for Transactions with multilateral agencies at market terms [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 325
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.326": {
+      "code": "DAC1.21.326",
+      "name": "Purchase of securities from issuing agencies",
+      "description": "DAC1 data for Purchase of securities from issuing agencies [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 326
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.327": {
+      "code": "DAC1.21.327",
+      "name": "Other transactions",
+      "description": "DAC1 data for Other transactions [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 327
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.36.340": {
+      "code": "DAC1.36.340",
+      "name": "Direct investment",
+      "description": "DAC1 data for Direct investment [Private foreign direct investment]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 340
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.36.345": {
+      "code": "DAC1.36.345",
+      "name": "Direct investment, of which: New capital outflows",
+      "description": "DAC1 data for Direct investment, of which: New capital outflows [Private foreign direct investment]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 345
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.359": {
+      "code": "DAC1.50.359",
+      "name": "Multilateral private flows",
+      "description": "DAC1 data for Multilateral private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 359
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.37.388": {
+      "code": "DAC1.37.388",
+      "name": "Bonds (non-banks)",
+      "description": "DAC1 data for Bonds (non-banks) [Other private market]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 388
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.37.415": {
+      "code": "DAC1.37.415",
+      "name": "Private grants, net",
+      "description": "DAC1 data for Private grants, net [Other private market]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 415
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.420": {
+      "code": "DAC1.50.420",
+      "name": "Support received from official sector",
+      "description": "DAC1 data for Support received from official sector [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 420
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.425": {
+      "code": "DAC1.50.425",
+      "name": "Gross outflow from private sources",
+      "description": "DAC1 data for Gross outflow from private sources [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 425
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.37.751": {
+      "code": "DAC1.37.751",
+      "name": "Bonds (banks)",
+      "description": "DAC1 data for Bonds (banks) [Other private market]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 751
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.805": {
+      "code": "DAC1.21.805",
+      "name": "Memo: - Interest received on OOF (Multilateral)",
+      "description": "DAC1 data for Memo: - Interest received on OOF (Multilateral) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 805
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1010": {
+      "code": "DAC1.10.1010",
+      "name": "Official Development Assistance (ODA)",
+      "description": "DAC1 data for Official Development Assistance (ODA) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1010
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1015": {
+      "code": "DAC1.10.1015",
+      "name": "Bilateral ODA",
+      "description": "DAC1 data for Bilateral ODA [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1015
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1020": {
+      "code": "DAC1.10.1020",
+      "name": "Offsetting entry for debt relief (OOF claims, principal)",
+      "description": "DAC1 data for Offsetting entry for debt relief (OOF claims, principal) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1020
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1100": {
+      "code": "DAC1.10.1100",
+      "name": "Budget support",
+      "description": "DAC1 data for Budget support [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1100
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1110": {
+      "code": "DAC1.10.1110",
+      "name": "General budget support",
+      "description": "DAC1 data for General budget support [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1110
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1120": {
+      "code": "DAC1.10.1120",
+      "name": "Sector budget support",
+      "description": "DAC1 data for Sector budget support [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1120
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1200": {
+      "code": "DAC1.10.1200",
+      "name": "Bilateral core contributions & pooled programmes & funds",
+      "description": "DAC1 data for Bilateral core contributions & pooled programmes & funds [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1200
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1210": {
+      "code": "DAC1.10.1210",
+      "name": "Core support to NGOs, other private bodies, PPPs & research institutes",
+      "description": "DAC1 data for Core support to NGOs, other private bodies, PPPs & research institutes [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1210
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1211": {
+      "code": "DAC1.10.1211",
+      "name": "Core support to donor country-based NGOs & civil society",
+      "description": "DAC1 data for Core support to donor country-based NGOs & civil society [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1211
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1212": {
+      "code": "DAC1.10.1212",
+      "name": "Core support to international NGOs (including developing country-based NGOs)",
+      "description": "DAC1 data for Core support to international NGOs (including developing country-based NGOs) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1212
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1213": {
+      "code": "DAC1.10.1213",
+      "name": "Core support to Public-Private Partnerships (including networks)",
+      "description": "DAC1 data for Core support to Public-Private Partnerships (including networks) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1213
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1214": {
+      "code": "DAC1.10.1214",
+      "name": "Other core contributions & pooled programmes & funds",
+      "description": "DAC1 data for Other core contributions & pooled programmes & funds [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1214
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1220": {
+      "code": "DAC1.10.1220",
+      "name": "Specific-purpose programmes & funds managed by international organisations",
+      "description": "DAC1 data for Specific-purpose programmes & funds managed by international organisations [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1220
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1230": {
+      "code": "DAC1.10.1230",
+      "name": "Basket funds/pooled funding",
+      "description": "DAC1 data for Basket funds/pooled funding [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1230
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1300": {
+      "code": "DAC1.10.1300",
+      "name": "Project-type interventions",
+      "description": "DAC1 data for Project-type interventions [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1300
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1301": {
+      "code": "DAC1.10.1301",
+      "name": "Memo: Cost of donor experts included in projects (optional reporting)",
+      "description": "DAC1 data for Memo: Cost of donor experts included in projects (optional reporting) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1301
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1310": {
+      "code": "DAC1.10.1310",
+      "name": "Investment projects",
+      "description": "DAC1 data for Investment projects [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1310
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1320": {
+      "code": "DAC1.10.1320",
+      "name": "Other projects",
+      "description": "DAC1 data for Other projects [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1320
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1330": {
+      "code": "DAC1.10.1330",
+      "name": "Memo: Projects qualifying as programme-based approaches",
+      "description": "DAC1 data for Memo: Projects qualifying as programme-based approaches [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1330
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1400": {
+      "code": "DAC1.10.1400",
+      "name": "Experts and other technical assistance",
+      "description": "DAC1 data for Experts and other technical assistance [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1400
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1410": {
+      "code": "DAC1.10.1410",
+      "name": "Donor personnel",
+      "description": "DAC1 data for Donor personnel [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1410
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1420": {
+      "code": "DAC1.10.1420",
+      "name": "Other technical assistance",
+      "description": "DAC1 data for Other technical assistance [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1420
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1500": {
+      "code": "DAC1.10.1500",
+      "name": "Scholarships and student costs in donor countries",
+      "description": "DAC1 data for Scholarships and student costs in donor countries [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1500
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1510": {
+      "code": "DAC1.10.1510",
+      "name": "Scholarships/training in donor country",
+      "description": "DAC1 data for Scholarships/training in donor country [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1510
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1520": {
+      "code": "DAC1.10.1520",
+      "name": "Imputed student costs",
+      "description": "DAC1 data for Imputed student costs [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1520
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1600": {
+      "code": "DAC1.10.1600",
+      "name": "Debt relief",
+      "description": "DAC1 data for Debt relief [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1600
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1610": {
+      "code": "DAC1.10.1610",
+      "name": "Debt forgiveness and debt rescheduling",
+      "description": "DAC1 data for Debt forgiveness and debt rescheduling [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1610
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1611": {
+      "code": "DAC1.10.1611",
+      "name": "Debt forgiveness and rescheduling, ODA claims (for loans, only capitalised interest)",
+      "description": "DAC1 data for Debt forgiveness and rescheduling, ODA claims (for loans, only capitalised interest) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1611
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1614": {
+      "code": "DAC1.10.1614",
+      "name": "Memo: Grants for debt service reduction",
+      "description": "DAC1 data for Memo: Grants for debt service reduction [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1614
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1615": {
+      "code": "DAC1.10.1615",
+      "name": "Debt forgiveness and rescheduling, OOF claims",
+      "description": "DAC1 data for Debt forgiveness and rescheduling, OOF claims [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1615
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1616": {
+      "code": "DAC1.10.1616",
+      "name": "Debt forgiveness and rescheduling, claims of officially supported export credits",
+      "description": "DAC1 data for Debt forgiveness and rescheduling, claims of officially supported export credits [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1616
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1617": {
+      "code": "DAC1.10.1617",
+      "name": "Debt forgiveness and rescheduling, private claims",
+      "description": "DAC1 data for Debt forgiveness and rescheduling, private claims [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1617
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1620": {
+      "code": "DAC1.10.1620",
+      "name": "Other action on debt",
+      "description": "DAC1 data for Other action on debt [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1620
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1621": {
+      "code": "DAC1.10.1621",
+      "name": "Service payments to third parties",
+      "description": "DAC1 data for Service payments to third parties [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1621
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1622": {
+      "code": "DAC1.10.1622",
+      "name": "Debt conversion",
+      "description": "DAC1 data for Debt conversion [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1622
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1624": {
+      "code": "DAC1.10.1624",
+      "name": "Other action on debt, other",
+      "description": "DAC1 data for Other action on debt, other [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1624
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1630": {
+      "code": "DAC1.10.1630",
+      "name": "Offsetting entry for debt forgiveness (principal ODA claim)",
+      "description": "DAC1 data for Offsetting entry for debt forgiveness (principal ODA claim) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1630
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1640": {
+      "code": "DAC1.10.1640",
+      "name": "Memo: Offsetting entry for forgiven interest (interest ODA claim)",
+      "description": "DAC1 data for Memo: Offsetting entry for forgiven interest (interest ODA claim) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1640
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1700": {
+      "code": "DAC1.10.1700",
+      "name": "Administrative costs not included elsewhere",
+      "description": "DAC1 data for Administrative costs not included elsewhere [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1700
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1800": {
+      "code": "DAC1.10.1800",
+      "name": "Other in-donor expenditures",
+      "description": "DAC1 data for Other in-donor expenditures [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1800
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1810": {
+      "code": "DAC1.10.1810",
+      "name": "Development awareness",
+      "description": "DAC1 data for Development awareness [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1810
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1820": {
+      "code": "DAC1.10.1820",
+      "name": "Refugees in donor countries",
+      "description": "DAC1 data for Refugees in donor countries [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1820
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1826": {
+      "code": "DAC1.10.1826",
+      "name": "Refugees in donor countries, of which: Support to refugees and asylum seekers in other provider countries",
+      "description": "DAC1 data for Refugees in donor countries, of which: Support to refugees and asylum seekers in other provider countries [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1826
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1900": {
+      "code": "DAC1.10.1900",
+      "name": "Recoveries on bilateral ODA grants / negative commitments",
+      "description": "DAC1 data for Recoveries on bilateral ODA grants / negative commitments [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1900
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1901": {
+      "code": "DAC1.10.1901",
+      "name": "Memo: Programme-based approaches (PBAs)",
+      "description": "DAC1 data for Memo: Programme-based approaches (PBAs) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1901
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1902": {
+      "code": "DAC1.10.1902",
+      "name": "Memo: Free-standing technical co-operation (FTC)",
+      "description": "DAC1 data for Memo: Free-standing technical co-operation (FTC) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1902
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1903": {
+      "code": "DAC1.10.1903",
+      "name": "Memo: ODA channelled through private entities",
+      "description": "DAC1 data for Memo: ODA channelled through private entities [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1903
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1904": {
+      "code": "DAC1.10.1904",
+      "name": "Memo: ODA channelled through multilateral organisations",
+      "description": "DAC1 data for Memo: ODA channelled through multilateral organisations [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1904
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1905": {
+      "code": "DAC1.10.1905",
+      "name": "Memo: Post-conflict peacebuilding operations",
+      "description": "DAC1 data for Memo: Post-conflict peacebuilding operations [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1905
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1906": {
+      "code": "DAC1.10.1906",
+      "name": "Memo: Relief food aid",
+      "description": "DAC1 data for Memo: Relief food aid [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1906
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.1999": {
+      "code": "DAC1.10.1999",
+      "name": "Other loans repayments",
+      "description": "DAC1 data for Other loans repayments [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 1999
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2000": {
+      "code": "DAC1.10.2000",
+      "name": "Multilateral ODA (capital subscriptions are included with grants)",
+      "description": "DAC1 data for Multilateral ODA (capital subscriptions are included with grants) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2000
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2100": {
+      "code": "DAC1.10.2100",
+      "name": "Multilateral contributions to:",
+      "description": "DAC1 data for Multilateral contributions to: [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2100
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2101": {
+      "code": "DAC1.10.2101",
+      "name": "UN agencies",
+      "description": "DAC1 data for UN agencies [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2101
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2102": {
+      "code": "DAC1.10.2102",
+      "name": "EU institutions",
+      "description": "DAC1 data for EU institutions [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2102
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2103": {
+      "code": "DAC1.10.2103",
+      "name": "IDA",
+      "description": "DAC1 data for IDA [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2103
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2104": {
+      "code": "DAC1.10.2104",
+      "name": "Other World Bank (IBRD, IFC, MIGA)",
+      "description": "DAC1 data for Other World Bank (IBRD, IFC, MIGA) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2104
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2105": {
+      "code": "DAC1.10.2105",
+      "name": "Regional development banks",
+      "description": "DAC1 data for Regional development banks [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2105
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2106": {
+      "code": "DAC1.10.2106",
+      "name": "Global Environment Facility (96%)",
+      "description": "DAC1 data for Global Environment Facility (96%) [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2106
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2107": {
+      "code": "DAC1.10.2107",
+      "name": "Montreal Protocol",
+      "description": "DAC1 data for Montreal Protocol [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2107
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2108": {
+      "code": "DAC1.10.2108",
+      "name": "Other agencies",
+      "description": "DAC1 data for Other agencies [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2108
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2110": {
+      "code": "DAC1.10.2110",
+      "name": "Recoveries on multilateral ODA grants and capital subscriptions / negative commitments",
+      "description": "DAC1 data for Recoveries on multilateral ODA grants and capital subscriptions / negative commitments [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2110
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2210": {
+      "code": "DAC1.21.2210",
+      "name": "OOF Budget support",
+      "description": "DAC1 data for OOF Budget support [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2210
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2220": {
+      "code": "DAC1.21.2220",
+      "name": "Investment-related transactions",
+      "description": "DAC1 data for Investment-related transactions [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2220
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2221": {
+      "code": "DAC1.21.2221",
+      "name": "Through debt",
+      "description": "DAC1 data for Through debt [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2221
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2222": {
+      "code": "DAC1.21.2222",
+      "name": "Through equity investments",
+      "description": "DAC1 data for Through equity investments [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2222
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2223": {
+      "code": "DAC1.21.2223",
+      "name": "Through equity investments, of which shares in CIVs",
+      "description": "DAC1 data for Through equity investments, of which shares in CIVs [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2223
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2224": {
+      "code": "DAC1.21.2224",
+      "name": "Through mezzanine finance",
+      "description": "DAC1 data for Through mezzanine finance [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2224
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2225": {
+      "code": "DAC1.21.2225",
+      "name": "Memo: Investment-related transactions, of which to the private sector",
+      "description": "DAC1 data for Memo: Investment-related transactions, of which to the private sector [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2225
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.2231": {
+      "code": "DAC1.50.2231",
+      "name": "Memo: 1. Development finance in blended finance packages",
+      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2231
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.2232": {
+      "code": "DAC1.50.2232",
+      "name": "Memo: 1. Development finance in blended finance packages, of which through funds and facilities",
+      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages, of which through funds and facilities [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2232
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.2233": {
+      "code": "DAC1.50.2233",
+      "name": "Memo: 2. Amounts mobilised from the private sector",
+      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2233
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.2234": {
+      "code": "DAC1.50.2234",
+      "name": "Memo: 2. Amounts mobilised from the private sector, of which through guarantees",
+      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector, of which through guarantees [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2234
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2901": {
+      "code": "DAC1.10.2901",
+      "name": "Memo: HIPC Initiative",
+      "description": "DAC1 data for Memo: HIPC Initiative [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2901
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.2902": {
+      "code": "DAC1.10.2902",
+      "name": "Memo: IDA Debt Reduction Facility",
+      "description": "DAC1 data for Memo: IDA Debt Reduction Facility [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2902
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.2999": {
+      "code": "DAC1.21.2999",
+      "name": "Other reimbursements on previously OOF rescheduled loans",
+      "description": "DAC1 data for Other reimbursements on previously OOF rescheduled loans [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 2999
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.22.3000": {
+      "code": "DAC1.22.3000",
+      "name": "Officially supported export credits",
+      "description": "DAC1 data for Officially supported export credits [Officially supported export credits]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3000
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.22.3100": {
+      "code": "DAC1.22.3100",
+      "name": "Official direct export credits",
+      "description": "DAC1 data for Official direct export credits [Officially supported export credits]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3100
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.22.3102": {
+      "code": "DAC1.22.3102",
+      "name": "Offsetting entry for debt relief (export credit claims, principal)",
+      "description": "DAC1 data for Offsetting entry for debt relief (export credit claims, principal) [Officially supported export credits]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3102
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.22.3200": {
+      "code": "DAC1.22.3200",
+      "name": "Officially guaranteed or insured export credits",
+      "description": "DAC1 data for Officially guaranteed or insured export credits [Officially supported export credits]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3200
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3300": {
+      "code": "DAC1.50.3300",
+      "name": "Private flows at market terms",
+      "description": "DAC1 data for Private flows at market terms [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3300
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3320": {
+      "code": "DAC1.50.3320",
+      "name": "Bilateral private flows",
+      "description": "DAC1 data for Bilateral private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3320
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3530": {
+      "code": "DAC1.50.3530",
+      "name": "Other securities and claims",
+      "description": "DAC1 data for Other securities and claims [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3530
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3840": {
+      "code": "DAC1.50.3840",
+      "name": "Total banks (long-term)",
+      "description": "DAC1 data for Total banks (long-term) [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3840
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3860": {
+      "code": "DAC1.50.3860",
+      "name": "Non-banks",
+      "description": "DAC1 data for Non-banks [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3860
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.3890": {
+      "code": "DAC1.50.3890",
+      "name": "Other securities (incl. equities)",
+      "description": "DAC1 data for Other securities (incl. equities) [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 3890
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.50.7530": {
+      "code": "DAC1.50.7530",
+      "name": "Other bank",
+      "description": "DAC1 data for Other bank [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 7530
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.7860": {
+      "code": "DAC1.21.7860",
+      "name": "Memo: - Offsetting entry for forgiven interest (OOF claims, interest)",
+      "description": "DAC1 data for Memo: - Offsetting entry for forgiven interest (OOF claims, interest) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 7860
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.7950": {
+      "code": "DAC1.21.7950",
+      "name": "Memo: - Interest received on OOF, total (bilat.+multilat.)",
+      "description": "DAC1 data for Memo: - Interest received on OOF, total (bilat.+multilat.) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 7950
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.21.8000": {
+      "code": "DAC1.21.8000",
+      "name": "Memo: - Interest received on OOF (Bilateral)",
+      "description": "DAC1 data for Memo: - Interest received on OOF (Bilateral) [OOF]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 8000
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11002": {
+      "code": "DAC1.10.11002",
+      "name": "ODA as percent of GNI, grant equivalent",
+      "description": "DAC1 data for ODA as percent of GNI, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11002
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11010": {
+      "code": "DAC1.10.11010",
+      "name": "Official Development Assistance (ODA), grant equivalent",
+      "description": "DAC1 data for Official Development Assistance (ODA), grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11010
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11015": {
+      "code": "DAC1.10.11015",
+      "name": "Bilateral ODA, grant equivalent",
+      "description": "DAC1 data for Bilateral ODA, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11015
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11016": {
+      "code": "DAC1.10.11016",
+      "name": "Bilateral grants, grant equivalent",
+      "description": "DAC1 data for Bilateral grants, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11016
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11017": {
+      "code": "DAC1.10.11017",
+      "name": "Bilateral loans, grant equivalent",
+      "description": "DAC1 data for Bilateral loans, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11017
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11018": {
+      "code": "DAC1.10.11018",
+      "name": "Other bilateral ODA, net flows",
+      "description": "DAC1 data for Other bilateral ODA, net flows [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11018
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11019": {
+      "code": "DAC1.10.11019",
+      "name": "Bilateral loans to LDCs & OLICs, grant equivalent",
+      "description": "DAC1 data for Bilateral loans to LDCs & OLICs, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11019
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11020": {
+      "code": "DAC1.10.11020",
+      "name": "Bilateral loans to LMICs, grant equivalent",
+      "description": "DAC1 data for Bilateral loans to LMICs, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11020
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11021": {
+      "code": "DAC1.10.11021",
+      "name": "Bilateral loans to UMICs, grant equivalent",
+      "description": "DAC1 data for Bilateral loans to UMICs, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11021
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11022": {
+      "code": "DAC1.10.11022",
+      "name": "Bilateral loans for multi-country agreements, grant equivalent",
+      "description": "DAC1 data for Bilateral loans for multi-country agreements, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11022
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11023": {
+      "code": "DAC1.60.11023",
+      "name": "Private sector instruments - institutional approach",
+      "description": "DAC1 data for Private sector instruments - institutional approach [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11023
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11024": {
+      "code": "DAC1.60.11024",
+      "name": "Private sector instruments - instrument approach",
+      "description": "DAC1 data for Private sector instruments - instrument approach [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11024
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.11026": {
+      "code": "DAC1.10.11026",
+      "name": "Debt relief, grant equivalent",
+      "description": "DAC1 data for Debt relief, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11026
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11030": {
+      "code": "DAC1.60.11030",
+      "name": "Private sector instruments",
+      "description": "DAC1 data for Private sector instruments [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11030
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11040": {
+      "code": "DAC1.60.11040",
+      "name": "Private sector instruments (PSI), grant equivalent",
+      "description": "DAC1 data for Private sector instruments (PSI), grant equivalent [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11040
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11041": {
+      "code": "DAC1.60.11041",
+      "name": "PSI institutional approach, capital increases of ODA-eligible PSI vehicles, grant equivalents",
+      "description": "DAC1 data for PSI institutional approach, capital increases of ODA-eligible PSI vehicles, grant equivalents [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11041
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.60.11042": {
+      "code": "DAC1.60.11042",
+      "name": "PSI instrument approach, individual PSI activities, grant equivalents",
+      "description": "DAC1 data for PSI instrument approach, individual PSI activities, grant equivalents [Private sector instruments (though in theory those are also ODA)]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 11042
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.12000": {
+      "code": "DAC1.10.12000",
+      "name": "Multilateral ODA, grant equivalent",
+      "description": "DAC1 data for Multilateral ODA, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 12000
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.12100": {
+      "code": "DAC1.10.12100",
+      "name": "Multilateral grants and capital subscriptions, Grant equivalent",
+      "description": "DAC1 data for Multilateral grants and capital subscriptions, Grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 12100
+      },
+      "operations": [],
+      "custom_functions": []
+    },
+    "DAC1.10.12110": {
+      "code": "DAC1.10.12110",
+      "name": "Multilateral loans, grant equivalent",
+      "description": "DAC1 data for Multilateral loans, grant equivalent [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "aidtype_code": 12110
+      },
+      "operations": [],
+      "custom_functions": []
+    }
+  }
+}
