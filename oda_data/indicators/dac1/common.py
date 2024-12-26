@@ -24,3 +24,18 @@ def dac1_aid_name_mapping():
         mapping = json.load(file)
 
     return {int(k): v["aidtype_name"] for k, v in mapping.items()}
+
+
+def update_mapping_file(new_data: dict):
+    path = OdaPATHS.indicators / "dac1" / "dac1_indicators.json"
+
+    if path.exists():
+        with open(OdaPATHS.indicators / "dac1" / "dac1_indicators.json", "r") as f:
+            existing_file = json.load(f)
+    else:
+        existing_file = {}
+
+    data = existing_file | new_data
+
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)

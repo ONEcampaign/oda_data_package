@@ -1,10 +1,8 @@
-import json
-
-from oda_data.config import OdaPATHS
 from oda_data.indicators.dac1.common import (
     dac1_aid_flow_type_mapping,
     dac1_aid_name_mapping,
     flow_types,
+    update_mapping_file,
 )
 from oda_data.indicators.indicator import Indicator, SEPARATOR
 
@@ -33,7 +31,7 @@ def dac1_oecd_indicators():
             description=f"{dac1_base} data for {aid_names[aid]} [{flow_names[flow]}]",
             sources=["DAC1"],
             type="DAC",
-            filters={"aidtype_code": ("==", aid)},
+            filters={"DAC1": {"aidtype_code": ("==", aid)}},
         )
         indicators.append(indicator_)
 
@@ -45,5 +43,4 @@ def dac1_oecd_indicators():
 
 if __name__ == "__main__":
     oecd_dac1_indicators = dac1_oecd_indicators()
-    with open(OdaPATHS.indicators / "dac1" / "dac1_indicators.json", "w") as f:
-        json.dump({"DAC": oecd_dac1_indicators}, f, indent=2)
+    update_mapping_file({"DAC": oecd_dac1_indicators})
