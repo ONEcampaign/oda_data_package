@@ -1,0 +1,400 @@
+{
+  "DAC": {
+    "DAC2A.10.219": {
+      "code": "DAC2A.10.219",
+      "name": "Recoveries on grants",
+      "description": "DAC2A data for Recoveries on grants",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            219
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.106": {
+      "code": "DAC2A.10.106",
+      "name": "Imputed multilateral ODA",
+      "description": "DAC2A data for Imputed multilateral ODA",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            106
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.250": {
+      "code": "DAC2A.10.250",
+      "name": "ODA, total net excluding debt relief",
+      "description": "DAC2A data for ODA, total net excluding debt relief",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            250
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.201": {
+      "code": "DAC2A.10.201",
+      "name": "ODA grants, disbursements",
+      "description": "DAC2A data for ODA grants, disbursements",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            201
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.240": {
+      "code": "DAC2A.10.240",
+      "name": "Gross ODA",
+      "description": "DAC2A data for Gross ODA",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            240
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.207": {
+      "code": "DAC2A.10.207",
+      "name": "Technical cooperation, disbursements",
+      "description": "DAC2A data for Technical cooperation, disbursements",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            207
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.206": {
+      "code": "DAC2A.10.206",
+      "name": "Official development assistance (ODA), disbursements",
+      "description": "DAC2A data for Official development assistance (ODA), disbursements",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            206
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.216": {
+      "code": "DAC2A.10.216",
+      "name": "Humanitarian aid",
+      "description": "DAC2A data for Humanitarian aid",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            216
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.205": {
+      "code": "DAC2A.10.205",
+      "name": "ODA Loans, repayments",
+      "description": "DAC2A data for ODA Loans, repayments",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            205
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.204": {
+      "code": "DAC2A.10.204",
+      "name": "Gross ODA Loans",
+      "description": "DAC2A data for Gross ODA Loans",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            204
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.213": {
+      "code": "DAC2A.10.213",
+      "name": "Development food aid",
+      "description": "DAC2A data for Development food aid",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            213
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.209": {
+      "code": "DAC2A.10.209",
+      "name": "Interest received, ODA",
+      "description": "DAC2A data for Interest received, ODA",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            209
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.218": {
+      "code": "DAC2A.10.218",
+      "name": "ODA Loans, net disbursements",
+      "description": "DAC2A data for ODA Loans, net disbursements",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            218
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.217": {
+      "code": "DAC2A.10.217",
+      "name": "ODA Loans, equity investment",
+      "description": "DAC2A data for ODA Loans, equity investment",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            217
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.210": {
+      "code": "DAC2A.10.210",
+      "name": "Capital subscriptions, deposits",
+      "description": "DAC2A data for Capital subscriptions, deposits",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            210
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.212": {
+      "code": "DAC2A.10.212",
+      "name": "Debt forgiveness",
+      "description": "DAC2A data for Debt forgiveness",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            212
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.255": {
+      "code": "DAC2A.10.255",
+      "name": "Net debt relief",
+      "description": "DAC2A data for Net debt relief",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            255
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.215": {
+      "code": "DAC2A.10.215",
+      "name": "Offsetting entries for debt relief (ODA claims)",
+      "description": "DAC2A data for Offsetting entries for debt relief (ODA claims)",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            215
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.208": {
+      "code": "DAC2A.10.208",
+      "name": "Associated financing/interest subsidies, disbursements",
+      "description": "DAC2A data for Associated financing/interest subsidies, disbursements",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            208
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.221": {
+      "code": "DAC2A.10.221",
+      "name": "Other debt grants",
+      "description": "DAC2A data for Other debt grants",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            221
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.214": {
+      "code": "DAC2A.10.214",
+      "name": "ODA Loans, rescheduled debt",
+      "description": "DAC2A data for ODA Loans, rescheduled debt",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            214
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC2A.10.211": {
+      "code": "DAC2A.10.211",
+      "name": "Memo: capital subscriptions, encashment basis",
+      "description": "DAC2A data for Memo: capital subscriptions, encashment basis",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "==",
+            211
+          ]
+        }
+      },
+      "custom_function": ""
+    }
+  }
+}

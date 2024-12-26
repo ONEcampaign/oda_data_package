@@ -12,8 +12,7 @@ class Indicator:
     sources: list[str] = field(default_factory=list)
     type: Literal["DAC", "ONE"] = field(default="DAC")
     filters: dict = field(default_factory=dict)
-    operations: list = field(default_factory=list)
-    custom_functions: Optional[list] = field(default_factory=list)
+    custom_function: Optional[str] = field(default_factory=str)
 
     @property
     def to_dict(self) -> dict:

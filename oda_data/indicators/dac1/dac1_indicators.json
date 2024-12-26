@@ -1,4 +1,94 @@
 {
+  "ONE": {
+    "ONE.10.1010_11010": {
+      "code": "ONE.10.1010_11010",
+      "name": "Total ODA (Official Definition)",
+      "description": "Official Development Assistance (ODA) according to the DAC definition for each year.",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "ONE",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "in",
+            [
+              1010,
+              11010
+            ]
+          ]
+        }
+      },
+      "custom_function": "official_oda"
+    },
+    "ONE.40.1010_11010_1": {
+      "code": "ONE.40.1010_11010_1",
+      "name": "Total ODA (official definition) as a percentage of GNI",
+      "description": "Official Development Assistance (ODA) as a percentage of Gross National Income (GNI) for each year. Based on the official DAC definition for each year.",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "in",
+            [
+              1010,
+              11010,
+              1
+            ]
+          ]
+        }
+      },
+      "custom_function": "official_oda_gni"
+    },
+    "ONE.40.1010_1": {
+      "code": "ONE.40.1010_1",
+      "name": "Total ODA (net flows) as a percentage of GNI",
+      "description": "Official Development Assistance (ODA) net flows as a percentage of Gross National Income (GNI) for each year.",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "in",
+            [
+              1010,
+              1
+            ]
+          ]
+        }
+      },
+      "custom_function": "oda_gni_flow"
+    },
+    "ONE.10.1010C": {
+      "code": "ONE.10.1010C",
+      "name": "Total Core ODA (ONE Definition)",
+      "description": "Official Development Assistance (ODA) excluding in-donor spending",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "in",
+            [
+              1010,
+              11010,
+              1820,
+              1500,
+              1600
+            ]
+          ]
+        }
+      },
+      "custom_function": "one_core_oda"
+    }
+  },
   "DAC": {
     "DAC1.40.1": {
       "code": "DAC1.40.1",
@@ -9,13 +99,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.40.3": {
       "code": "DAC1.40.3",
@@ -26,13 +117,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.40.4": {
       "code": "DAC1.40.4",
@@ -43,13 +135,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          4
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            4
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.5": {
       "code": "DAC1.50.5",
@@ -60,13 +153,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          5
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            5
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.200": {
       "code": "DAC1.21.200",
@@ -77,13 +171,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          200
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            200
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.207": {
       "code": "DAC1.50.207",
@@ -94,13 +189,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          207
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            207
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.210": {
       "code": "DAC1.21.210",
@@ -111,13 +207,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          210
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            210
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.295": {
       "code": "DAC1.21.295",
@@ -128,13 +225,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          295
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            295
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.298": {
       "code": "DAC1.21.298",
@@ -145,13 +243,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          298
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            298
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.300": {
       "code": "DAC1.21.300",
@@ -162,13 +261,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          300
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            300
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.301": {
       "code": "DAC1.21.301",
@@ -179,13 +279,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          301
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            301
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.303": {
       "code": "DAC1.21.303",
@@ -196,13 +297,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          303
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            303
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.304": {
       "code": "DAC1.21.304",
@@ -213,13 +315,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          304
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            304
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.22.305": {
       "code": "DAC1.22.305",
@@ -230,13 +333,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          305
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            305
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.307": {
       "code": "DAC1.60.307",
@@ -247,13 +351,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          307
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            307
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.325": {
       "code": "DAC1.21.325",
@@ -264,13 +369,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          325
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            325
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.326": {
       "code": "DAC1.21.326",
@@ -281,13 +387,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          326
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            326
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.327": {
       "code": "DAC1.21.327",
@@ -298,13 +405,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          327
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            327
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.36.340": {
       "code": "DAC1.36.340",
@@ -315,13 +423,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          340
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            340
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.36.345": {
       "code": "DAC1.36.345",
@@ -332,13 +441,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          345
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            345
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.359": {
       "code": "DAC1.50.359",
@@ -349,13 +459,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          359
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            359
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.37.388": {
       "code": "DAC1.37.388",
@@ -366,13 +477,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          388
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            388
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.37.415": {
       "code": "DAC1.37.415",
@@ -383,13 +495,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          415
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            415
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.420": {
       "code": "DAC1.50.420",
@@ -400,13 +513,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          420
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            420
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.425": {
       "code": "DAC1.50.425",
@@ -417,13 +531,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          425
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            425
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.37.751": {
       "code": "DAC1.37.751",
@@ -434,13 +549,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          751
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            751
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.805": {
       "code": "DAC1.21.805",
@@ -451,13 +567,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          805
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            805
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1010": {
       "code": "DAC1.10.1010",
@@ -468,13 +585,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1010
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1010
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1015": {
       "code": "DAC1.10.1015",
@@ -485,13 +603,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1015
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1015
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1020": {
       "code": "DAC1.10.1020",
@@ -502,13 +621,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1020
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1020
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1100": {
       "code": "DAC1.10.1100",
@@ -519,13 +639,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1100
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1100
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1110": {
       "code": "DAC1.10.1110",
@@ -536,13 +657,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1110
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1110
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1120": {
       "code": "DAC1.10.1120",
@@ -553,13 +675,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1120
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1120
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1200": {
       "code": "DAC1.10.1200",
@@ -570,13 +693,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1200
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1200
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1210": {
       "code": "DAC1.10.1210",
@@ -587,13 +711,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1210
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1210
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1211": {
       "code": "DAC1.10.1211",
@@ -604,13 +729,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1211
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1211
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1212": {
       "code": "DAC1.10.1212",
@@ -621,13 +747,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1212
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1212
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1213": {
       "code": "DAC1.10.1213",
@@ -638,13 +765,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1213
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1213
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1214": {
       "code": "DAC1.10.1214",
@@ -655,13 +783,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1214
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1214
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1220": {
       "code": "DAC1.10.1220",
@@ -672,13 +801,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1220
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1220
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1230": {
       "code": "DAC1.10.1230",
@@ -689,13 +819,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1230
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1230
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1300": {
       "code": "DAC1.10.1300",
@@ -706,13 +837,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1300
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1300
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1301": {
       "code": "DAC1.10.1301",
@@ -723,13 +855,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1301
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1301
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1310": {
       "code": "DAC1.10.1310",
@@ -740,13 +873,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1310
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1310
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1320": {
       "code": "DAC1.10.1320",
@@ -757,13 +891,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1320
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1320
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1330": {
       "code": "DAC1.10.1330",
@@ -774,13 +909,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1330
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1330
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1400": {
       "code": "DAC1.10.1400",
@@ -791,13 +927,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1400
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1400
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1410": {
       "code": "DAC1.10.1410",
@@ -808,13 +945,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1410
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1410
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1420": {
       "code": "DAC1.10.1420",
@@ -825,13 +963,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1420
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1420
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1500": {
       "code": "DAC1.10.1500",
@@ -842,13 +981,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1500
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1500
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1510": {
       "code": "DAC1.10.1510",
@@ -859,13 +999,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1510
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1510
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1520": {
       "code": "DAC1.10.1520",
@@ -876,13 +1017,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1520
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1520
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1600": {
       "code": "DAC1.10.1600",
@@ -893,13 +1035,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1600
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1600
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1610": {
       "code": "DAC1.10.1610",
@@ -910,13 +1053,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1610
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1610
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1611": {
       "code": "DAC1.10.1611",
@@ -927,13 +1071,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1611
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1611
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1614": {
       "code": "DAC1.10.1614",
@@ -944,13 +1089,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1614
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1614
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1615": {
       "code": "DAC1.10.1615",
@@ -961,13 +1107,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1615
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1615
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1616": {
       "code": "DAC1.10.1616",
@@ -978,13 +1125,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1616
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1616
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1617": {
       "code": "DAC1.10.1617",
@@ -995,13 +1143,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1617
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1617
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1620": {
       "code": "DAC1.10.1620",
@@ -1012,13 +1161,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1620
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1620
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1621": {
       "code": "DAC1.10.1621",
@@ -1029,13 +1179,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1621
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1621
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1622": {
       "code": "DAC1.10.1622",
@@ -1046,13 +1197,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1622
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1622
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1624": {
       "code": "DAC1.10.1624",
@@ -1063,13 +1215,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1624
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1624
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1630": {
       "code": "DAC1.10.1630",
@@ -1080,13 +1233,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1630
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1630
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1640": {
       "code": "DAC1.10.1640",
@@ -1097,13 +1251,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1640
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1640
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1700": {
       "code": "DAC1.10.1700",
@@ -1114,13 +1269,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1700
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1700
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1800": {
       "code": "DAC1.10.1800",
@@ -1131,13 +1287,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1800
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1800
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1810": {
       "code": "DAC1.10.1810",
@@ -1148,13 +1305,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1810
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1810
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1820": {
       "code": "DAC1.10.1820",
@@ -1165,13 +1323,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1820
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1820
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1826": {
       "code": "DAC1.10.1826",
@@ -1182,13 +1341,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1826
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1826
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1900": {
       "code": "DAC1.10.1900",
@@ -1199,13 +1359,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1900
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1900
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1901": {
       "code": "DAC1.10.1901",
@@ -1216,13 +1377,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1901
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1901
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1902": {
       "code": "DAC1.10.1902",
@@ -1233,13 +1395,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1902
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1902
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1903": {
       "code": "DAC1.10.1903",
@@ -1250,13 +1413,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1903
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1903
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1904": {
       "code": "DAC1.10.1904",
@@ -1267,13 +1431,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1904
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1904
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1905": {
       "code": "DAC1.10.1905",
@@ -1284,13 +1449,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1905
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1905
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1906": {
       "code": "DAC1.10.1906",
@@ -1301,13 +1467,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1906
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1906
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.1999": {
       "code": "DAC1.10.1999",
@@ -1318,13 +1485,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          1999
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1999
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2000": {
       "code": "DAC1.10.2000",
@@ -1335,13 +1503,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2000
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2000
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2100": {
       "code": "DAC1.10.2100",
@@ -1352,13 +1521,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2100
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2100
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2101": {
       "code": "DAC1.10.2101",
@@ -1369,13 +1539,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2101
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2101
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2102": {
       "code": "DAC1.10.2102",
@@ -1386,13 +1557,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2102
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2102
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2103": {
       "code": "DAC1.10.2103",
@@ -1403,13 +1575,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2103
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2103
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2104": {
       "code": "DAC1.10.2104",
@@ -1420,13 +1593,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2104
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2104
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2105": {
       "code": "DAC1.10.2105",
@@ -1437,13 +1611,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2105
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2105
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2106": {
       "code": "DAC1.10.2106",
@@ -1454,13 +1629,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2106
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2106
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2107": {
       "code": "DAC1.10.2107",
@@ -1471,13 +1647,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2107
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2107
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2108": {
       "code": "DAC1.10.2108",
@@ -1488,13 +1665,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2108
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2108
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2110": {
       "code": "DAC1.10.2110",
@@ -1505,13 +1683,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2110
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2110
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2210": {
       "code": "DAC1.21.2210",
@@ -1522,13 +1701,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2210
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2210
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2220": {
       "code": "DAC1.21.2220",
@@ -1539,13 +1719,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2220
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2220
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2221": {
       "code": "DAC1.21.2221",
@@ -1556,13 +1737,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2221
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2221
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2222": {
       "code": "DAC1.21.2222",
@@ -1573,13 +1755,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2222
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2222
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2223": {
       "code": "DAC1.21.2223",
@@ -1590,13 +1773,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2223
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2223
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2224": {
       "code": "DAC1.21.2224",
@@ -1607,13 +1791,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2224
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2224
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2225": {
       "code": "DAC1.21.2225",
@@ -1624,13 +1809,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2225
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2225
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.2231": {
       "code": "DAC1.50.2231",
@@ -1641,13 +1827,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2231
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2231
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.2232": {
       "code": "DAC1.50.2232",
@@ -1658,13 +1845,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2232
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2232
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.2233": {
       "code": "DAC1.50.2233",
@@ -1675,13 +1863,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2233
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2233
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.2234": {
       "code": "DAC1.50.2234",
@@ -1692,13 +1881,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2234
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2234
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2901": {
       "code": "DAC1.10.2901",
@@ -1709,13 +1899,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2901
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2901
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.2902": {
       "code": "DAC1.10.2902",
@@ -1726,13 +1917,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2902
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2902
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.2999": {
       "code": "DAC1.21.2999",
@@ -1743,13 +1935,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          2999
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            2999
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.22.3000": {
       "code": "DAC1.22.3000",
@@ -1760,13 +1953,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3000
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3000
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.22.3100": {
       "code": "DAC1.22.3100",
@@ -1777,13 +1971,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3100
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3100
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.22.3102": {
       "code": "DAC1.22.3102",
@@ -1794,13 +1989,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3102
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3102
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.22.3200": {
       "code": "DAC1.22.3200",
@@ -1811,13 +2007,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3200
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3200
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3300": {
       "code": "DAC1.50.3300",
@@ -1828,13 +2025,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3300
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3300
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3320": {
       "code": "DAC1.50.3320",
@@ -1845,13 +2043,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3320
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3320
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3530": {
       "code": "DAC1.50.3530",
@@ -1862,13 +2061,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3530
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3530
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3840": {
       "code": "DAC1.50.3840",
@@ -1879,13 +2079,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3840
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3840
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3860": {
       "code": "DAC1.50.3860",
@@ -1896,13 +2097,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3860
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3860
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.3890": {
       "code": "DAC1.50.3890",
@@ -1913,13 +2115,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          3890
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            3890
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.50.7530": {
       "code": "DAC1.50.7530",
@@ -1930,13 +2133,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          7530
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            7530
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.7860": {
       "code": "DAC1.21.7860",
@@ -1947,13 +2151,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          7860
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            7860
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.7950": {
       "code": "DAC1.21.7950",
@@ -1964,13 +2169,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          7950
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            7950
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.21.8000": {
       "code": "DAC1.21.8000",
@@ -1981,13 +2187,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          8000
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            8000
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11002": {
       "code": "DAC1.10.11002",
@@ -1998,13 +2205,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11002
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11002
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11010": {
       "code": "DAC1.10.11010",
@@ -2015,13 +2223,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11010
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11010
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11015": {
       "code": "DAC1.10.11015",
@@ -2032,13 +2241,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11015
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11015
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11016": {
       "code": "DAC1.10.11016",
@@ -2049,13 +2259,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11016
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11016
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11017": {
       "code": "DAC1.10.11017",
@@ -2066,13 +2277,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11017
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11017
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11018": {
       "code": "DAC1.10.11018",
@@ -2083,13 +2295,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11018
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11018
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11019": {
       "code": "DAC1.10.11019",
@@ -2100,13 +2313,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11019
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11019
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11020": {
       "code": "DAC1.10.11020",
@@ -2117,13 +2331,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11020
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11020
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11021": {
       "code": "DAC1.10.11021",
@@ -2134,13 +2349,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11021
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11021
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11022": {
       "code": "DAC1.10.11022",
@@ -2151,13 +2367,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11022
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11022
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11023": {
       "code": "DAC1.60.11023",
@@ -2168,13 +2385,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11023
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11023
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11024": {
       "code": "DAC1.60.11024",
@@ -2185,13 +2403,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11024
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11024
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.11026": {
       "code": "DAC1.10.11026",
@@ -2202,13 +2421,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11026
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11026
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11030": {
       "code": "DAC1.60.11030",
@@ -2219,13 +2439,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11030
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11030
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11040": {
       "code": "DAC1.60.11040",
@@ -2236,13 +2457,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11040
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11040
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11041": {
       "code": "DAC1.60.11041",
@@ -2253,13 +2475,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11041
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11041
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.60.11042": {
       "code": "DAC1.60.11042",
@@ -2270,13 +2493,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          11042
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            11042
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.12000": {
       "code": "DAC1.10.12000",
@@ -2287,13 +2511,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          12000
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            12000
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.12100": {
       "code": "DAC1.10.12100",
@@ -2304,13 +2529,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          12100
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            12100
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     },
     "DAC1.10.12110": {
       "code": "DAC1.10.12110",
@@ -2321,13 +2547,14 @@
       ],
       "type": "DAC",
       "filters": {
-        "aidtype_code": [
-          "==",
-          12110
-        ]
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            12110
+          ]
+        }
       },
-      "operations": [],
-      "custom_functions": []
+      "custom_function": ""
     }
   }
 }
