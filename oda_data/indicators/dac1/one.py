@@ -86,6 +86,6 @@ def dac1_one_indicators():
 
 
 if __name__ == "__main__":
-    oecd_dac1_indicators = dac1_one_indicators()
+    one_dac1_indicators = dac1_one_indicators()
 
-    update_mapping_file({"ONE": oecd_dac1_indicators})
+    update_mapping_file({"ONE": one_dac1_indicators})

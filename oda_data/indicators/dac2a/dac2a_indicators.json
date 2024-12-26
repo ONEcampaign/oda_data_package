@@ -396,5 +396,28 @@
       },
       "custom_function": ""
     }
+  },
+  "ONE": {
+    "ONE.10.206_106": {
+      "code": "ONE.10.206_106",
+      "name": "Total ODA (bilateral plus imputed multilateral)",
+      "description": "Official Development Assistance (ODA) as net bilateral disbursements plus imputed multilateral aid.",
+      "sources": [
+        "DAC2A"
+      ],
+      "type": "ONE",
+      "filters": {
+        "DAC2A": {
+          "aidtype_code": [
+            "in",
+            [
+              206,
+              106
+            ]
+          ]
+        }
+      },
+      "custom_function": "total_bilateral_plus_imputed"
+    }
   }
 }

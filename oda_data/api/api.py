@@ -9,6 +9,9 @@ from oda_data import config
 from oda_data.classes.representations import _OdaList, _OdaDict
 from oda_data.clean_data import common as clean
 from oda_data.get_data.common import check_integers
+from oda_data.indicators.dac1 import dac1_functions
+
+from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
 from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
 from oda_data.tools import names
@@ -34,6 +37,8 @@ CURRENCIES: dict[str, str] = {
     "LCU": "LCU",
 }
 
+PRICES = {"DAC1": {"column": "amounttype_code"}, "DAC2A": {"column": "data_type_code"}}
+
 MEASURES: dict[str, dict] = {
     "DAC1": {
         "column": "flows_code",
@@ -41,21 +46,47 @@ MEASURES: dict[str, dict] = {
         "grant_equivalent": 1160,
         "net_disbursement": 1140,
         "gross_disbursement": 1120,
-    }
+    },
+    "DAC2A": {
+        "column": "flow_type_code",
+        "net_disbursement": "D",
+        "gross_disbursement": "D",
+    },
 }
 
-_EXCLUDE = ["amounttype_code", "amount_type", "base_period"]
+_EXCLUDE = [
+    "amounttype_code",
+    "amount_type",
+    "base_period",
+    "data_type_code",
+    "unit_measure_name",
+    "unit_measure_code",
+]
+
+
+def validate_measure(source, measure):
+    if measure not in MEASURES[source]:
+        raise ValueError(f"{measure} is not valid for {source}")
+
+    return MEASURES[source][measure]
 
 
 def _load_indicators() -> dict[str, dict]:
     # TODO: point at combined indicators
-    indicators = clean.read_settings(
+    dac1_indicators = clean.read_settings(
         config.OdaPATHS.indicators / "dac1" / "dac1_indicators.json"
+    )
+
+    dac2a_indicators = clean.read_settings(
+        config.OdaPATHS.indicators / "dac2a" / "dac2a_indicators.json"
     )
 
     combined = {}
 
-    for k, v in indicators.items():
+    for k, v in dac1_indicators.items():
+        combined = combined | v
+
+    for k, v in dac2a_indicators.items():
         combined = combined | v
 
     return combined
@@ -138,8 +169,14 @@ class ODAData2:
 
     def _filter_recipients(self, sources, filters: dict[Any, Any]) -> dict:
         for source in sources:
-            if self.recipients is not None:
-                filters[source].append(("recipient_code", "in", self.recipients))
+            if source not in ["DAC1"]:
+                if self.recipients is not None:
+                    filters[source].append(("recipient_code", "in", self.recipients))
+            else:
+                logger.info(
+                    f"{source} data is not presented by Recipient. This parameter "
+                    f"will be ignored for the selected indicator."
+                )
 
         return filters
 
@@ -147,9 +184,9 @@ class ODAData2:
         # Prepare currency filter
         for source in sources:
             if self.currency == "LCU":
-                filters[source].append(("amounttype_code", "==", "N"))
+                filters[source].append((PRICES[source]["column"], "==", "N"))
             else:
-                filters[source].append(("amounttype_code", "==", "A"))
+                filters[source].append((PRICES[source]["column"], "==", "A"))
 
         return filters
 
@@ -160,10 +197,21 @@ class ODAData2:
                 (
                     MEASURES[source]["column"],
                     "in",
-                    [MEASURES[source][m] for m in self.measure],
+                    [validate_measure(source=source, measure=m) for m in self.measure],
                 )
             )
         return filters
+
+    def _validate_dac2a_measure(self, indicator):
+        if (
+            "gross"
+            not in self.indicators_data[indicator]["aid_type"].str.lower().unique()
+            and "gross_disbursement" in self.measure
+        ):
+            logger.warning(f"Gross disbursements are not available for {indicator}")
+            self.indicators_data[indicator] = pd.DataFrame(
+                columns=self.indicators_data[indicator].columns
+            )
 
     def _load_data(self, indicator: str) -> None:
         """Loads the data for the specified indicator, if the data is not
@@ -183,7 +231,7 @@ class ODAData2:
         filters = self._filter_providers(sources=sources, filters=filters)
 
         # Load recipients filter
-        filters = self._filter_providers(sources=sources, filters=filters)
+        filters = self._filter_recipients(sources=sources, filters=filters)
 
         # Load currency filter
         filters = self._filter_currency(sources=sources, filters=filters)
@@ -200,8 +248,32 @@ class ODAData2:
         self.indicators_data[indicator] = data if len(data) > 1 else data[0]
 
     def _process_data(self, indicator: str) -> None:
-        if self._indicators[indicator]["type"] != "ONE":
-            return
+
+        custom_function = self._indicators[indicator]["custom_function"]
+        main_source = self._indicators[indicator]["sources"][0]
+
+        if len(custom_function) > 0:
+            if main_source == "DAC1":
+                try:
+                    function_callable = getattr(dac1_functions, custom_function)
+                except AttributeError:
+                    raise NotImplementedError(
+                        f"No custom function available for this indicator"
+                    )
+            elif main_source == "DAC2A":
+                try:
+                    function_callable = getattr(dac2a_functions, custom_function)
+                except AttributeError:
+                    raise NotImplementedError(
+                        f"No custom function available for this indicator"
+                    )
+
+            self.indicators_data[indicator] = function_callable(
+                self.indicators_data[indicator]
+            )
+
+        if "DAC2A" in main_source:
+            self._validate_dac2a_measure(indicator=indicator)
 
     def _convert_units(self, indicator: str) -> None:
         """Converts to the requested units/prices combination"""
@@ -264,7 +336,7 @@ class ODAData2:
         """Returns a list of indicators"""
         return _OdaList(_load_indicators().keys())
 
-    def get_indicators(self, indicators: str | list[str], **kwargs) -> pd.DataFrame:
+    def get_indicators(self, indicators: str | list[str]) -> pd.DataFrame:
         """Loads data for the specified indicator. Any parameters specified for
         the object (years, donors, prices, etc.) are applied to the data.
 
@@ -277,16 +349,11 @@ class ODAData2:
 
         """
 
-        if "indicator" in kwargs:
-            indicators = kwargs.pop("indicator")
-
-        if len(kwargs) > 0:
-            raise ValueError(f"Unexpected keyword arguments: {kwargs}")
-
         if isinstance(indicators, str):
             indicators = [indicators]
 
         def __load_single_indicator(ind_: str) -> None:
+            logger.info(f"Fetching data for {ind_}")
             # Load necessary data to the object
             self._load_data(ind_)
 
@@ -295,6 +362,8 @@ class ODAData2:
 
             # Convert the units if necessary
             self._convert_units(ind_)
+
+            logger.info(f"{ind_} successfully loaded.")
 
         # Load each indicator
         for single_indicator in indicators:
@@ -308,5 +377,14 @@ class ODAData2:
 
 if __name__ == "__main__":
     df = ODAData2(
-        years=2022, providers=[4, 5, 12], measure=["gross_disbursement", "commitment"]
-    ).get_indicators("DAC1.10.1520")
+        years=range(2022, 2023),
+        providers=[4, 12],
+        recipients=[55],
+        measure=["net_disbursement"],
+    ).get_indicators(
+        [
+            # "DAC2A.10.106",
+            # "DAC1.10.1520",
+            "ONE.10.206_106"
+        ]
+    )
