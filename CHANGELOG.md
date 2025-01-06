@@ -1,6 +1,6 @@
 # Changes to the oda_data package
 
-## [1.5.1] 2024-12-24
+## [1.5.2] 2024-12-24
 * Add new indicators
 
 
