@@ -1,0 +1,94 @@
+{
+  "110": {
+    "code": 100,
+    "name": "Grants"
+  },
+  "421": {
+    "code": 420,
+    "name": "Debt instruments"
+  },
+  "520": {
+    "code": 500,
+    "name": "Equity and shares in collective investment vehicles"
+  },
+  "620": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "510": {
+    "code": 500,
+    "name": "Equity and shares in collective investment vehicles"
+  },
+  "432": {
+    "code": 430,
+    "name": "Mezzanine finance instruments"
+  },
+  "431": {
+    "code": 430,
+    "name": "Mezzanine finance instruments"
+  },
+  "636": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "422": {
+    "code": 420,
+    "name": "Debt instruments"
+  },
+  "1100": {
+    "code": 1000,
+    "name": "Guarantees and other unfunded contingent liabilities"
+  },
+  "626": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "210": {
+    "code": 100,
+    "name": "Grants"
+  },
+  "433": {
+    "code": 430,
+    "name": "Mezzanine finance instruments"
+  },
+  "610": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "423": {
+    "code": 420,
+    "name": "Debt instruments"
+  },
+  "425": {
+    "code": 420,
+    "name": "Debt instruments"
+  },
+  "611": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "616": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "618": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "612": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "621": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "622": {
+    "code": 600,
+    "name": "Debt relief"
+  },
+  "613": {
+    "code": 600,
+    "name": "Debt relief"
+  }
+}

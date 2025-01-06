@@ -1,0 +1,90 @@
+{
+  "C01": {
+    "code": "C",
+    "name": "Project-type interventions"
+  },
+  "X": {
+    "code": "X",
+    "name": "Modality not specified"
+  },
+  "D02": {
+    "code": "D",
+    "name": "Experts and other technical assistance"
+  },
+  "G01": {
+    "code": "G",
+    "name": "Administrative costs not included elsewhere"
+  },
+  "B032": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "B03": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "B01": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "H01": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  },
+  "E01": {
+    "code": "E",
+    "name": "Scholarships and student costs in donor countries"
+  },
+  "F01": {
+    "code": "F",
+    "name": "Debt relief"
+  },
+  "H06": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  },
+  "D01": {
+    "code": "D",
+    "name": "Experts and other technical assistance"
+  },
+  "B031": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "A02": {
+    "code": "A",
+    "name": "Budget support"
+  },
+  "B04": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "E02": {
+    "code": "E",
+    "name": "Scholarships and student costs in donor countries"
+  },
+  "H02": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  },
+  "B033": {
+    "code": "B",
+    "name": "Core contributions and pooled programmes and funds"
+  },
+  "H03": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  },
+  "A01": {
+    "code": "A",
+    "name": "Budget support"
+  },
+  "H05": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  },
+  "H04": {
+    "code": "H",
+    "name": "Other in-donor expenditures"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "DAC": {
+    "CRS.": {
+      "code": "CRS.",
+      "name": "",
+      "description": "",
+      "sources": [
+        "CRS"
+      ],
+      "type": "DAC",
+      "filters": {},
+      "custom_function": ""
+    }
+  }
+}
