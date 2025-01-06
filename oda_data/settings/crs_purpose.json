@@ -1,0 +1,182 @@
+{
+  "100": {
+    "code": 100,
+    "name": "Social infrastructure"
+  },
+  "111": {
+    "code": 110,
+    "name": "Education"
+  },
+  "112": {
+    "code": 110,
+    "name": "Education"
+  },
+  "113": {
+    "code": 110,
+    "name": "Education"
+  },
+  "114": {
+    "code": 110,
+    "name": "Education"
+  },
+  "122": {
+    "code": 120,
+    "name": "Health"
+  },
+  "121": {
+    "code": 120,
+    "name": "Health"
+  },
+  "123": {
+    "code": 120,
+    "name": "Health"
+  },
+  "130": {
+    "code": 130,
+    "name": "Population Policies/Programmes & Reproductive Health"
+  },
+  "140": {
+    "code": 140,
+    "name": "Water Supply & Sanitation"
+  },
+  "151": {
+    "code": 150,
+    "name": "Government & Civil Society"
+  },
+  "152": {
+    "code": 150,
+    "name": "Government & Civil Society"
+  },
+  "160": {
+    "code": 160,
+    "name": "Other Social Infrastructure & Services"
+  },
+  "200": {
+    "code": 200,
+    "name": "Economic infrastructure"
+  },
+  "210": {
+    "code": 210,
+    "name": "Transport & Storage"
+  },
+  "220": {
+    "code": 220,
+    "name": "Communications"
+  },
+  "231": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "232": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "236": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "233": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "234": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "235": {
+    "code": 230,
+    "name": "Energy"
+  },
+  "240": {
+    "code": 240,
+    "name": "Banking & Financial Services"
+  },
+  "250": {
+    "code": 250,
+    "name": "Business & Other Services"
+  },
+  "312": {
+    "code": 310,
+    "name": "Agriculture, Forestry, Fishing"
+  },
+  "311": {
+    "code": 310,
+    "name": "Agriculture, Forestry, Fishing"
+  },
+  "310": {
+    "code": 310,
+    "name": "Agriculture, Forestry, Fishing"
+  },
+  "313": {
+    "code": 310,
+    "name": "Agriculture, Forestry, Fishing"
+  },
+  "321": {
+    "code": 320,
+    "name": "Industry, Mining, Construction"
+  },
+  "322": {
+    "code": 320,
+    "name": "Industry, Mining, Construction"
+  },
+  "323": {
+    "code": 320,
+    "name": "Industry, Mining, Construction"
+  },
+  "331": {
+    "code": 330,
+    "name": "Trade Policies & Regulations"
+  },
+  "332": {
+    "code": 330,
+    "name": "Trade Policies & Regulations"
+  },
+  "410": {
+    "code": 410,
+    "name": "General Environment Protection"
+  },
+  "430": {
+    "code": 430,
+    "name": "Other Multisector"
+  },
+  "510": {
+    "code": 510,
+    "name": "General Budget Support"
+  },
+  "520": {
+    "code": 520,
+    "name": "Development Food Assistance"
+  },
+  "530": {
+    "code": 530,
+    "name": "Other Commodity Assistance"
+  },
+  "600": {
+    "code": 600,
+    "name": "Action Relating to Debt"
+  },
+  "720": {
+    "code": 720,
+    "name": "Emergency Response"
+  },
+  "730": {
+    "code": 730,
+    "name": "Reconstruction Relief & Rehabilitation"
+  },
+  "740": {
+    "code": 740,
+    "name": "Disaster Prevention & Preparedness"
+  },
+  "910": {
+    "code": 910,
+    "name": "Administrative Costs of Donors"
+  },
+  "930": {
+    "code": 930,
+    "name": "Refugees in Donor Countries"
+  },
+  "998": {
+    "code": 998,
+    "name": "Unallocated / Unspecified"
+  }
+}

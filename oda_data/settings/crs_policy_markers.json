@@ -1,0 +1,14 @@
+{
+  "gender": "GEN",
+  "environment": "ENV",
+  "dig_code": "DIG",
+  "trade": "TRD",
+  "rmnch_code": "RMNCH",
+  "drr_code": "DRR",
+  "nutrition": "NUT",
+  "disability": "DIS",
+  "biodiversity": "BIO",
+  "climate_mitigation": "CM",
+  "climate_adaptation": "CA",
+  "desertification": "DES"
+}
