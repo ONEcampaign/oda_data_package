@@ -68,6 +68,20 @@ def check_integers(values: list | int) -> list[int]:
     return _checktype(values, int)
 
 
+def check_strings(values: list | int | str) -> list[str]:
+    """Take a list or int and return a list of integers."""
+    if isinstance(values, range):
+        return [str(i) for i in list(values)]
+
+    if isinstance(values, str):
+        return [values]
+
+    if isinstance(values, int):
+        return [str(values)]
+
+    return [str(i) for i in values]
+
+
 def resolve_crs_year_name(year: int) -> tuple[int, int | str]:
     name = year
     if year in [2004, 2005]:
