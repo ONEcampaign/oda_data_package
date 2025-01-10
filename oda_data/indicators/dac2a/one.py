@@ -1,4 +1,5 @@
-from oda_data.indicators.dac2a.common import update_mapping_file
+from oda_data.config import OdaPATHS
+from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.indicator import Indicator
 
 
@@ -32,4 +33,7 @@ def dac2a_one_indicators():
 if __name__ == "__main__":
     one_dac2a_indicators = dac2a_one_indicators()
 
-    update_mapping_file({"ONE": one_dac2a_indicators})
+    update_mapping_file(
+        {"ONE": one_dac2a_indicators},
+        file_path=OdaPATHS.indicators / "dac2a" / "dac2a_indicators.json",
+    )
