@@ -1,7 +1,8 @@
 import pandas as pd
 
+from oda_data.config import OdaPATHS
+from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.crs.common import (
-    update_mapping_file,
     read_crs_type_of_flow,
     read_crs_type_of_finance_mapping,
     read_crs_modality_mapping,
@@ -94,4 +95,6 @@ def crs_oecd_indicators():
 
 if __name__ == "__main__":
     oecd = crs_oecd_indicators()
-    update_mapping_file({"DAC": oecd})
+    update_mapping_file(
+        {"DAC": oecd}, file_path=OdaPATHS.indicators / "crs" / "crs_indicators.json"
+    )

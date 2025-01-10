@@ -3,7 +3,6 @@ import json
 import numpy as np
 import pandas as pd
 
-from oda_data import read_crs
 from oda_data.config import OdaPATHS
 
 
@@ -23,7 +22,6 @@ def generate_crs_type_of_flow_mapping(crs: pd.DataFrame) -> None:
 
 
 def read_crs_type_of_flow() -> dict:
-
     with open(OdaPATHS.settings / "crs_flow_types.json", "r") as file:
         mapping = json.load(file)
 
@@ -174,7 +172,6 @@ def read_crs_purpose_mapping() -> dict:
 
 
 def generate_crs_policy_markers() -> None:
-
     markers = {
         "gender": "GEN",
         "environment": "ENV",
@@ -199,18 +196,3 @@ def read_crs_policy_markers() -> dict:
         mapping = json.load(file)
 
     return mapping
-
-
-def update_mapping_file(new_data: dict):
-    path = OdaPATHS.indicators / "crs" / "crs_indicators.json"
-
-    if path.exists():
-        with open(OdaPATHS.indicators / "crs" / "crs_indicators.json", "r") as f:
-            existing_file = json.load(f)
-    else:
-        existing_file = {}
-
-    data = existing_file | new_data
-
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
