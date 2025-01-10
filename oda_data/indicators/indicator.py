@@ -3,6 +3,8 @@ from typing import Literal, Optional
 
 SEPARATOR = "."
 
+IndicatorType: Literal["DAC", "ONE"]
+
 
 @dataclass
 class Indicator:
@@ -10,7 +12,7 @@ class Indicator:
     name: str
     description: str = field(default=str)
     sources: list[str] = field(default_factory=list)
-    type: Literal["DAC", "ONE"] = field(default="DAC")
+    type: IndicatorType = field(default="DAC")
     filters: dict = field(default_factory=dict)
     custom_function: Optional[str] = field(default_factory=str)
     # group_excluding: Optional[list[str]] = field(default_factory=list)

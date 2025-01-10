@@ -1,7 +1,7 @@
 __version__ = "1.5.0"
 
 from oda_data import tools
-# from oda_data.classes.oda_data import ODAData
+from oda_data.api.api import ODAData
 from oda_data.clean_data.channels import get_spending_channel_mapping
 from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
