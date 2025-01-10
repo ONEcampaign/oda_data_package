@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 SEPARATOR = "."
 
-IndicatorType: Literal["DAC", "ONE"]
+IndicatorType = Literal["DAC", "ONE"]
 
 
 @dataclass
