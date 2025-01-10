@@ -1,5 +1,14 @@
 {
-  "10": "ODA",
-  "21": "OOF",
-  "30": "Private development finance"
+  "10": {
+    "code": 10,
+    "name": "ODA"
+  },
+  "21": {
+    "code": 21,
+    "name": "OOF"
+  },
+  "30": {
+    "code": 30,
+    "name": "Private development finance"
+  }
 }
