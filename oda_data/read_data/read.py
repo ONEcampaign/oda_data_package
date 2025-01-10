@@ -70,7 +70,9 @@ def read_crs(
             filters=filters,
             engine="pyarrow",
             columns=columns,
-        ).pipe(clean_raw_df)
+        )
+
+        df = df.pipe(clean_raw_df)
 
         return df.pipe(set_default_types)
 

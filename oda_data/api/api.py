@@ -15,7 +15,8 @@ from oda_data.api.constants import (
 )
 from oda_data.api.representations import _OdaDict, _OdaList
 from oda_data.clean_data import common as clean
-from oda_data.get_data.common import check_integers
+from oda_data.get_data.common import check_integers, check_strings
+from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
@@ -27,11 +28,12 @@ source_to_module = {
 }
 
 
-def validate_measure(source: str, measure: str) -> int | str:
+def get_measure_filter(source: str, measure: str) -> int | str:
     """Validate the requested measure against available measures for the source."""
     if measure not in MEASURES[source]:
         raise ValueError(f"{measure} is not valid for {source}")
-    return MEASURES[source][measure]
+
+    return MEASURES[source][measure]["filter"]
 
 
 def _load_indicators() -> dict[str, dict]:
@@ -39,14 +41,19 @@ def _load_indicators() -> dict[str, dict]:
     dac1_indicators = clean.read_settings(
         config.OdaPATHS.indicators / "dac1" / "dac1_indicators.json"
     )
+
     dac2a_indicators = clean.read_settings(
         config.OdaPATHS.indicators / "dac2a" / "dac2a_indicators.json"
+    )
+
+    crs_indicators = clean.read_settings(
+        config.OdaPATHS.indicators / "crs" / "crs_indicators.json"
     )
 
     combined = {}
 
     # Merge each inner dictionary into the combined dictionary
-    for indicators in (dac1_indicators, dac2a_indicators):
+    for indicators in (dac1_indicators, dac2a_indicators, crs_indicators):
         for k, v in indicators.items():
             combined |= v
 
@@ -55,8 +62,6 @@ def _load_indicators() -> dict[str, dict]:
 
 @dataclass
 class ODAData:
-    """A class for working with ODA data."""
-
     years: list | int | range = field(default_factory=list)
     providers: list | int | None = None
     recipients: list | int | None = None
@@ -70,7 +75,7 @@ class ODAData:
         self.indicators_data: dict[str, list[pd.DataFrame] | pd.DataFrame] = {}
         self._indicators: dict[str, dict] = _load_indicators()
 
-        self.providers = check_integers(self.providers) if self.providers else None
+        self.providers = check_strings(self.providers) if self.providers else None
         self.recipients = check_integers(self.recipients) if self.recipients else None
 
         if self.currency not in CURRENCIES:
@@ -113,19 +118,23 @@ class ODAData:
                     )
 
             # Apply currency filter
-            if self.currency == "LCU":
-                filters[source].append((PRICES[source]["column"], "==", "N"))
-            else:
-                filters[source].append((PRICES[source]["column"], "==", "A"))
+            currency_column = PRICES.get(source, {}).get("column")
+            if currency_column:
+                if self.currency == "LCU":
+                    filters[source].append((currency_column, "==", "N"))
+                else:
+                    filters[source].append((currency_column, "==", "A"))
 
             # Apply measure filter
-            filters[source].append(
-                (
-                    MEASURES[source]["column"],
-                    "in",
-                    [validate_measure(source, m) for m in self.measure],
-                )
+            columns = set(
+                [MEASURES[source][measure]["column"] for measure in self.measure]
             )
+            for col in columns:
+                for measure in self.measure:
+                    to_filter = get_measure_filter(source, measure)
+                    if to_filter is not None:
+                        filters[source].append((col, "in", to_filter))
+
         return filters
 
     def _load_data(self, indicator: str) -> None:
@@ -160,6 +169,19 @@ class ODAData:
 
         self.indicators_data[indicator] = function_callable(
             self.indicators_data[indicator]
+        )
+
+    def _group_data(self, indicator: str):
+        """Group the data to create semi-aggregated indicators (for valid sources)"""
+        main_source = self._indicators[indicator]["sources"][0]
+
+        if main_source not in ["CRS"]:
+            return
+
+        self.indicators_data[indicator] = group_data_based_on_indicator(
+            data=self.indicators_data[indicator],
+            indicator_code=indicator,
+            measures=self.measure,
         )
 
     def _convert_units(self, indicator: str) -> None:
@@ -225,6 +247,7 @@ class ODAData:
             logger.info(f"Fetching data for {ind}")
             self._load_data(ind)
             self._process_data(ind)
+            self._group_data(ind)
             self._convert_units(ind)
             logger.info(f"{ind} successfully loaded.")
 

@@ -1,6 +1,8 @@
 import json
 from typing import Callable, Dict, Any
 import pandas as pd
+
+from oda_data.api.constants import MEASURES
 from oda_data.config import OdaPATHS
 
 
@@ -235,3 +237,46 @@ def generate_crs_policy_markers() -> None:
 def read_crs_policy_markers() -> dict:
     """Read CRS policy markers mapping."""
     return load_json(OdaPATHS.settings / "crs_policy_markers.json")
+
+
+def crs_value_cols() -> dict:
+    return {k: v["column"] for k, v in MEASURES["CRS"].items()}
+
+
+def group_data_based_on_indicator(
+    data: pd.DataFrame, indicator_code: str, measures: list[str]
+) -> pd.DataFrame:
+    """Group the data based on the indicator code"""
+    columns = crs_value_cols()
+
+    measures = [columns[measure] for measure in measures]
+
+    idx = [
+        "year",
+        "donor_code",
+        "de_donorcode",
+        "donor_name",
+        "recipient_code",
+        "de_recipientcode",
+        "recipient_name",
+        "recipient_region_code",
+        "recipient_region",
+        "recipient_income_code",
+        "incomegroup_name",
+    ]
+    parts = indicator_code.split(".")[2:]
+
+    grouper = [
+        "category",  # Type of flow
+        "type_of_finance",  # Type of finance
+        "modality",  # Modality
+        "purpose_code",  # Purpose
+    ][: len(parts)]
+
+    data = (
+        data.groupby(idx + grouper, dropna=False, observed=True)[measures]
+        .sum()
+        .reset_index()
+    )
+
+    return data

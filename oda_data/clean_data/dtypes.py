@@ -33,7 +33,7 @@ def schema_types(save: bool = False) -> dict:
         OdaSchema.RECIPIENT_REGION: category,
         OdaSchema.RECIPIENT_REGION_CODE: numerical_cat,
         OdaSchema.RECIPIENT_INCOME: category,
-        OdaSchema.RECIPIENT_INCOME_CODE: category,
+        OdaSchema.RECIPIENT_INCOME_CODE: numerical_cat,
         OdaSchema.FLOW_MODALITY: category,
         OdaSchema.ALLOCABLE_SHARE: "float64[pyarrow]",
         OdaSchema.CONCESSIONALITY: category,

@@ -13,6 +13,7 @@ READERS: dict[str, callable] = {
     "dac2a": read_dac2a,
     "DAC2A": read_dac2a,
     "crs": read_crs,
+    "CRS": read_crs,
     "multisystem": read_multisystem,
 }
 
@@ -24,20 +25,48 @@ CURRENCIES: dict[str, str] = {
     "LCU": "LCU",
 }
 
-PRICES = {"DAC1": {"column": "amounttype_code"}, "DAC2A": {"column": "data_type_code"}}
+PRICES = {
+    "DAC1": {"column": "amounttype_code"},
+    "DAC2A": {"column": "data_type_code"},
+}
 
 MEASURES: dict[str, dict] = {
     "DAC1": {
-        "column": "flows_code",
-        "commitment": 1150,
-        "grant_equivalent": 1160,
-        "net_disbursement": 1140,
-        "gross_disbursement": 1120,
+        "commitment": {
+            "column": "flows_code",
+            "filter": 1150,
+        },
+        "grant_equivalent": {
+            "column": "flows_code",
+            "filter": 1160,
+        },
+        "net_disbursement": {
+            "column": "flows_code",
+            "filter": 1140,
+        },
+        "gross_disbursement": {
+            "column": "flows_code",
+            "filter": 1120,
+        },
     },
     "DAC2A": {
-        "column": "flow_type_code",
-        "net_disbursement": "D",
-        "gross_disbursement": "D",
+        "net_disbursement": {
+            "column": "flow_type_code",
+            "filter": "D",
+        },
+        "gross_disbursement": {
+            "column": "flow_type_code",
+            "filter": "D",
+        },
+    },
+    "CRS": {
+        "commitment": {"column": "usd_commitment", "filter": None},
+        "grant_equivalent": {"column": "usd_grant_equiv", "filter": None},
+        "gross_disbursement": {"column": "usd_disbursement", "filter": None},
+        "received": {"column": "usd_received", "filter": None},
+        "expert_commitment": {"column": "usd_expert_commitment", "filter": None},
+        "expert_extended": {"column": "usd_expert_extended", "filter": None},
+        "export_credit": {"column": "usd_export_credit", "filter": None},
     },
 }
 
