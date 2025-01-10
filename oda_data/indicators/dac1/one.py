@@ -1,11 +1,14 @@
-import json
-
-from oda_data.config import OdaPATHS
 from oda_data.indicators.dac1.common import update_mapping_file
 from oda_data.indicators.indicator import Indicator
 
 
 def total_oda_official() -> Indicator:
+    """
+    Create the Indicator for total Official Development Assistance (ODA).
+
+    Returns:
+        Indicator: Indicator instance for total ODA.
+    """
     return Indicator(
         code="ONE.10.1010_11010",
         name="Total ODA (Official Definition)",
@@ -21,6 +24,12 @@ def total_oda_official() -> Indicator:
 
 
 def official_oda_gni() -> Indicator:
+    """
+    Create the Indicator for total ODA as a percentage of GNI.
+
+    Returns:
+        Indicator: Indicator instance for total ODA as a percentage of GNI.
+    """
     return Indicator(
         code="ONE.40.1010_11010_1",
         name="Total ODA (official definition) as a percentage of GNI",
@@ -36,6 +45,12 @@ def official_oda_gni() -> Indicator:
 
 
 def oda_gni_flow() -> Indicator:
+    """
+    Create the Indicator for ODA net flows as a percentage of GNI.
+
+    Returns:
+        Indicator: Indicator instance for ODA net flows as a percentage of GNI.
+    """
     return Indicator(
         code="ONE.40.1010_1",
         name="Total ODA (net flows) as a percentage of GNI",
@@ -50,6 +65,12 @@ def oda_gni_flow() -> Indicator:
 
 
 def core_oda() -> Indicator:
+    """
+    Create the Indicator for core ODA (ONE Definition).
+
+    Returns:
+        Indicator: Indicator instance for core ODA.
+    """
     return Indicator(
         code="ONE.10.1010C",
         name="Total Core ODA (ONE Definition)",
@@ -74,8 +95,12 @@ def core_oda() -> Indicator:
 
 
 def dac1_one_indicators():
-    """Generate a json file which defines the DAC1 indicator codes, and the filtering process
-    to generate them."""
+    """
+    Generate a dictionary defining the DAC1 indicator codes and their filtering logic.
+
+    Returns:
+        dict[str, dict]: Dictionary of indicator codes and their serialized definitions.
+    """
 
     indicators = [total_oda_official(), official_oda_gni(), oda_gni_flow(), core_oda()]
 
@@ -87,5 +112,4 @@ def dac1_one_indicators():
 
 if __name__ == "__main__":
     one_dac1_indicators = dac1_one_indicators()
-
     update_mapping_file({"ONE": one_dac1_indicators})
