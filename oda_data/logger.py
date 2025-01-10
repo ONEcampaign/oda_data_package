@@ -1,27 +1,34 @@
 import logging
 
-# Create a root logger
-logger = logging.getLogger(__name__)
 
-# Create two handlers (terminal and file)
-shell_handler = logging.StreamHandler()
+def setup_logger(name: str) -> logging.Logger:
+    """Set up the logger.
 
-# Set levels for the logger, shell and file
-logger.setLevel(logging.DEBUG)
-shell_handler.setLevel(logging.DEBUG)
+    Args:
+        name (str): The name of the logger.
 
-# Format the outputs
-fmt_file = "%(levelname)s (%(asctime)s): %(message)s"
-fmt_shell = (
-    "%(levelname)s %(asctime)s [%(filename)s:%(funcName)s:%(lineno)d] %(message)s"
-)
+    Returns:
+        logging.Logger: The logger.
+    """
+    logger_ = logging.getLogger(name)
+    logger_.setLevel(logging.INFO)
 
-# Create formatters
-shell_formatter = logging.Formatter(fmt_shell)
-file_formatter = logging.Formatter(fmt_file)
+    # Avoid adding multiple handlers
+    if not logger_.handlers:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
 
-# Add formatters to handlers
-shell_handler.setFormatter(shell_formatter)
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        console_handler.setFormatter(formatter)
 
-# Add handlers to the logger
-logger.addHandler(shell_handler)
+        logger_.addHandler(console_handler)
+
+    # Disable propagation to the root logger
+    logger_.propagate = False
+
+    return logger_
+
+
+logger = setup_logger("oda_data")
