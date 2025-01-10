@@ -163,7 +163,7 @@ def mappings() -> dict:
     """
     return {
         "perspectives": {"P": "Provider", "R": "Recipient"},
-        "type_of_flow": read_crs_type_of_flow(),
+        "type_of_flow": load_mapping(read_crs_type_of_flow),
         "type_of_finance": load_mapping(read_crs_type_of_finance_mapping),
         "modality": load_mapping(read_crs_modality_mapping),
         "purpose_code": load_mapping(read_crs_purpose_mapping),
