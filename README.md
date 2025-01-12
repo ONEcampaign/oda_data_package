@@ -29,7 +29,7 @@ The package is compatible with Python 3.10 and above.
 
 ### Basic usage
 
-Most users can get the data they need by using the `ODAData` class.
+Most users can get the data they need by using the `Indicators` class.
 
 An object of this class can handle:
 - getting data for specific indicators (one or more)
@@ -39,16 +39,16 @@ An object of this class can handle:
 For example, to get Total ODA in net flows and grant equivalents, in constant 2021 Euros, for 2018-2021.
 
 ```python
-from oda_data import ODAData, set_data_path
+from oda_data import Indicators, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
-data = ODAData(years=range(2018,2022), currency="EUR", prices="constant", base_year=2021)
+data = Indicators(years=range(2018, 2022), currency="EUR", prices="constant", base_year=2021)
 
 # load the desired indicators
-data.load_indicator(indicators = ["total_oda_flow_net", "total_oda_ge"])
+data.load_indicator(indicators=["total_oda_flow_net", "total_oda_ge"])
 
 # get the data
 df = data.get_data()

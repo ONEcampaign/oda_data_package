@@ -1,7 +1,7 @@
 __version__ = "1.5.0"
 
 from oda_data import tools
-from oda_data.api.api import ODAData
+from oda_data.api.api import Indicators
 from oda_data.clean_data.channels import get_spending_channel_mapping
 from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
@@ -28,7 +28,7 @@ def set_data_path(path):
 
 
 __all__ = [
-    "ODAData",
+    "Indicators",
     "download_crs",
     "download_dac1",
     "download_dac2a",

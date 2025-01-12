@@ -646,7 +646,7 @@ def get_spending_channel_mapping(years: int | list[int]) -> pd.DataFrame:
     Returns:
         DataFrame: a pandas dataFrame
     """
-    from oda_data import ODAData
+    from oda_data import Indicators
 
     # Columns to keep
     cols = [
@@ -656,7 +656,7 @@ def get_spending_channel_mapping(years: int | list[int]) -> pd.DataFrame:
         OdaSchema.AGENCY_NAME,
     ]
 
-    data = ODAData(years=years, include_names=True)
+    data = Indicators(years=years, include_names=True)
 
     df = (
         data.load_indicator("crs_bilateral_all_flows_disbursement_gross")
