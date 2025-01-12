@@ -174,7 +174,7 @@ the basic API.
 
 * The ODA GNI indicators, which returned mostly invalid data from the source
 * A typo in the ODA GNI indicator name
-* How `ODAData` deals with adding shares to indicators for which shares don't make sense
+* How `Indicators` deals with adding shares to indicators for which shares don't make sense
 
 ## [0.2.1] 2022-12-16
 
@@ -186,12 +186,12 @@ the basic API.
 
 ### Changed
 
-* `ODAData().load_indicator()` now accepts a list of indicators as input.
+* `Indicators().load_indicator()` now accepts a list of indicators as input.
 
 ### Added
 
-* A method to ODAData in order to add a "share" column to the output data.
-* A method to ODAData in order to add a "gni_share"" column to the output data.
+* A method to Indicators in order to add a "share" column to the output data.
+* A method to Indicators in order to add a "gni_share"" column to the output data.
 
 ## [0.1.10] 2022-12-09
 
@@ -213,9 +213,9 @@ the basic API.
   which is _completed_ by a fallback indicator, when the values are missing. For example, In-Donor Refugee Costs
   should be the same in Grant Equivalents or Flows. If the values are missing in the former, they are filled by the
   latter.
-* An option to get a simplified/summarised dataframe. Calling `.simplify_output_df()` on the `ODAData` object will
+* An option to get a simplified/summarised dataframe. Calling `.simplify_output_df()` on the `Indicators` object will
 * keep only the requested columns, applying a `.groupby().sum()` on the remaining columns.
-* Added documentation for the `ODAData` class
+* Added documentation for the `Indicators` class
 
 ## [0.1.8] 2022-11-29
 

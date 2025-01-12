@@ -61,7 +61,7 @@ def _load_indicators() -> dict[str, dict]:
 
 
 @dataclass
-class ODAData:
+class Indicators:
     years: list | int | range = field(default_factory=list)
     providers: list | int | None = None
     recipients: list | int | None = None

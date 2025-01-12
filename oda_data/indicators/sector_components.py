@@ -10,7 +10,7 @@ from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import OdaSchema
 
 # For typing purposes
-ODAData: callable = "ODAData"
+ODAData: callable = "Indicators"
 
 
 # -----------------------------------------------------------------------------
