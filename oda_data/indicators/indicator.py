@@ -15,7 +15,6 @@ class Indicator:
     type: IndicatorType = field(default="DAC")
     filters: dict = field(default_factory=dict)
     custom_function: Optional[str] = field(default_factory=str)
-    # group_excluding: Optional[list[str]] = field(default_factory=list)
 
     @property
     def to_dict(self) -> dict:

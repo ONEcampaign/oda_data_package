@@ -19,7 +19,7 @@ from oda_data.indicators.indicator import Indicator, SEPARATOR
 
 
 def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
-    """Generate totals for CRS indicators by aggregating grouped data.
+    """Generate totals for CRS indicators.
 
     Args:
         crs_indicators (pd.DataFrame): DataFrame containing CRS indicators.
@@ -44,6 +44,28 @@ def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
 
     # Concatenate all total rows into a single DataFrame
     return pd.concat(totals, ignore_index=True)
+
+
+def generate_partial_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate partial totals for specific columns in a DataFrame.
+
+    Args:
+        crs_indicators (pd.DataFrame): Input DataFrame with CRS indicators.
+
+    Returns:
+        pd.DataFrame: DataFrame with partial totals generated for specified columns.
+    """
+    # List of columns for which partial totals will be generated
+    partial_totals = {"type_of_finance", "modality", "purpose_code"}
+
+    # Create partial totals by modifying one column at a time
+    indicators = [
+        crs_indicators.assign(**{col: "T"}).drop_duplicates() for col in partial_totals
+    ]
+
+    # Concatenate all the modified DataFrames
+    return pd.concat(indicators, ignore_index=True)
 
 
 def map_column(
@@ -86,6 +108,33 @@ def add_perspectives(data: pd.DataFrame, perspective_values: list[str]) -> pd.Da
     )
 
 
+def _filter_for_output(data: pd.DataFrame) -> pd.DataFrame:
+    """Filter the data for output"""
+
+    return data.filter(
+        [
+            "source",  # Source
+            "perspective",  # Perspective
+            "category",  # Type of flow
+            "mapped_type_of_finance",  # Type of finance
+            "mapped_modality",  # Modality
+            "mapped_purpose",  # Purpose
+        ]
+    )
+
+
+def _rename_columns_to_crs_names(data: pd.DataFrame) -> pd.DataFrame:
+    """Rename columns to CRS names"""
+    return data.rename(
+        columns={
+            "category": "type_of_flow",
+            "mapped_type_of_finance": "type_of_finance",
+            "mapped_modality": "modality",
+            "mapped_purpose": "purpose_code",
+        }
+    )
+
+
 def unique_crs_indicator_rows(crs: pd.DataFrame) -> pd.DataFrame:
     """Generate unique rows for CRS indicators based on specified mappings and fields.
 
@@ -114,30 +163,19 @@ def unique_crs_indicator_rows(crs: pd.DataFrame) -> pd.DataFrame:
 
     # Filter and rename columns to retain only unique rows
     crs = (
-        crs.filter(
-            [
-                "source",  # Source
-                "perspective",  # Perspective
-                "category",  # Type of flow
-                "mapped_type_of_finance",  # Type of finance
-                "mapped_modality",  # Modality
-                "mapped_purpose",  # Purpose
-            ]
-        )
+        crs.pipe(_filter_for_output)
         .drop_duplicates()
-        .rename(
-            columns={
-                "category": "type_of_flow",
-                "mapped_type_of_finance": "type_of_finance",
-                "mapped_modality": "modality",
-                "mapped_purpose": "purpose_code",
-            }
-        )
+        .pipe(_rename_columns_to_crs_names)
     )
 
-    # Generate totals and append to the unique rows
+    # Generate totals
     totals = generate_totals(crs)
-    crs = pd.concat([totals, crs], ignore_index=True)
+
+    # Generate partial totals
+    partial_totals = generate_partial_totals(crs)
+
+    # concatenate all indicators
+    crs = pd.concat([totals, partial_totals, crs], ignore_index=True)
 
     return crs
 
