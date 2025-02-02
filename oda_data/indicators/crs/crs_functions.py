@@ -90,6 +90,10 @@ def drop_if_all_values_are_missing(data: pd.DataFrame) -> pd.DataFrame:
     return data.dropna(subset=values, how="all").reset_index(drop=True)
 
 
+def drop_missing_donors(data: pd.DataFrame) -> pd.DataFrame:
+    return data.loc[lambda d: d[OdaSchema.PROVIDER_CODE].notna()].reset_index(drop=True)
+
+
 def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
     """Calculate the shares of spending by purpose_code."""
 
@@ -100,6 +104,7 @@ def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
         .pipe(_yearly_share)
         .pipe(_rename_channel_column_add_names)
         .pipe(drop_if_all_values_are_missing)
+        .pipe(drop_missing_donors)
     )
 
     return data
