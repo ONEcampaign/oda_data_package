@@ -276,7 +276,7 @@ def group_data_based_on_indicator(
     valid_grouper = [c for c in idx + grouper if c in data.columns]
 
     data = (
-        data.groupby(idx + grouper, dropna=False, observed=True)[measures]
+        data.groupby(valid_grouper, dropna=False, observed=True)[measures]
         .sum()
         .reset_index()
     )
