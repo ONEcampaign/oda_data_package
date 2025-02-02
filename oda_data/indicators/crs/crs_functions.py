@@ -75,11 +75,15 @@ def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _rename_channel_column_add_names(data: pd.DataFrame) -> pd.DataFrame:
-    data = add_channel_names(
-        df=data,
-        codes_column=OdaSchema.CHANNEL_CODE,
-        target_column=OdaSchema.PROVIDER_NAME,
-    ).rename(columns={OdaSchema.CHANNEL_CODE: OdaSchema.PROVIDER_CODE})
+    data = (
+        add_channel_names(
+            df=data,
+            codes_column=OdaSchema.CHANNEL_CODE,
+            target_column=OdaSchema.PROVIDER_NAME,
+        )
+        .rename(columns={OdaSchema.CHANNEL_CODE: OdaSchema.PROVIDER_CODE})
+        .astype({OdaSchema.PROVIDER_NAME: "string[pyarrow]"})
+    )
 
     return data
 

@@ -68538,8 +68538,8 @@
     }
   },
   "ONE": {
-    "ONE.P.40.MPS": {
-      "code": "ONE.P.40.MPS",
+    "ONE.P.40.T.T.S_M": {
+      "code": "ONE.P.40.T.T.S_M",
       "name": "Purpose shares (3-year rolling total) out of total Official Development Assistance (ODA) and Other Official Flows (OOF), for multilateral organisations.",
       "description": "Shares for each purpose code out of total Official Development Assistance (ODA) and Other Official Flows (OOF). Data for multilateral organisations.",
       "sources": [
