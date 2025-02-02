@@ -19,12 +19,14 @@ from oda_data.get_data.common import check_integers, check_strings
 from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
+from oda_data.indicators.crs import crs_functions
 from oda_data.logger import logger
 from oda_data.tools import names
 
 source_to_module = {
     "DAC1": dac1_functions,
     "DAC2A": dac2a_functions,
+    "CRS": crs_functions,
 }
 
 
