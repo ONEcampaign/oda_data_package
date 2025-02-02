@@ -38,7 +38,7 @@ def get_measure_filter(source: str, measure: str) -> int | str:
     return MEASURES[source][measure]["filter"]
 
 
-def _load_indicators() -> dict[str, dict]:
+def load_indicators() -> dict[str, dict]:
     """Load indicator settings from JSON files."""
     dac1_indicators = clean.read_settings(
         config.OdaPATHS.indicators / "dac1" / "dac1_indicators.json"
@@ -75,7 +75,7 @@ class Indicators:
     def __post_init__(self) -> None:
         """Initialize and validate the ODAData2 instance."""
         self.indicators_data: dict[str, list[pd.DataFrame] | pd.DataFrame] = {}
-        self._indicators: dict[str, dict] = _load_indicators()
+        self._indicators: dict[str, dict] = load_indicators()
 
         self.providers = check_strings(self.providers) if self.providers else None
         self.recipients = check_integers(self.recipients) if self.recipients else None
@@ -238,7 +238,7 @@ class Indicators:
     @classmethod
     def available_indicators(cls) -> list:
         """Returns a list of indicators"""
-        return _OdaList(_load_indicators().keys())
+        return _OdaList(load_indicators().keys())
 
     def get_indicators(self, indicators: str | list[str]) -> pd.DataFrame:
         """Fetch and process data for the specified indicators."""
