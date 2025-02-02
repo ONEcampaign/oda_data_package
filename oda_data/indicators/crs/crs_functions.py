@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data.clean_data.channels import add_multi_channel_codes
+from oda_data.clean_data.channels import add_multi_channel_codes, add_channel_names
 from oda_data.clean_data.schema import OdaSchema
 from oda_data.indicators.crs.common import crs_value_cols
 
@@ -74,6 +74,16 @@ def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _rename_channel_column_add_names(data: pd.DataFrame) -> pd.DataFrame:
+    data = add_channel_names(
+        df=data,
+        codes_column=OdaSchema.CHANNEL_CODE,
+        target_column=OdaSchema.PROVIDER_NAME,
+    ).rename(columns={OdaSchema.CHANNEL_CODE: OdaSchema.PROVIDER_CODE})
+
+    return data
+
+
 def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
     """Calculate the shares of spending by purpose_code."""
 
@@ -82,6 +92,7 @@ def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
         .pipe(_group_by_mapped_channel)
         .pipe(_rolling_period_total)
         .pipe(_yearly_share)
+        .pipe(_rename_channel_column_add_names)
     )
 
     return data
