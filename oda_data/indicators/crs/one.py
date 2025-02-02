@@ -5,7 +5,7 @@ from oda_data.indicators.indicator import Indicator
 
 def multilateral_spending_by_purpose_shares() -> Indicator:
     return Indicator(
-        code="ONE.P.10_21.MPS",
+        code="ONE.P.40.MPS",
         name=(
             "Purpose shares (3-year rolling total) out of total Official Development Assistance (ODA)"
             " and Other Official Flows (OOF), for multilateral organisations."
