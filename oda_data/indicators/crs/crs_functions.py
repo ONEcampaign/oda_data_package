@@ -84,6 +84,12 @@ def _rename_channel_column_add_names(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def drop_if_all_values_are_missing(data: pd.DataFrame) -> pd.DataFrame:
+    values = list(crs_value_cols().values())
+
+    return data.dropna(subset=values, how="all").reset_index(drop=True)
+
+
 def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
     """Calculate the shares of spending by purpose_code."""
 
@@ -93,6 +99,7 @@ def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
         .pipe(_rolling_period_total)
         .pipe(_yearly_share)
         .pipe(_rename_channel_column_add_names)
+        .pipe(drop_if_all_values_are_missing)
     )
 
     return data
