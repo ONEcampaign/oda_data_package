@@ -54,13 +54,12 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
     )
 
 
-def _purpose_share(value_row: pd.DataFrame) -> pd.Series:
+def _purpose_share(value_row: pd.DataFrame, value_col: str) -> pd.Series:
     """Function to calculate the share of total for per purpose code."""
-    values = list(crs_value_cols().values())
 
     cols = [OdaSchema.YEAR, OdaSchema.CHANNEL_CODE]
 
-    return value_row.groupby(cols, observed=True, dropna=False)[values].transform(
+    return value_row.groupby(cols, observed=True, dropna=False)[value_col].transform(
         lambda p: p / p.sum()
     )
 
@@ -69,11 +68,10 @@ def _yearly_share(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate the yearly share of the total value for each purpose code."""
     values = list(crs_value_cols().values())
 
-    return (
-        df.assign(**{v: lambda d: _purpose_share(d) for v in values})
-        .loc[lambda d: d.share.notna()]
-        .reset_index(drop=True)
-    )
+    for col in values:
+        df[col] = _purpose_share(df, col)
+
+    return df
 
 
 def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
