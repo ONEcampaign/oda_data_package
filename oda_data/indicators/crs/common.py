@@ -273,6 +273,8 @@ def group_data_based_on_indicator(
         "purpose_code",  # Purpose
     ][: len(parts)]
 
+    valid_grouper = [c for c in idx + grouper if c in data.columns]
+
     data = (
         data.groupby(idx + grouper, dropna=False, observed=True)[measures]
         .sum()
