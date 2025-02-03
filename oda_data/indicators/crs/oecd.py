@@ -29,17 +29,29 @@ def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
     """
     totals = []
     columns = []
+    columns_g = []
 
     # Iteratively group and aggregate data to generate totals
-    for column in crs_indicators.columns:
+    for idx, column in enumerate(crs_indicators.columns):
+
+        # Create a grouping Total
+        if idx >= 2:
+            columns_g.append(column)
+            dft = crs_indicators.assign(**{c: "T" for c in columns_g}).drop_duplicates()
+            totals.append(dft)
+
+        # Track visited columns
         columns.append(column)
+
         if len(columns) >= len(crs_indicators.columns):
             continue
+
         df = (
             crs_indicators.groupby(columns, dropna=False, observed=True)
             .agg({c: lambda d: "T" for c in crs_indicators.columns if c not in columns})
             .reset_index()
         )
+
         totals.append(df)
 
     # Concatenate all total rows into a single DataFrame
