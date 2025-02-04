@@ -10,23 +10,40 @@ from oda_data.api.constants import (
     Measure,
     CURRENCIES,
     PRICES,
-    READERS,
     _EXCLUDE,
 )
 from oda_data.api.representations import _OdaDict, _OdaList
 from oda_data.clean_data import common as clean
-from oda_data.get_data.common import check_integers, check_strings
+from oda_data.clean_data.validation import (
+    validate_providers,
+    validate_recipients,
+    validate_currency,
+    validate_measure,
+    validate_prices,
+    validate_base_year,
+)
+from oda_data.indicators.crs import crs_functions
 from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
-from oda_data.indicators.crs import crs_functions
 from oda_data.logger import logger
+from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
 from oda_data.tools import names
 
 source_to_module = {
     "DAC1": dac1_functions,
     "DAC2A": dac2a_functions,
     "CRS": crs_functions,
+}
+
+READERS: dict[str, callable] = {
+    "dac1": read_dac1,
+    "DAC1": read_dac1,
+    "dac2a": read_dac2a,
+    "DAC2A": read_dac2a,
+    "crs": read_crs,
+    "CRS": read_crs,
+    "multisystem": read_multisystem,
 }
 
 
@@ -77,21 +94,13 @@ class Indicators:
         self.indicators_data: dict[str, list[pd.DataFrame] | pd.DataFrame] = {}
         self._indicators: dict[str, dict] = load_indicators()
 
-        self.providers = check_strings(self.providers) if self.providers else None
-        self.recipients = check_integers(self.recipients) if self.recipients else None
+        self.providers = validate_providers(self.providers)
+        self.recipients = validate_recipients(self.recipients)
+        self.measure = validate_measure(self.measure)
 
-        if self.currency not in CURRENCIES:
-            raise ValueError(f"Currency {self.currency} is not supported")
-
-        self.measure = [self.measure] if isinstance(self.measure, str) else self.measure
-
-        if self.prices not in ["current", "constant"]:
-            raise ValueError(f"Prices must be 'current' or 'constant'")
-
-        if self.base_year is not None and self.prices == "current":
-            raise ValueError(f"Base year can only be specified if prices are constant")
-        if self.base_year is None and self.prices == "constant":
-            raise ValueError(f"Base year must be specified for constant prices")
+        validate_currency(self.currency)
+        validate_prices(self.prices)
+        validate_base_year(base_year=self.base_year, prices=self.prices)
 
     def _apply_filters(self, indicator: str) -> dict:
         """Apply all filters based on the class attributes and indicator settings."""
@@ -188,23 +197,14 @@ class Indicators:
 
     def _convert_units(self, indicator: str) -> None:
         """Convert the data to the requested currency and prices."""
-        if ".40." in indicator or (self.currency == "USD" and self.prices == "current"):
-            self.indicators_data[indicator] = self.indicators_data[indicator].assign(
-                currency=self.currency, prices=self.prices
-            )
 
-        elif self.prices == "current":
-            self.indicators_data[indicator] = clean.dac_exchange(
-                data=self.indicators_data[indicator],
-                target_currency=CURRENCIES[self.currency],
-            ).assign(currency=self.currency, prices=self.prices)
-
-        else:
-            self.indicators_data[indicator] = clean.dac_deflate(
-                data=self.indicators_data[indicator],
-                base_year=self.base_year,
-                target_currency=CURRENCIES[self.currency],
-            ).assign(currency=self.currency, prices=self.prices)
+        self.indicators_data[indicator] = clean.convert_units(
+            data=self.indicators_data[indicator],
+            indicator=indicator,
+            currency=self.currency,
+            prices=self.prices,
+            base_year=self.base_year,
+        )
 
     @property
     def arguments(self):

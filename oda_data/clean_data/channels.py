@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from thefuzz import process
 
-from oda_data.clean_data.common import keep_multi_donors_only
 from oda_data.clean_data.schema import OdaSchema
 from oda_data.config import OdaPATHS
 
@@ -630,47 +629,5 @@ def add_multi_channel_codes(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     df = add_channel_codes(data=df, channel_names_column="name")
-
-    return df
-
-
-def get_spending_channel_mapping(years: int | list[int]) -> pd.DataFrame:
-    """Get a DataFrame which shows the automatic mapping of
-    spending donors/agencies from the CRS with OECD Channel codes. This is
-    done only for multilateral agencies.
-
-    Args:
-        years: A integer or list of integers indicating the CRS years used
-        to produce the mapping.
-
-    Returns:
-        DataFrame: a pandas dataFrame
-    """
-    from oda_data import Indicators
-
-    # Columns to keep
-    cols = [
-        OdaSchema.PROVIDER_CODE,
-        OdaSchema.PROVIDER_NAME,
-        OdaSchema.AGENCY_CODE,
-        OdaSchema.AGENCY_NAME,
-    ]
-
-    data = Indicators(years=years, include_names=True)
-
-    df = (
-        data.load_indicator("crs_bilateral_all_flows_disbursement_gross")
-        .simplify_output_df(columns_to_keep=cols)
-        .get_data()
-    )
-
-    df = df.pipe(keep_multi_donors_only).pipe(add_multi_channel_codes)
-
-    # clean
-    df = (
-        df.sort_values([OdaSchema.CHANNEL_CODE])
-        .drop(columns=[OdaSchema.VALUE])
-        .reset_index(drop=True)
-    )
 
     return df

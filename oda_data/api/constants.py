@@ -1,21 +1,11 @@
 # Constants
 from typing import Literal
 
-from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
 
 Measure = Literal[
     "grant_equivalent", "gross_disbursement", "commitment", "net_disbursement"
 ]
 
-READERS: dict[str, callable] = {
-    "dac1": read_dac1,
-    "DAC1": read_dac1,
-    "dac2a": read_dac2a,
-    "DAC2A": read_dac2a,
-    "crs": read_crs,
-    "CRS": read_crs,
-    "multisystem": read_multisystem,
-}
 
 CURRENCIES: dict[str, str] = {
     "USD": "USA",
