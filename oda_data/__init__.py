@@ -2,7 +2,6 @@ __version__ = "1.5.0"
 
 from oda_data import tools
 from oda_data.api.classes import Indicators
-from oda_data.clean_data.channels import get_spending_channel_mapping
 from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
 from oda_data.get_data.dac2a import download_dac2a
@@ -39,7 +38,6 @@ __all__ = [
     "read_multisystem",
     "donor_groupings",
     "recipient_groupings",
-    "get_spending_channel_mapping",
     "add_name",
     "add_sectors",
     "add_broad_sectors",
