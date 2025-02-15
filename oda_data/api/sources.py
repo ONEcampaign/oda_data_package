@@ -17,8 +17,8 @@ from oda_data.clean_data.common import (
     convert_dot_stat_to_data_explorer_codes,
 )
 from oda_data.clean_data.schema import OdaSchema
-from oda_data.clean_data.validation import validate_years_providers_recipients
-from oda_data.get_data.common import check_strings, check_integers
+from oda_data.clean_data.validation import validate_years_providers_recipients, check_integers, \
+    check_strings
 from oda_data.logger import logger
 
 
