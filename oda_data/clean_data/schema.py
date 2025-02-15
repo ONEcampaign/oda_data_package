@@ -126,6 +126,7 @@ class OdaSchema:
     AMOUNT: str = "amount"
     AIDTYPE_CODE: str = "aidtype_code"
     FLOWS_CODE: str = "flows_code"
+    AID_TO_THRU: str = "aid_to_or_thru"
 
 
 CRS_MAPPING: dict[str, str] = {

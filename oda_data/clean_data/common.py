@@ -157,3 +157,11 @@ def convert_units(
             base_year=base_year,
             target_currency=validate_currency(currency),
         ).assign(currency=currency, prices=prices)
+
+
+def convert_dot_stat_to_data_explorer_codes(codes: list) -> list:
+    from oda_reader.schemas.crs_translation import area_code_mapping
+
+    mapping = area_code_mapping()
+
+    return [mapping[c] for c in codes]
