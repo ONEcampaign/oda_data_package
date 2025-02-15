@@ -7,14 +7,9 @@ authors = [{name = "Jorge Rivera", email = "jorge.rivera@one.org"}]
 requires-python = ">=3.10, <4.0"
 dependencies = [
     "pandas >=2",
-    "requests >=2",
-    "lxml >=5",
-    "pyarrow >=14, <19",
     "thefuzz >=0.22.1",
+    "pyarrow >=14, <19",
     "oda-reader >=1",
-    "beautifulsoup4 >=4.12.3",
-    "selenium >=4.20.0",
-    "webdriver-manager >=4.0.1",
     "pydeflate >=2.0.1"
 ]
 
