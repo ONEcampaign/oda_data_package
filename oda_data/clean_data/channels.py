@@ -608,6 +608,8 @@ def add_channel_codes(
         export_missing_path=export_missing_path,
     )
 
+    mapping["EU Institutions European Commission"] = 42001
+
     # Map channel names
     data[target_column] = (
         data[channel_names_column].map(mapping).astype("Int32[pyarrow]")
