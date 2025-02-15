@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "1.5.2"
+version = "1.5.3"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 readme = "README.md"
 authors = [{name = "Jorge Rivera", email = "jorge.rivera@one.org"}]
