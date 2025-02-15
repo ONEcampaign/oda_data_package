@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [1.5.3] 2024-12-24
+* Fixes a bug with mapping the EU Institutions data for multilateral imputations
+
 ## [1.5.2] 2024-12-24
 * Add new indicators
 
