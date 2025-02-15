@@ -14,7 +14,3 @@ class OdaPATHS:
     sectors = indicators / "sectors"
     tests = project / "tests"
     test_files = tests / "files"
-
-
-# ------------------------------ Key URLs ------------------------------ #
-CODES_URL: str = "https://webfs.oecd.org/crs-iati-xml/Lookup/DAC-CRS-CODES.xml"

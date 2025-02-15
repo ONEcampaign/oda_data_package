@@ -2,8 +2,10 @@ from oda_data.api.constants import CURRENCIES
 from oda_data.get_data.common import check_strings, check_integers
 
 
-def validate_providers(providers: list | int | None) -> list:
+def validate_providers(providers: list | int | None, as_int: bool = False) -> list:
     """Validate the providers parameter."""
+    if as_int:
+        return check_integers(providers) if providers else None
     return check_strings(providers) if providers else None
 
 
@@ -35,6 +37,18 @@ def validate_base_year(base_year: int | None, prices: str) -> None:
         raise ValueError(f"Base year can only be specified if prices are constant")
     if base_year is None and prices == "constant":
         raise ValueError(f"Base year must be specified for constant prices")
+
+
+def validate_years_providers_recipients(
+    years: list[int] | int | range,
+    providers: list | int | None,
+    recipients: list | int | None,
+) -> tuple:
+    years = check_integers(years)
+    providers = validate_providers(providers, as_int=True)
+    recipients = validate_recipients(recipients)
+
+    return years, providers, recipients
 
 
 def validate_input_parameters(
