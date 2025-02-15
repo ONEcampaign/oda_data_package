@@ -9,7 +9,6 @@ from oda_data.tools.sector_lists import add_sectors, add_broad_sectors
 def set_data_path(path):
     from pathlib import Path
     from oda_data.config import OdaPATHS
-    from bblocks import set_bblocks_data_path
     from pydeflate import set_pydeflate_path
 
     """Set the path to the data folder."""
@@ -17,7 +16,6 @@ def set_data_path(path):
 
     OdaPATHS.raw_data = Path(path).resolve()
     set_pydeflate_path(OdaPATHS.raw_data)
-    set_bblocks_data_path(OdaPATHS.raw_data)
 
 
 __all__ = [

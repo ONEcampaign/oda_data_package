@@ -1,5 +1,4 @@
 from oda_data.api.constants import CURRENCIES
-from oda_data.get_data.common import check_strings, check_integers
 
 
 def validate_providers(providers: list | int | None, as_int: bool = False) -> list:
@@ -68,3 +67,43 @@ def validate_input_parameters(
     validate_base_year(base_year=base_year, prices=prices)
 
     return providers, recipients, measure
+
+
+def _checktype(values: list | int | float, type_: type) -> list:
+    """Take a list, int or float and return a list of integers."""
+
+    if isinstance(values, list):
+        return [type_(d) for d in values]
+    elif isinstance(values, str):
+        return [type_(values)]
+    elif isinstance(values, float):
+        return [type_(values)]
+    elif isinstance(values, int):
+        return [type_(values)]
+    else:
+        raise ValueError("Invalid values passed. Please check the type and try again.")
+
+
+def check_integers(values: list | int | None) -> list[int] | None:
+    """Take a list or int and return a list of integers."""
+    if values is None:
+        return
+
+    if isinstance(values, range):
+        return list(values)
+
+    return _checktype(values, int)
+
+
+def check_strings(values: list | int | str) -> list[str]:
+    """Take a list or int and return a list of integers."""
+    if isinstance(values, range):
+        return [str(i) for i in list(values)]
+
+    if isinstance(values, str):
+        return [values]
+
+    if isinstance(values, int):
+        return [str(values)]
+
+    return [str(i) for i in values]
