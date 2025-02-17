@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -13,22 +11,15 @@ from oda_data.api.constants import (
     _EXCLUDE,
 )
 from oda_data.api.representations import _OdaDict, _OdaList
+from oda_data.api.sources import Dac1Data, Dac2Data, CrsData, MultiSystemData
 from oda_data.clean_data import common as clean
-from oda_data.clean_data.validation import (
-    validate_providers,
-    validate_recipients,
-    validate_currency,
-    validate_measure,
-    validate_prices,
-    validate_base_year,
-)
+from oda_data.clean_data.validation import validate_currency, validate_measure
 from oda_data.indicators.crs import crs_functions
 from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
-from oda_data.read_data.read import read_dac1, read_dac2a, read_crs, read_multisystem
-from oda_data.tools import names
+from oda_data.tools.groupings import donor_groupings, recipient_groupings
 
 source_to_module = {
     "DAC1": dac1_functions,
@@ -37,13 +28,10 @@ source_to_module = {
 }
 
 READERS: dict[str, callable] = {
-    "dac1": read_dac1,
-    "DAC1": read_dac1,
-    "dac2a": read_dac2a,
-    "DAC2A": read_dac2a,
-    "crs": read_crs,
-    "CRS": read_crs,
-    "multisystem": read_multisystem,
+    "DAC1": Dac1Data,
+    "DAC2A": Dac2Data,
+    "CRS": CrsData,
+    "MULTISYSTEM": MultiSystemData,
 }
 
 
@@ -86,21 +74,19 @@ class Indicators:
     recipients: list | int | None = None
     measure: list[Measure] | Measure = "gross_disbursement"
     currency: str = "USD"
-    prices: str = "current"
     base_year: int | None = None
+    using_bulk_download: bool = False
+    refresh_data: bool = False
 
     def __post_init__(self) -> None:
         """Initialize and validate the ODAData2 instance."""
         self.indicators_data: dict[str, list[pd.DataFrame] | pd.DataFrame] = {}
         self._indicators: dict[str, dict] = load_indicators()
+        self.indicators_filter = None
 
-        self.providers = validate_providers(self.providers)
-        self.recipients = validate_recipients(self.recipients)
         self.measure = validate_measure(self.measure)
 
         validate_currency(self.currency)
-        validate_prices(self.prices)
-        validate_base_year(base_year=self.base_year, prices=self.prices)
 
     def _apply_filters(self, indicator: str) -> dict:
         """Apply all filters based on the class attributes and indicator settings."""
@@ -111,22 +97,13 @@ class Indicators:
             filters[source] = []
             # Apply settings filters
             settings_filters = self._indicators[indicator]["filters"][source]
-            filters[source].extend((k, *v) for k, v in settings_filters.items())
 
-            # Apply provider filter
-            if self.providers:
-                filters[source].append(("donor_code", "in", self.providers))
-
-            # Apply recipient filter
-            if source not in ["DAC1"]:
-                if self.recipients:
-                    filters[source].append(("recipient_code", "in", self.recipients))
-            else:
-                if self.recipients:
-                    logger.info(
-                        f"{source} data is not presented by Recipient. This parameter "
-                        f"will be ignored for the selected indicator."
-                    )
+            # Apply indicator filter
+            for column, values in settings_filters.items():
+                if column in ["aidtype_code"]:
+                    self.indicators_filter = values[-1]
+                else:
+                    filters[source].extend((column, *filters))
 
             # Apply currency filter
             currency_column = PRICES.get(source, {}).get("column")
@@ -141,22 +118,60 @@ class Indicators:
                 [MEASURES[source][measure]["column"] for measure in self.measure]
             )
             for col in columns:
+                to_filter = []
                 for measure in self.measure:
-                    to_filter = get_measure_filter(source, measure)
-                    if to_filter is not None:
-                        filters[source].append((col, "in", to_filter))
+                    to_filter.append(get_measure_filter(source, measure))
+                if to_filter is not None:
+                    filters[source].append((col, "in", to_filter))
+
+            # Apply recipient filter
+            if source in ["DAC1"] and self.recipients:
+                logger.info(
+                    f"{source} data is not presented by Recipient. This parameter "
+                    f"will be ignored for the selected indicator."
+                )
 
         return filters
 
     def _load_data(self, indicator: str) -> None:
         """Load and filter data for the specified indicator."""
+
         filters = self._apply_filters(indicator)
         sources = self._indicators[indicator]["sources"]
 
         data = []
         for source in sources:
-            _ = READERS[source](years=self.years, filters=filters[source])
-            data.append(_.filter([c for c in _.columns if c not in _EXCLUDE]))
+            reader = READERS[source.upper()]
+            if source == "DAC1":
+                reader = reader(
+                    years=self.years,
+                    providers=self.providers,
+                    indicators=self.indicators_filter,
+                )
+            elif source == "DAC2A":
+                reader = reader(
+                    years=self.years,
+                    providers=self.providers,
+                    recipients=self.recipients,
+                    indicators=self.indicators_filter,
+                )
+            elif source == "CRS":
+                reader = reader(
+                    years=self.years,
+                    providers=self.providers,
+                    recipients=self.recipients,
+                )
+            else:
+                raise ValueError(f"{source} is invalid")
+
+            if self.refresh_data:
+                reader.refresh_data = True
+
+            file = reader.read(
+                additional_filters=filters[source],
+                using_bulk_download=self.using_bulk_download,
+            )
+            data.append(file.filter([c for c in file.columns if c not in _EXCLUDE]))
 
         self.indicators_data[indicator] = data if len(data) > 1 else data[0]
 
@@ -202,7 +217,6 @@ class Indicators:
             data=self.indicators_data[indicator],
             indicator=indicator,
             currency=self.currency,
-            prices=self.prices,
             base_year=self.base_year,
         )
 
@@ -214,7 +228,6 @@ class Indicators:
             "providers": self.providers,
             "recipients": self.recipients,
             "currency": self.currency,
-            "prices": self.prices,
             "base_year": self.base_year,
         }
 
@@ -222,13 +235,13 @@ class Indicators:
     def available_donors(cls) -> dict:
         """Returns a dictionary of available donor codes and their names"""
         logger.info("Note that not all donors may be available for all indicators")
-        return _OdaDict(names.donor_names())
+        return _OdaDict(donor_groupings()["official_donors"])
 
     @classmethod
     def available_recipients(cls) -> dict:
         """Returns a dictionary of available recipient codes"""
         logger.info("Note that not all recipients may be available for all indicators")
-        return _OdaDict(names.recipient_names())
+        return _OdaDict(recipient_groupings()["all_developing_countries_regions"])
 
     @classmethod
     def available_currencies(cls) -> list:
