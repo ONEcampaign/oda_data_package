@@ -159,6 +159,8 @@ class DacSource:
             return
 
         for column, _, values in filters:
+            if column not in data.columns:
+                continue
             missing_values = set(values) - set(data[column].unique())
             if missing_values:
                 logger.warning(
@@ -179,7 +181,8 @@ class DacSource:
 
         if not (config.OdaPATHS.raw_data / f"{prefix}{dataset}.parquet").exists():
             logger.info(f"{dataset} data not found. Downloading...")
-            self.download(bulk=using_bulk_download)
+            df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
+            df.to_parquet(config.OdaPATHS.raw_data / f"{prefix}{dataset}.parquet")
 
     def _read(
         self,
@@ -492,7 +495,7 @@ class MultiSystemData(DacSource):
         years: Optional[list[int] | range | int] = None,
         providers: Optional[list[int] | int] = None,
         recipients: Optional[list[int] | int] = None,
-        indicators: Optional[list[int] | int] = None,
+        indicators: Optional[list[str] | str] = None,
         sectors: Optional[list[int] | int] = None,
     ):
         """
@@ -510,13 +513,13 @@ class MultiSystemData(DacSource):
             years=years, providers=providers, recipients=recipients, sectors=sectors
         )
 
-        self.indicators = check_integers(indicators) if indicators else None
+        self.indicators = check_strings(indicators) if indicators else None
 
         if self.indicators is not None:
             self.add_filter(
                 column=OdaSchema.AID_TO_THRU, predicate="in", value=self.indicators
             )
-            self.de_indicators = check_strings(indicators)
+            self.de_indicators = indicators
 
     def download(self, bulk: bool = True):
         """Downloads Multisystem data, either filtered or full dataset.

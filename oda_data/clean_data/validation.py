@@ -50,8 +50,6 @@ def validate_input_parameters(
     recipients = validate_recipients(recipients)
     measure = validate_measure(measure)
     validate_currency(currency)
-    validate_prices(prices)
-    validate_base_year(base_year=base_year, prices=prices)
 
     return providers, recipients, measure
 
