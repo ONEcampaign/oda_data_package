@@ -10,7 +10,8 @@ dependencies = [
     "thefuzz >=0.22.1",
     "pyarrow >=14, <19",
     "oda-reader >=1",
-    "pydeflate >=2.0.1"
+    "pydeflate >=2.0.1",
+    "cachetools (>=5.5.1,<6.0.0)"
 ]
 
 [project.optional-dependencies]
