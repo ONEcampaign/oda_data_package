@@ -137,26 +137,25 @@ def convert_units(
     data,
     indicator: Optional[str] = None,
     currency: str = "USD",
-    prices: str = "current",
     base_year: Optional[int] = None,
 ):
     if indicator is None:
         indicator = ""
 
-    if ".40." in indicator or (currency == "USD" and prices == "current"):
-        return data.assign(currency=currency, prices=prices)
+    if ".40." in indicator or (currency == "USD" and base_year is None):
+        return data.assign(currency=currency, prices="current")
 
-    elif prices == "current":
+    elif base_year is None:
         return dac_exchange(
             data=data, target_currency=validate_currency(currency)
-        ).assign(currency=currency, prices=prices)
+        ).assign(currency=currency, prices="current")
 
     else:
         return dac_deflate(
             data=data,
             base_year=base_year,
             target_currency=validate_currency(currency),
-        ).assign(currency=currency, prices=prices)
+        ).assign(currency=currency, prices="constant")
 
 
 def convert_dot_stat_to_data_explorer_codes(codes: list) -> list:
