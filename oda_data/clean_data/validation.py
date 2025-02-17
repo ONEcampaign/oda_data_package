@@ -13,29 +13,16 @@ def validate_recipients(recipients: list | int | None) -> list:
     return check_integers(recipients) if recipients else None
 
 
-def validate_currency(currency: str) -> None:
+def validate_currency(currency: str) -> str:
     """Validate the currency parameter."""
     if currency not in CURRENCIES:
         raise ValueError(f"Currency {currency} is not supported")
+    return currency
 
 
 def validate_measure(measure: list | str) -> list:
     """Validate the measure parameter."""
     return [measure] if isinstance(measure, str) else measure
-
-
-def validate_prices(prices: str) -> None:
-    """Validate the prices parameter."""
-    if prices not in ["current", "constant"]:
-        raise ValueError(f"Prices must be 'current' or 'constant'")
-
-
-def validate_base_year(base_year: int | None, prices: str) -> None:
-    """Validate the base year parameter."""
-    if base_year is not None and prices == "current":
-        raise ValueError(f"Base year can only be specified if prices are constant")
-    if base_year is None and prices == "constant":
-        raise ValueError(f"Base year must be specified for constant prices")
 
 
 def validate_years_providers_recipients(
