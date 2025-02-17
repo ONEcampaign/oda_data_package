@@ -1,8 +1,9 @@
 import json
 from typing import Callable, Dict, Any
+
 import pandas as pd
 
-from oda_data.api.constants import MEASURES
+from oda_data.api.constants import MEASURES, Measure
 from oda_data.config import OdaPATHS
 
 
@@ -244,7 +245,7 @@ def crs_value_cols() -> dict:
 
 
 def group_data_based_on_indicator(
-    data: pd.DataFrame, indicator_code: str, measures: list[str]
+    data: pd.DataFrame, indicator_code: str, measures: list[str] | Measure
 ) -> pd.DataFrame:
     """Group the data based on the indicator code"""
     columns = crs_value_cols()
