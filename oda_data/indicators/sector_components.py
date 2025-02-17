@@ -7,9 +7,6 @@ from oda_data.clean_data.common import keep_multi_donors_only
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import OdaSchema
 
-# For typing purposes
-ODAData: callable = "Indicators"
-
 
 # -----------------------------------------------------------------------------
 #                               Components functions
