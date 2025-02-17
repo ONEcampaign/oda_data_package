@@ -141,28 +141,19 @@ class Indicators:
 
         data = []
         for source in sources:
-            reader = READERS[source.upper()]
-            if source == "DAC1":
-                reader = reader(
-                    years=self.years,
-                    providers=self.providers,
-                    indicators=self.indicators_filter,
-                )
-            elif source == "DAC2A":
-                reader = reader(
-                    years=self.years,
-                    providers=self.providers,
-                    recipients=self.recipients,
-                    indicators=self.indicators_filter,
-                )
-            elif source == "CRS":
-                reader = reader(
-                    years=self.years,
-                    providers=self.providers,
-                    recipients=self.recipients,
-                )
-            else:
+            source = source.upper()
+            if source not in READERS:
                 raise ValueError(f"{source} is invalid")
+
+            # Define reader kwargs
+            reader_kwargs = {"years": self.years, "providers": self.providers}
+            if source == "DAC2A":
+                reader_kwargs["recipients"] = self.recipients
+            if source in ["DAC1", "DAC2A", "MULTISYSTEM"]:
+                reader_kwargs["indicators"] = self.indicators_filter
+
+            # Initialize reader
+            reader = READERS[source](**reader_kwargs)
 
             if self.refresh_data:
                 reader.refresh_data = True
@@ -171,7 +162,7 @@ class Indicators:
                 additional_filters=filters[source],
                 using_bulk_download=self.using_bulk_download,
             )
-            data.append(file.filter([c for c in file.columns if c not in _EXCLUDE]))
+            data.append(file.drop(columns=_EXCLUDE, errors="ignore"))
 
         self.indicators_data[indicator] = data if len(data) > 1 else data[0]
 
