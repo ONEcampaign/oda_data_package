@@ -58,6 +58,16 @@ MEASURES: dict[str, dict] = {
         "expert_extended": {"column": "usd_expert_extended", "filter": None},
         "export_credit": {"column": "usd_export_credit", "filter": None},
     },
+    "Multisystem": {
+        "commitment": {
+            "column": "flow_type",
+            "filter": "Commitments",
+        },
+        "gross_disbursement": {
+            "column": "flow_type",
+            "filter": "Disbursements",
+        },
+    },
 }
 
 _EXCLUDE = [
