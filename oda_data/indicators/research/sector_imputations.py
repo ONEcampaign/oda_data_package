@@ -1,102 +1,58 @@
 import pandas as pd
 
-from oda_data import read_multisystem
-from oda_data.api.constants import Measure
+from oda_data.api.constants import Measure, MEASURES
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import OdaSchema
-from oda_data.clean_data.validation import (
-    validate_providers,
-    validate_measure,
-    validate_currency,
-    validate_prices,
-    validate_base_year,
-)
-
-
-def multi_contributions_by_donor(data) -> pd.DataFrame:
-    """Get a simplified dataframe with the money contributed by donors to
-    multilaterals (grouped by channel code)"""
-
-    indicator = "multisystem_multilateral_contributions_disbursement_gross"
-    cols = [
-        OdaSchema.PROVIDER_CODE,
-        OdaSchema.CHANNEL_CODE,
-        OdaSchema.YEAR,
-        OdaSchema.CURRENCY,
-        OdaSchema.PRICES,
-    ]
-
-    return _get_indicator(data=data, indicator=indicator, columns=cols).pipe(
-        set_default_types
-    )
-
-
-def build_filters(
-    providers: list | int | None,
-    measure: list[Measure],
-    currency: str,
-    measure_mapping: dict,
-) -> list[tuple]:
-
-    # Build filters
-    filters = []
-
-    # Apply provider filter
-    if providers:
-        filters.append(("donor_code", "in", providers))
-
-    # Apply measure filter
-    filters.append(("flow_type", "in", [measure_mapping[m] for m in measure]))
-
-    if currency == "LCU":
-        raise ValueError("Currency LCU is not supported for this indicator")
-    else:
-        filters.append(("amount_type", "==", "Current prices"))
-
-    return filters
 
 
 def core_multilateral_contributions_by_provider(
-    years: list | int | range,
+    years: list | int | range = None,
     providers: list | int | None = None,
-    measure: list[Measure] | Measure = "gross_disbursement",
+    channels: list | int | None = None,
+    measure: Measure | str = "gross_disbursement",
     currency: str = "USD",
-    prices: str = "current",
     base_year: int | None = None,
-):
-    """"""
+) -> pd.DataFrame:
+    """Get a simplified dataframe with the money contributed by donors to
+    multilaterals (grouped by channel code)"""
 
-    # Validate the input parameters
-    providers = validate_providers(providers)
-    measure = validate_measure(measure)
-    validate_currency(currency)
-    validate_prices(prices)
-    validate_base_year(base_year=base_year, prices=prices)
+    from oda_data.api.sources import MultiSystemData
 
-    # Define the measure mapping
-    measure_mapping = {
-        "gross_disbursement": "Disbursements",
-        "commitment": "Commitments",
-    }
+    measure = MEASURES["Multisystem"][measure]["filter"]
+    cols = [OdaSchema.PROVIDER_CODE, OdaSchema.CHANNEL_CODE, OdaSchema.YEAR]
 
-    # Build filters
-    filters = build_filters(
-        providers=providers,
-        measure=measure,
-        currency=currency,
-        measure_mapping=measure_mapping,
+    filters = [
+        ("flow_type", "in", [measure]),
+        ("amount_type", "in", ["Current prices"]),
+    ]
+
+    if isinstance(channels, int):
+        channels = [channels]
+    if channels:
+        filters.append(("channel_code", "in", channels))
+
+    ms = MultiSystemData(
+        providers=providers, years=years, indicators="Core contributions to"
     )
 
-    filters.append(("aid_to_or_thru", "==", "Core contributions to"))
+    data = (
+        ms.read(columns=cols + [OdaSchema.AMOUNT], additional_filters=filters)
+        .groupby(cols, dropna=False, observed=True)[[OdaSchema.AMOUNT]]
+        .sum()
+        .reset_index()
+        .rename(columns={OdaSchema.AMOUNT: "value"})
+    )
 
-    # Read the data
-    df = read_multisystem(years=years, filters=filters)
+    data = convert_units(data, currency=currency, base_year=base_year)
 
-    # Convert the units
-    df = convert_units(data=df, currency=currency, prices=prices, base_year=base_year)
-
-    return df
+    return data
 
 
 if __name__ == "__main__":
-    df = core_multilateral_contributions_by_provider(years=2022, providers=4)
+    df = core_multilateral_contributions_by_provider(
+        years=range(2013, 2023),
+        providers=4,
+        channels=[41116],
+        currency="EUR",
+        base_year=2023,
+    )
