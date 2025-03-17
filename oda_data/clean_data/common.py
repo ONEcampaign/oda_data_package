@@ -10,6 +10,7 @@ from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
 from oda_data.clean_data.validation import validate_currency
 from oda_data.config import OdaPATHS
+from oda_data.logger import logger
 
 set_pydeflate_path(OdaPATHS.raw_data)
 
@@ -163,4 +164,11 @@ def convert_dot_stat_to_data_explorer_codes(codes: list) -> list:
 
     mapping = area_code_mapping()
 
-    return [mapping[c] for c in codes]
+    result = []
+    for code in codes:
+        if code not in mapping:
+            logger.warning(f"Code {code} does not have a new Data Explorer code.")
+        else:
+            result.append(mapping[code])
+
+    return result
