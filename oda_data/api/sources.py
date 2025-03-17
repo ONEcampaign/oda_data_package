@@ -311,8 +311,8 @@ class Dac1Data(DacSource):
                 filters=self._get_filtered_download_filters(),
             )
         else:
-            logger.warning("Bulk downloading DAC1 is not yet supported")
-            raise NotImplementedError
+            logger.info("Bulk downloading DAC1 may take a long time")
+            df = download_dac1()
 
         logger.info(f"DAC1 data downloaded successfully.")
 
@@ -385,8 +385,8 @@ class Dac2Data(DacSource):
             )
 
         else:
-            logger.warning("Bulk downloading DAC2a is not yet supported")
-            raise NotImplementedError
+            logger.info("Bulk downloading DAC2a may take a long time")
+            df = download_dac2a()
 
         logger.info(f"DAC2a data downloaded successfully.")
 

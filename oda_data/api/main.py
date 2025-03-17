@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import pandas as pd
 
@@ -69,7 +70,7 @@ def load_indicators() -> dict[str, dict]:
 
 @dataclass
 class Indicators:
-    years: list | int | range = field(default_factory=list)
+    years: Optional[list | int | range] = None
     providers: list | int | None = None
     recipients: list | int | None = None
     measure: list[Measure] | Measure = "gross_disbursement"
