@@ -1,0 +1,283 @@
+{
+  "total_oda_flow_net": {
+    "indicator": "DAC1.10.1010",
+    "measure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_ge": {
+    "indicator": "DAC1.10.1010",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_official_definition": {
+    "indicator": "DAC1.10.1010",
+    "masure": ["grant_equivalent","net_disbursement"],
+    "bulk": false
+  },
+  "total_oda_bilateral_flow_net": {
+    "indicator": "DAC1.10.1015",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_bilateral_ge": {
+    "indicator": "DAC1.10.11015",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "total_oda_multilateral_flow_net": {
+    "indicator": "DAC1.10.2000",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_multilateral_ge": {
+    "indicator": "DAC1.10.12000",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "total_oda_flow_gross": {
+    "indicator": "DAC1.10.1010",
+    "masure": "gross_disbursement",
+    "bulk": false
+  },
+  "total_oda_flow_commitments": {
+    "indicator": "DAC1.10.1010",
+    "masure": "commitment",
+    "bulk": false
+  },
+  "total_oda_grants_flow": {
+    "indicator": "DAC1.10.11016",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_grants_ge": {
+    "indicator": "DAC1.10.11016",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "total_oda_non_grants_flow": {
+    "indicator": "DAC1.10.11017",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_oda_non_grants_ge": {
+    "indicator": "DAC1.10.11017",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "gni": {
+    "indicator": "DAC1.40.1",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "oda_gni_flow": {
+    "indicator": "ONE.40.1010_1",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "oda_gni_ge": {
+    "indicator": "ONE.40.1010_11010_1",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "total_in_donor_students_flow": {
+    "indicator": "DAC1.10.1500",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_in_donor_students_ge": {
+    "indicator": "DAC1.10.1500",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "scholarships_flow": {
+    "indicator": "DAC1.10.1510",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "scholarships_ge": {
+    "indicator": "DAC1.10.1510",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "imputed_students_flow": {
+    "indicator": "DAC1.10.1520",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "imputed_students_ge": {
+    "indicator": "DAC1.10.1520",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "admin_costs_flow": {
+    "indicator": "DAC1.10.1700",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "admin_costs_ge": {
+    "indicator": "DAC1.10.1700",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+
+  "development_awareness_flow": {
+    "indicator": "DAC1.10.1810",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "development_awareness_ge": {
+    "indicator": "DAC1.10.1810",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "debt_relief_flow": {
+    "indicator": "DAC1.10.1600",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "debt_relief_ge": {
+    "indicator": "DAC1.10.1600",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "idrc_flow": {
+    "indicator": "DAC1.10.1820",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "idrc_ge": {
+    "indicator": "DAC1.10.1820",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "eu_core_flow": {
+    "indicator": "DAC1.10.2102",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "eu_core_ge": {
+    "indicator": "DAC1.10.2102",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "un_core_flow": {
+    "indicator": "DAC1.10.2101",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "un_core_ge": {
+    "indicator": "DAC1.10.2101",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "ida_core_flow": {
+    "indicator": "DAC1.10.2103",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "ida_core_ge": {
+    "indicator": "DAC1.10.2103",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "wb_ibrd_ifc_miga_core_flow": {
+    "indicator": "DAC1.10.2104",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "wb_ibrd_ifc_miga_core_ge": {
+    "indicator": "DAC1.10.2104",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "regional_banks_core_flow": {
+    "indicator": "DAC1.10.2105",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "regional_banks_core_ge": {
+    "indicator": "DAC1.10.2105",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "total_psi_flow": {
+    "indicator": "DAC1.60.11030",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "total_psi_ge": {
+    "indicator": "DAC1.60.11040",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "institutional_psi_flow": {
+    "indicator": "DAC1.60.11023",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "institutional_psi_ge": {
+    "indicator": "DAC1.60.11023",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "instrument_psi_flow": {
+    "indicator": "DAC1.60.11024",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "instrument_psi_ge": {
+    "indicator": "DAC1.60.11024",
+    "masure": "grant_equivalent",
+    "bulk": false
+  },
+  "recipient_imputed_multi_flow_net": {
+    "indicator": "DAC2A.10.106",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "recipient_bilateral_flow_net": {
+    "indicator": "DAC2A.10.206",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "recipient_bilateral_flow_gross": {
+    "indicator": "DAC2A.10.240",
+    "masure": "gross_disbursement",
+    "bulk": false
+  },
+  "recipient_loans_flow_gross": {
+    "indicator": "DAC2A.10.204",
+    "masure": "gross_disbursement",
+    "bulk": false
+  },
+  "recipient_loans_flow_net": {
+    "indicator": "DAC2A.10.218",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "recipient_interest_received_flow": {
+    "indicator": "DAC2A.10.209",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "recipient_humanitarian_flow": {
+    "indicator": "DAC2A.10.216",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "recipient_grants_flow": {
+    "indicator": "DAC2A.10.201",
+    "masure": "net_disbursement",
+    "bulk": false
+  },
+  "crs_bilateral_flow_disbursement_gross": {
+    "indicator": "CRS.P.10",
+    "masure": "gross_disbursement",
+    "bulk": true
+  },
+  "crs_bilateral_ge": {
+    "indicator": "CRS.P.10",
+    "masure": "grant_equivalent",
+    "bulk": true
+  }
+}

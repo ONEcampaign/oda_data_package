@@ -8,7 +8,7 @@ requires-python = ">=3.10, <4.0"
 dependencies = [
     "pandas >=2",
     "thefuzz >=0.22.1",
-    "pyarrow >=14, <19",
+    "pyarrow >=14, <20",
     "oda-reader >=1",
     "pydeflate >=2.0.1",
     "cachetools (>=5.5.1,<6.0.0)"
@@ -22,6 +22,10 @@ dev = [
     "bump2version >=1.0.1",
     "pytest-mock >=3.10.0"
 ]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+style = "pep440"
 
 [project.urls]
 Homepage = "https://github.com/ONEcampaign/oda_data_package"
