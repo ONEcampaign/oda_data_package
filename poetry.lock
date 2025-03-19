@@ -104,19 +104,6 @@ jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
-name = "bump2version"
-version = "1.0.1"
-description = "Version-bump your software with a single command!"
-optional = true
-python-versions = ">=3.5"
-groups = ["main"]
-markers = "extra == \"dev\""
-files = [
-    {file = "bump2version-1.0.1-py2.py3-none-any.whl", hash = "sha256:37f927ea17cde7ae2d7baf832f8e80ce3777624554a653006c9144f8017fe410"},
-    {file = "bump2version-1.0.1.tar.gz", hash = "sha256:762cb2bfad61f4ec8e2bdf452c7c267416f8c70dd9ecb1653fd0bbb01fa936e6"},
-]
-
-[[package]]
 name = "cachetools"
 version = "5.5.2"
 description = "Extensible memoizing collections and decorators"
@@ -2447,9 +2434,9 @@ files = [
 ]
 
 [extras]
-dev = ["black", "bump2version", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["black", "pytest", "pytest-cov", "pytest-mock"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <4.0"
-content-hash = "4f213f140dda6c2827505534cf46abf0a0b8066af22348d591a1caabbb5a2ebc"
+content-hash = "4e2b8e086be580d22ed440d0a3bb3b3471db34bb1660c08691074a20ff35a19f"
