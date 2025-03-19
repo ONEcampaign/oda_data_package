@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "1.5.0"
+version = "2.0.0b1"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 readme = "README.md"
 authors = [{name = "Jorge Rivera", email = "jorge.rivera@one.org"}]
@@ -19,7 +19,6 @@ dev = [
     "black >=24",
     "pytest >=8",
     "pytest-cov >=4.0.0",
-    "bump2version >=1.0.1",
     "pytest-mock >=3.10.0"
 ]
 
