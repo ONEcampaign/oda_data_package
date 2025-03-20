@@ -4,7 +4,7 @@ __version__ = version("oda_data")
 
 from oda_data import tools
 from oda_data.api.main import Indicators
-from oda_data.api.sources import Dac1Data, Dac2Data, MultiSystemData, CrsData
+from oda_data.api.sources import Dac1Data, Dac2aData, MultiSystemData, CrsData
 from oda_data.tools.compatibility import ODAData
 from oda_data.tools.groupings import donor_groupings, recipient_groupings
 from oda_data.tools.sector_lists import add_sectors, add_broad_sectors
@@ -25,7 +25,7 @@ def set_data_path(path):
 __all__ = [
     "Indicators",
     "Dac1Data",
-    "Dac2Data",
+    "Dac2aData",
     "MultiSystemData",
     "CrsData",
     "donor_groupings",
