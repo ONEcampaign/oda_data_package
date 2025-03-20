@@ -293,7 +293,7 @@ data = crs.read(using_bulk_download=True)
 ```
 
 
-### CRS
+### MultiSystem
 The `MultiSystemData` class can retrieve and return Providers Total Use of the Multilateral System data.
 
 You can optionally specify:
