@@ -161,7 +161,13 @@ class DacSource:
         for column, _, values in filters:
             if column not in data.columns:
                 continue
-            missing_values = set(values) - set(data[column].unique())
+            if isinstance(values, str):
+                values_check = [values]
+            elif isinstance(values, int):
+                values_check = [values]
+            else:
+                values_check = values
+            missing_values = set(values_check) - set(data[column].unique())
             if missing_values:
                 logger.warning(
                     f"Missing values in {column}: {', '.join(map(str, missing_values))}"
@@ -342,7 +348,7 @@ class Dac1Data(DacSource):
         )
 
 
-class Dac2Data(DacSource):
+class Dac2aData(DacSource):
     def __init__(
         self,
         years: Optional[list[int] | range | int] = None,
