@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -12,7 +13,7 @@ from oda_data.api.constants import (
     _EXCLUDE,
 )
 from oda_data.api.representations import _OdaDict, _OdaList
-from oda_data.api.sources import Dac1Data, Dac2Data, CrsData, MultiSystemData
+from oda_data.api.sources import Dac1Data, Dac2aData, CrsData, MultiSystemData
 from oda_data.clean_data import common as clean
 from oda_data.clean_data.validation import validate_currency, validate_measure
 from oda_data.indicators.crs import crs_functions
@@ -30,7 +31,7 @@ source_to_module = {
 
 READERS: dict[str, callable] = {
     "DAC1": Dac1Data,
-    "DAC2A": Dac2Data,
+    "DAC2A": Dac2aData,
     "CRS": CrsData,
     "MULTISYSTEM": MultiSystemData,
 }
@@ -73,10 +74,10 @@ class Indicators:
     years: Optional[list | int | range] = None
     providers: list | int | None = None
     recipients: list | int | None = None
-    measure: list[Measure] | Measure = "gross_disbursement"
+    measure: list[Measure] | Measure = "net_disbursement"
     currency: str = "USD"
     base_year: int | None = None
-    using_bulk_download: bool = False
+    use_bulk_download: bool = False
     refresh_data: bool = False
 
     def __post_init__(self) -> None:
@@ -161,7 +162,7 @@ class Indicators:
 
             file = reader.read(
                 additional_filters=filters[source],
-                using_bulk_download=self.using_bulk_download,
+                using_bulk_download=self.use_bulk_download,
             )
             data.append(file.drop(columns=_EXCLUDE, errors="ignore"))
 
@@ -224,10 +225,10 @@ class Indicators:
         }
 
     @classmethod
-    def available_donors(cls) -> dict:
+    def available_providers(cls) -> dict:
         """Returns a dictionary of available donor codes and their names"""
-        logger.info("Note that not all donors may be available for all indicators")
-        return _OdaDict(donor_groupings()["official_donors"])
+        logger.info("Note that not all providers may be available for all indicators")
+        return _OdaDict(donor_groupings()["all_official"])
 
     @classmethod
     def available_recipients(cls) -> dict:
@@ -241,9 +242,36 @@ class Indicators:
         return _OdaList(CURRENCIES)
 
     @classmethod
-    def available_indicators(cls) -> list:
+    def available_indicators(cls) -> dict:
         """Returns a list of indicators"""
-        return _OdaList(load_indicators().keys())
+        indicators = {}
+        for k, i in load_indicators().items():
+            indicators[k] = {
+                n: v for n, v in i.items() if n in ["name", "description", "sources"]
+            }
+
+        return _OdaDict(indicators)
+
+    @classmethod
+    def export_available_indicators(cls, export_folder: str | Path) -> None:
+        """Returns a list of indicators"""
+        if isinstance(export_folder, str):
+            export_folder = Path(export_folder)
+
+        indicators = {}
+
+        for k, i in load_indicators().items():
+            indicators[k] = {
+                n: v for n, v in i.items() if n in ["name", "description", "sources"]
+            }
+
+        df = (
+            pd.DataFrame(indicators)
+            .T.reset_index()
+            .rename(columns={"index": "indicator"})
+        )
+
+        df.to_csv(export_folder / "oda_data_indicators.csv", index=False)
 
     def get_indicators(self, indicators: str | list[str]) -> pd.DataFrame:
         """Fetch and process data for the specified indicators."""
