@@ -106,7 +106,8 @@ class Indicators:
                 if column in ["aidtype_code"]:
                     self.indicators_filter = values[-1]
                 else:
-                    filters[source].extend((column, *filters))
+                    filter_tuple = (column, *values)
+                    filters[source].extend([filter_tuple])
 
             # Apply currency filter
             currency_column = PRICES.get(source, {}).get("column")
@@ -121,6 +122,8 @@ class Indicators:
                 [MEASURES[source][measure]["column"] for measure in self.measure]
             )
             for col in columns:
+                if source == "CRS":
+                    continue
                 to_filter = []
                 for measure in self.measure:
                     to_filter.append(get_measure_filter(source, measure))
