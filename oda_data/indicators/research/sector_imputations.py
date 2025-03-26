@@ -1,38 +1,13 @@
 import pandas as pd
 
 from oda_data import donor_groupings
-from oda_data.api.constants import Measure, MEASURES
+from oda_data.api.constants import Measure, MEASURES, PROVIDER_PURPOSE_GROUPER, \
+    CHANNEL_PURPOSE_SHARE_GROUPER
 from oda_data.clean_data.channels import add_multi_channel_codes
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import OdaSchema
 
-PROVIDER_PURPOSE_GROUPER = [
-    OdaSchema.PROVIDER_CODE,
-    OdaSchema.PROVIDER_NAME,
-    OdaSchema.AGENCY_CODE,
-    OdaSchema.AGENCY_NAME,
-    OdaSchema.PURPOSE_CODE,
-    OdaSchema.RECIPIENT_CODE,
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
-]
 
-CHANNEL_PURPOSE_GROUPER = [
-    OdaSchema.CHANNEL_CODE,
-    OdaSchema.PURPOSE_CODE,
-    OdaSchema.RECIPIENT_CODE,
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
-]
-
-CHANNEL_PURPOSE_SHARE_GROUPER = [
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
-    OdaSchema.CHANNEL_CODE,
-]
 
 
 def rolling_period_total(
