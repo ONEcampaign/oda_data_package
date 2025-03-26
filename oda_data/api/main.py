@@ -292,14 +292,18 @@ class Indicators:
             return indicator, self.indicators_data[indicator]
 
         results = {}
-        with ThreadPoolExecutor(max_workers=min(6, len(indicators))) as executor:
+
+        # check if indicators come from CRS
+        crs = [True for c in indicators if "CRS" in c]
+        with ThreadPoolExecutor(
+            max_workers=min(1 if any(crs) else 3, len(indicators))
+        ) as executor:
             future_to_indicator = {
                 executor.submit(_single_indicator, ind): ind for ind in indicators
             }
             for future in as_completed(future_to_indicator):
                 ind, data = future.result()
                 results[ind] = data
-
 
         return pd.concat(
             [d.assign(one_indicator=i) for i, d in self.indicators_data.items()],
