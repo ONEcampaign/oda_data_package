@@ -1,11 +1,24 @@
 # Constants
 from typing import Literal
 
+from oda_data.clean_data.schema import OdaSchema
 
 Measure = Literal[
     "grant_equivalent", "gross_disbursement", "commitment", "net_disbursement"
 ]
 
+MarkerScore = Literal[
+    "significant",
+    "principal",
+    "not_targeted",
+    "not_screened",
+    "total_targeted",
+    "total_allocable",
+]
+
+PolicyMarker = Literal[
+    "gender", "environment", "nutrition", "disability", "biodiversity"
+]
 
 CURRENCIES: dict[str, str] = {
     "USD": "USA",
@@ -77,4 +90,46 @@ _EXCLUDE = [
     "data_type_code",
     "unit_measure_name",
     "unit_measure_code",
+]
+
+EXTENDED_PROVIDER_PURPOSE_GROUPER = [
+    OdaSchema.PROVIDER_CODE,
+    OdaSchema.PROVIDER_NAME,
+    OdaSchema.AGENCY_CODE,
+    OdaSchema.AGENCY_NAME,
+    OdaSchema.RECIPIENT_CODE,
+    OdaSchema.FLOW_MODALITY,
+    OdaSchema.FINANCE_TYPE,
+    OdaSchema.PURPOSE_CODE,
+    OdaSchema.YEAR,
+    OdaSchema.CURRENCY,
+    OdaSchema.PRICES,
+]
+
+PROVIDER_PURPOSE_GROUPER = [
+    OdaSchema.PROVIDER_CODE,
+    OdaSchema.PROVIDER_NAME,
+    OdaSchema.AGENCY_CODE,
+    OdaSchema.AGENCY_NAME,
+    OdaSchema.PURPOSE_CODE,
+    OdaSchema.RECIPIENT_CODE,
+    OdaSchema.YEAR,
+    OdaSchema.CURRENCY,
+    OdaSchema.PRICES,
+]
+
+CHANNEL_PURPOSE_GROUPER = [
+    OdaSchema.CHANNEL_CODE,
+    OdaSchema.PURPOSE_CODE,
+    OdaSchema.RECIPIENT_CODE,
+    OdaSchema.YEAR,
+    OdaSchema.CURRENCY,
+    OdaSchema.PRICES,
+]
+
+CHANNEL_PURPOSE_SHARE_GROUPER = [
+    OdaSchema.YEAR,
+    OdaSchema.CURRENCY,
+    OdaSchema.PRICES,
+    OdaSchema.CHANNEL_CODE,
 ]
