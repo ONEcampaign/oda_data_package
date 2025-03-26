@@ -22,6 +22,7 @@ from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
 from oda_data.tools.groupings import donor_groupings, recipient_groupings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 source_to_module = {
     "DAC1": dac1_functions,
@@ -105,7 +106,8 @@ class Indicators:
                 if column in ["aidtype_code"]:
                     self.indicators_filter = values[-1]
                 else:
-                    filters[source].extend((column, *filters))
+                    filter_tuple = (column, *values)
+                    filters[source].extend([filter_tuple])
 
             # Apply currency filter
             currency_column = PRICES.get(source, {}).get("column")
@@ -120,6 +122,8 @@ class Indicators:
                 [MEASURES[source][measure]["column"] for measure in self.measure]
             )
             for col in columns:
+                if source == "CRS":
+                    continue
                 to_filter = []
                 for measure in self.measure:
                     to_filter.append(get_measure_filter(source, measure))
@@ -278,13 +282,28 @@ class Indicators:
         if isinstance(indicators, str):
             indicators = [indicators]
 
-        for ind in indicators:
-            logger.info(f"Fetching data for {ind}")
-            self._load_data(ind)
-            self._process_data(ind)
-            self._group_data(ind)
-            self._convert_units(ind)
-            logger.info(f"{ind} successfully loaded.")
+        def _single_indicator(indicator: str) -> tuple[str, pd.DataFrame]:
+            logger.info(f"Fetching data for {indicator}")
+            self._load_data(indicator)
+            self._process_data(indicator)
+            self._group_data(indicator)
+            self._convert_units(indicator)
+            logger.info(f"{indicator} successfully loaded.")
+            return indicator, self.indicators_data[indicator]
+
+        results = {}
+
+        # check if indicators come from CRS
+        crs = [True for c in indicators if "CRS" in c]
+        with ThreadPoolExecutor(
+            max_workers=min(1 if any(crs) else 3, len(indicators))
+        ) as executor:
+            future_to_indicator = {
+                executor.submit(_single_indicator, ind): ind for ind in indicators
+            }
+            for future in as_completed(future_to_indicator):
+                ind, data = future.result()
+                results[ind] = data
 
         return pd.concat(
             [d.assign(one_indicator=i) for i, d in self.indicators_data.items()],
