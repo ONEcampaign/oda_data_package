@@ -3,10 +3,6 @@ from typing import Literal
 
 from oda_data.clean_data.schema import OdaSchema
 
-Measure = Literal[
-    "grant_equivalent", "gross_disbursement", "commitment", "net_disbursement"
-]
-
 MarkerScore = Literal[
     "significant",
     "principal",
@@ -39,6 +35,14 @@ MEASURES: dict[str, dict] = {
             "column": "flows_code",
             "filter": 1150,
         },
+        "commitment_grant": {
+            "column": "flows_code",
+            "filter": 1151,
+        },
+        "commitment_non_grant": {
+            "column": "flows_code",
+            "filter": 1152,
+        },
         "grant_equivalent": {
             "column": "flows_code",
             "filter": 1160,
@@ -47,9 +51,21 @@ MEASURES: dict[str, dict] = {
             "column": "flows_code",
             "filter": 1140,
         },
+        "net_disbursement_grant": {
+            "column": "flows_code",
+            "filter": 1121,
+        },
         "gross_disbursement": {
             "column": "flows_code",
             "filter": 1120,
+        },
+        "gross_disbursement_non_grant": {
+            "column": "flows_code",
+            "filter": 1122,
+        },
+        "received": {
+            "column": "flows_code",
+            "filter": 1130,
         },
     },
     "DAC2A": {
@@ -82,6 +98,22 @@ MEASURES: dict[str, dict] = {
         },
     },
 }
+
+Measure = Literal[
+    "commitment",
+    "commitment_grant",
+    "commitment_non_grant",
+    "expert_commitment",
+    "expert_extended",
+    "export_credit",
+    "grant_equivalent",
+    "gross_disbursement",
+    "gross_disbursement_non_grant",
+    "net_disbursement",
+    "net_disbursement_grant",
+    "received",
+]
+
 
 _EXCLUDE = [
     "amounttype_code",
