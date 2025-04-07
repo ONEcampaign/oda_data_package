@@ -45,6 +45,7 @@ def _marker_modality_filter() -> list:
 def bilateral_policy_marker(
     years: list | int | range = None,
     providers: list | int | None = None,
+    recipients: list | int | None = None,
     measure: Measure | str = "gross_disbursement",
     *,
     marker: PolicyMarker,
@@ -58,6 +59,7 @@ def bilateral_policy_marker(
     Args:
         years (list | int | range, optional): Years to filter the data. Defaults to None.
         providers (list | int | None, optional): Providers to filter the data. Defaults to None.
+        recipients (list | int | None, optional): Recipients to filter the data. Defaults to None.
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
         marker (PolicyMarker): Policy marker. Options are: "gender", "environment", "nutrition",
            "disability", "biodiversity"
@@ -95,7 +97,7 @@ def bilateral_policy_marker(
         filters.append(("category", "in", [10, 60]))
 
     # Set up the CRS data object
-    crs = CrsData(providers=providers, years=years)
+    crs = CrsData(providers=providers, years=years, recipients=recipients)
 
     # Read the data and group by provider and purpose
     data = crs.read(columns=grouper + [measure], additional_filters=filters)
