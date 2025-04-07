@@ -66,7 +66,7 @@ def schema_types(save: bool = False) -> dict:
         OdaSchema.PROJECT_TITLE: string,
         OdaSchema.PROJECT_DESCRIPTION: string,
         OdaSchema.PROJECT_DESCRIPTION_SHORT: string,
-        OdaSchema.GENDER: category,
+        OdaSchema.GENDER: numerical_cat,
         OdaSchema.INDICATOR: category,
         OdaSchema.VALUE: numerical,
         OdaSchema.AMOUNT: numerical,
