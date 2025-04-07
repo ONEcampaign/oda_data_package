@@ -13,10 +13,10 @@ from oda_data.clean_data.schema import OdaSchema
 
 def _marker_score_map(marker: PolicyMarker | str) -> list:
     return {
-        "significant": ["1.0"],
-        "principal": ["2.0"],
-        "not_targeted": ["0.0"],
-        "total_targeted": ["1.0", "2.0"],
+        "significant": [1],
+        "principal": [2],
+        "not_targeted": [0],
+        "total_targeted": [1, 2],
     }.get(marker)
 
 
