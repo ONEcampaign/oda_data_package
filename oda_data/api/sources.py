@@ -369,8 +369,6 @@ class Dac2aData(DacSource):
         self._init_filters(years=years, providers=providers, recipients=recipients)
         self.indicators = check_integers(indicators) if indicators else None
 
-        self.filters = []
-
         if self.indicators is not None:
             self.add_filter(
                 column=OdaSchema.AIDTYPE_CODE, predicate="in", value=self.indicators
