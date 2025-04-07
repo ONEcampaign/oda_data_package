@@ -6,7 +6,8 @@ for CRS indicators, mappings, and filtering, as well as updating indicator mappi
 from collections import OrderedDict
 
 import pandas as pd
-from oda_data import read_crs
+
+from oda_data import CrsData
 from oda_data.config import OdaPATHS
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.crs.common import (
@@ -353,7 +354,8 @@ def crs_oecd_indicators(crs_years: list | int) -> dict:
     Returns:
         dict: Dictionary containing indicator data.
     """
-    crs = read_crs(crs_years)
+    crs_reader = CrsData(years=crs_years)
+    crs = crs_reader.read(using_bulk_download=True)
     indicators_data = unique_crs_indicator_rows(crs)
     mapping = mappings()
 
