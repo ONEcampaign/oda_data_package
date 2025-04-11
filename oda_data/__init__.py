@@ -8,6 +8,7 @@ from oda_data.api.sources import Dac1Data, Dac2aData, MultiSystemData, CrsData
 from oda_data.indicators.research.policy_markers import bilateral_policy_marker
 from oda_data.tools.compatibility import ODAData
 from oda_data.tools.groupings import donor_groupings, recipient_groupings
+from oda_data.tools.names.add import add_names_columns
 from oda_data.tools.sector_lists import add_sectors, add_broad_sectors
 
 
@@ -35,5 +36,6 @@ __all__ = [
     "add_sectors",
     "add_broad_sectors",
     "set_data_path",
-    "ODAData"
+    "ODAData",
+    "add_names_columns",
 ]

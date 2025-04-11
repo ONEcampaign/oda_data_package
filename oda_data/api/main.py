@@ -307,7 +307,7 @@ class Indicators:
 
         return pd.concat(
             [
-                d.assign(one_indicator=i)
+                d.assign(one_indicator=i).dropna(axis=1, how="all")
                 for i, d in self.indicators_data.items()
                 if i in indicators
             ],
