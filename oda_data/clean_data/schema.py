@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class OdaSchema:
     YEAR: str = "year"
     PROVIDER_CODE: str = "donor_code"
+    PROVIDER_CODE_DE: str = "de_donorcode"
     PROVIDER_NAME: str = "donor_name"
     PROVIDER_TYPE: str = "donor_type"
     PROVIDER_DETAILED: str = "provider_detailed"
@@ -13,10 +14,12 @@ class OdaSchema:
     CRS_ID: str = "crs_id"
     PROJECT_ID: str = "project_id"
     RECIPIENT_CODE: str = "recipient_code"
+    RECIPIENT_CODE_DE: str = "de_recipientcode"
     RECIPIENT_NAME: str = "recipient_name"
     RECIPIENT_REGION: str = "recipient_region"
     RECIPIENT_REGION_CODE: str = "recipient_region_code"
-    RECIPIENT_INCOME: str = "recipient_income"
+    RECIPIENT_REGION_CODE_DE: str = "de_regioncode"
+    RECIPIENT_INCOME: str = "incomegroup_name"
     RECIPIENT_INCOME_CODE: str = "recipient_income_code"
     FLOW_MODALITY: str = "modality"
     ALLOCABLE_SHARE: str = "allocable_share"
@@ -125,6 +128,7 @@ class OdaSchema:
     PRICES: str = "prices"
     AMOUNT: str = "amount"
     AIDTYPE_CODE: str = "aidtype_code"
+    AIDTYPE_NAME: str = "aid_type"
     FLOWS_CODE: str = "flows_code"
     FUND_FLOWS: str = "fund_flows"
     AID_TO_THRU: str = "aid_to_or_thru"
@@ -263,7 +267,12 @@ CRS_MAPPING: dict[str, str] = {
     "flow_type": OdaSchema.FLOW_TYPE,
     "type_of_flow": OdaSchema.FLOW_TYPE,
     "aidtype_code": OdaSchema.AIDTYPE_CODE,
+    "aid_type": OdaSchema.AIDTYPE_NAME,
     "flows_code": OdaSchema.FLOWS_CODE,
     "fund_flows": OdaSchema.FUND_FLOWS,
     "amounttype_code": OdaSchema.AMOUNT_TYPE_CODE,
+    "de_donorcode": OdaSchema.PROVIDER_CODE_DE,
+    "de_recipientcode": OdaSchema.RECIPIENT_CODE_DE,
+    "de_regioncode": OdaSchema.RECIPIENT_REGION_CODE_DE,
+    "incomegroup_name": OdaSchema.RECIPIENT_INCOME,
 }
