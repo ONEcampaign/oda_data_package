@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 
 from oda_data.clean_data.schema import OdaSchema
@@ -28,7 +30,7 @@ def dac1_codes_names():
         OdaSchema.AIDTYPE_CODE,
         OdaSchema.AIDTYPE_NAME,
         OdaSchema.FLOWS_CODE,
-        OdaSchema.FLOWS_NAME,
+        OdaSchema.FUND_FLOWS,
     ]
 
     df = dac1.read(using_bulk_download=True, columns=columns)
@@ -41,7 +43,7 @@ def dac1_codes_names():
             df, OdaSchema.AIDTYPE_CODE, OdaSchema.AIDTYPE_NAME
         ),
         OdaSchema.FLOWS_CODE: _code_name(
-            df, OdaSchema.FLOWS_CODE, OdaSchema.FLOWS_NAME
+            df, OdaSchema.FLOWS_CODE, OdaSchema.FUND_FLOWS
         ),
     }
 
@@ -150,3 +152,24 @@ def crs_codes_names():
     }
 
     update_mapping_file(data, OdaPATHS.names / "crs_names.json")
+
+
+def get_merged_names_mapping():
+
+    files = ["dac1_names.json", "dac2a_names.json", "crs_names.json"]
+
+    merged_mapping = {}
+
+    for file in files:
+        file_path = OdaPATHS.names / file
+        with open(file_path, "r") as f:
+            mapping = json.load(f)
+            for k, v in mapping.items():
+                if k not in merged_mapping:
+                    merged_mapping[k] = {}
+                merged_mapping[k].update(v)
+
+    # Remove keys with empty dictionaries
+    merged_mapping = {k: v for k, v in merged_mapping.items() if v}
+
+    return merged_mapping
