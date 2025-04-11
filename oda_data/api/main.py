@@ -306,6 +306,10 @@ class Indicators:
                 results[ind] = data
 
         return pd.concat(
-            [d.assign(one_indicator=i) for i, d in self.indicators_data.items()],
+            [
+                d.assign(one_indicator=i)
+                for i, d in self.indicators_data.items()
+                if i in indicators
+            ],
             ignore_index=True,
         )
