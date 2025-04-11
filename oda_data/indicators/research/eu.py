@@ -2,7 +2,6 @@
 
 import pandas as pd
 
-from oda_data import donor_groupings
 from oda_data.api.constants import Measure
 from oda_data.api.main import get_measure_filter, Indicators
 from oda_data.api.sources import Dac1Data
@@ -111,27 +110,27 @@ def get_eui_oda_weights(
 
 
 def get_eui_plus_bilateral_providers_indicator(
-    indicator_obj: Indicators, indicator: str | list[str]
+    indicators_obj: Indicators, indicator: str | list[str]
 ) -> pd.DataFrame:
     """Fetches indicator values with adjusted EU institution contributions.
 
     Args:
-        indicator_obj: An `Indicators` instance to fetch indicator data.
+        indicators_obj: An `Indicators` instance to fetch indicator data.
         indicator: Indicator code or list of codes.
 
     Returns:
         A DataFrame containing indicator values with adjusted EU contributions.
     """
     eui_weights = get_eui_oda_weights(
-        years=indicator_obj.years,
-        providers=indicator_obj.providers,
-        measure=indicator_obj.measure[0],
+        years=indicators_obj.years,
+        providers=indicators_obj.providers,
+        measure=indicators_obj.measure[0],
     )
 
-    if 918 not in indicator_obj.providers:
-        indicator_obj.providers.append(918)
+    if 918 not in indicators_obj.providers:
+        indicators_obj.providers.append(918)
 
-    data = indicator_obj.get_indicators(indicator)
+    data = indicators_obj.get_indicators(indicator)
     eui_mask = data[OdaSchema.PROVIDER_CODE] == 918
 
     data.loc[eui_mask, OdaSchema.VALUE] = data.loc[
