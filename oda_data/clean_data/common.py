@@ -7,12 +7,12 @@ import pandas as pd
 from pydeflate import set_pydeflate_path, oecd_dac_deflate, oecd_dac_exchange
 
 from oda_data.clean_data.dtypes import set_default_types
-from oda_data.clean_data.schema import CRS_MAPPING, OdaSchema
+from oda_data.clean_data.schema import CRS_MAPPING, ODASchema
 from oda_data.clean_data.validation import validate_currency
-from oda_data.config import OdaPATHS
+from oda_data.config import ODAPaths
 from oda_data.logger import logger
 
-set_pydeflate_path(OdaPATHS.raw_data)
+set_pydeflate_path(ODAPaths.raw_data)
 
 
 def clean_column_name(column_name: str) -> str:
@@ -101,7 +101,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
 dac_exchange = partial(
     oecd_dac_exchange,
     source_currency="USA",
-    id_column=OdaSchema.PROVIDER_CODE,
+    id_column=ODASchema.PROVIDER_CODE,
     use_source_codes=True,
     value_column="value",
     target_value_column="value",
@@ -112,7 +112,7 @@ dac_exchange = partial(
 dac_deflate = partial(
     oecd_dac_deflate,
     source_currency="USA",
-    id_column=OdaSchema.PROVIDER_CODE,
+    id_column=ODASchema.PROVIDER_CODE,
     use_source_codes=True,
     value_column="value",
     target_value_column="value",
@@ -129,7 +129,7 @@ def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
     from oda_data import provider_groupings
 
     multilateral = provider_groupings()["multilateral"]
-    df = df.loc[lambda d: d[OdaSchema.PROVIDER_CODE].isin(multilateral)]
+    df = df.loc[lambda d: d[ODASchema.PROVIDER_CODE].isin(multilateral)]
 
     return df
 

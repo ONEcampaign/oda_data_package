@@ -3,9 +3,9 @@
 import pandas as pd
 
 from oda_data.api.constants import Measure
-from oda_data.api.oecd import get_measure_filter, OECDData
-from oda_data.api.sources import Dac1Data
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.api.oecd import get_measure_filter, OECDClient
+from oda_data.api.sources import DAC1Data
+from oda_data.clean_data.schema import ODASchema
 
 
 def _load_dac1_eui_data(
@@ -14,21 +14,21 @@ def _load_dac1_eui_data(
 ) -> pd.DataFrame:
     """Loads DAC1 data with specific filters applied."""
     indicators = [1010, 2102]
-    filters = [(OdaSchema.AMOUNT_TYPE_CODE, "==", "A")]
+    filters = [(ODASchema.AMOUNT_TYPE_CODE, "==", "A")]
     measure_filter = get_measure_filter("DAC1", measure)
 
     idx = [
-        OdaSchema.YEAR,
-        OdaSchema.FLOWS_CODE,
-        OdaSchema.FUND_FLOWS,
-        OdaSchema.AIDTYPE_CODE,
+        ODASchema.YEAR,
+        ODASchema.FLOWS_CODE,
+        ODASchema.FUND_FLOWS,
+        ODASchema.AIDTYPE_CODE,
     ]
 
     df = (
-        Dac1Data(years=years, indicators=indicators)
+        DAC1Data(years=years, indicators=indicators)
         .read(additional_filters=filters)
-        .loc[lambda d: d[OdaSchema.FLOWS_CODE] == measure_filter]
-        .filter(idx + [OdaSchema.PROVIDER_CODE, OdaSchema.VALUE])
+        .loc[lambda d: d[ODASchema.FLOWS_CODE] == measure_filter]
+        .filter(idx + [ODASchema.PROVIDER_CODE, ODASchema.VALUE])
     )
 
     return df
@@ -37,20 +37,20 @@ def _load_dac1_eui_data(
 def _compute_spending_by_eui(df: pd.DataFrame) -> pd.DataFrame:
     """Computes total spending by the EU institutions for aid type 1010."""
     return (
-        df.loc[df[OdaSchema.PROVIDER_CODE] == 918]
-        .loc[df[OdaSchema.AIDTYPE_CODE] == 1010]
+        df.loc[df[ODASchema.PROVIDER_CODE] == 918]
+        .loc[df[ODASchema.AIDTYPE_CODE] == 1010]
         .groupby(
             [
-                OdaSchema.YEAR,
-                OdaSchema.FLOWS_CODE,
-                OdaSchema.FUND_FLOWS,
-                OdaSchema.AIDTYPE_CODE,
+                ODASchema.YEAR,
+                ODASchema.FLOWS_CODE,
+                ODASchema.FUND_FLOWS,
+                ODASchema.AIDTYPE_CODE,
             ],
             dropna=False,
-        )[[OdaSchema.VALUE]]
+        )[[ODASchema.VALUE]]
         .sum()
         .reset_index()
-        .rename(columns={OdaSchema.VALUE: "spending"})
+        .rename(columns={ODASchema.VALUE: "spending"})
     )
 
 
@@ -59,17 +59,17 @@ def _compute_inflows_by_providers(
 ) -> pd.DataFrame:
     """Computes inflows for given providers for aid type 2102."""
     return (
-        df.loc[df[OdaSchema.PROVIDER_CODE].isin(providers)]
-        .loc[df[OdaSchema.AIDTYPE_CODE] == 2102]
+        df.loc[df[ODASchema.PROVIDER_CODE].isin(providers)]
+        .loc[df[ODASchema.AIDTYPE_CODE] == 2102]
         .groupby(
             [
-                OdaSchema.YEAR,
-                OdaSchema.FLOWS_CODE,
-                OdaSchema.FUND_FLOWS,
-                OdaSchema.AIDTYPE_CODE,
+                ODASchema.YEAR,
+                ODASchema.FLOWS_CODE,
+                ODASchema.FUND_FLOWS,
+                ODASchema.AIDTYPE_CODE,
             ],
             dropna=False,
-        )[[OdaSchema.VALUE]]
+        )[[ODASchema.VALUE]]
         .sum()
         .reset_index()
     )
@@ -98,24 +98,24 @@ def get_eui_oda_weights(
     spending = _compute_spending_by_eui(df)
     inflows = _compute_inflows_by_providers(df, providers)
 
-    inflow_weights = inflows.merge(spending, on=[OdaSchema.YEAR], how="left").assign(
+    inflow_weights = inflows.merge(spending, on=[ODASchema.YEAR], how="left").assign(
         weight=lambda d: 1 - (d.value / d.spending)
     )
 
     return (
-        inflow_weights.filter([OdaSchema.YEAR, "weight"])
-        .set_index(OdaSchema.YEAR)["weight"]
+        inflow_weights.filter([ODASchema.YEAR, "weight"])
+        .set_index(ODASchema.YEAR)["weight"]
         .to_dict()
     )
 
 
 def get_eui_plus_bilateral_providers_indicator(
-    indicators_obj: OECDData, indicator: str | list[str]
+    indicators_obj: OECDClient, indicator: str | list[str]
 ) -> pd.DataFrame:
     """Fetches indicator values with adjusted EU institution contributions.
 
     Args:
-        indicators_obj: An `OECDData` instance to fetch indicator data.
+        indicators_obj: An `OECDClient` instance to fetch indicator data.
         indicator: Indicator code or list of codes.
 
     Returns:
@@ -131,10 +131,10 @@ def get_eui_plus_bilateral_providers_indicator(
         indicators_obj.providers.append(918)
 
     data = indicators_obj.get_indicators(indicator)
-    eui_mask = data[OdaSchema.PROVIDER_CODE] == 918
+    eui_mask = data[ODASchema.PROVIDER_CODE] == 918
 
-    data.loc[eui_mask, OdaSchema.VALUE] = data.loc[
-        eui_mask, OdaSchema.VALUE
-    ] * data.loc[eui_mask, OdaSchema.YEAR].map(eui_weights)
+    data.loc[eui_mask, ODASchema.VALUE] = data.loc[
+        eui_mask, ODASchema.VALUE
+    ] * data.loc[eui_mask, ODASchema.YEAR].map(eui_weights)
 
     return data

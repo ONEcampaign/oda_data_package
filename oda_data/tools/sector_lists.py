@@ -1,7 +1,7 @@
 # Education
 import pandas as pd
 
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 
 edu_unspecified = list(range(111 * 100, 112 * 100)) + [111]
 edu_basic = list(range(112 * 100, 113 * 100)) + [112]
@@ -254,14 +254,14 @@ def _groupby_sector(data: pd.DataFrame) -> pd.DataFrame:
     data = data.drop("purpose_code", axis=1)
     return (
         data.groupby(
-            [c for c in data.columns if c not in [OdaSchema.VALUE]],
+            [c for c in data.columns if c not in [ODASchema.VALUE]],
             observed=True,
             dropna=False,
         )
         .sum(numeric_only=True)
-        .loc[lambda d: d[OdaSchema.VALUE] != 0]
+        .loc[lambda d: d[ODASchema.VALUE] != 0]
         .reset_index(drop=False)
-        .rename(columns={"broad_sector": OdaSchema.PURPOSE_NAME})
+        .rename(columns={"broad_sector": ODASchema.PURPOSE_NAME})
     )
 
 

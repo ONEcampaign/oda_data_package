@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from oda_data import config, OECDData
+from oda_data import config, OECDClient
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ODAData:
         )
 
         # read json file
-        with open(config.OdaPATHS.settings / "v1_indicators_mapping.json") as f:
+        with open(config.ODAPaths.settings / "v1_indicators_mapping.json") as f:
             self._mapping = json.load(f)
 
         self.indicators = {}
@@ -41,7 +41,7 @@ class ODAData:
                     f"compatibility tool"
                 )
 
-            indicator_data = OECDData(
+            indicator_data = OECDClient(
                 years=self.years,
                 providers=self.donors,
                 recipients=self.recipients,

@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from thefuzz import process
 
-from oda_data.clean_data.schema import OdaSchema
-from oda_data.config import OdaPATHS
+from oda_data.clean_data.schema import ODASchema
+from oda_data.config import ODAPaths
 
 ADDITIONAL_PATTERNS: dict[str, int] = {
     r"\bworld bank\b": 44000,
@@ -58,7 +58,7 @@ ADDITIONAL_PATTERNS: dict[str, int] = {
 
 def get_crs_official_mapping() -> pd.DataFrame:
     """Get the CRS official mapping file."""
-    return pd.read_csv(OdaPATHS.cleaning / "crs_channel_mapping.csv")
+    return pd.read_csv(ODAPaths.cleaning / "crs_channel_mapping.csv")
 
 
 def clean_string(text_series: pd.Series | str) -> pd.Series:
@@ -585,8 +585,8 @@ def generate_channel_mapping_dictionary(
 
 def add_channel_codes(
     data: pd.DataFrame,
-    channel_names_column: str = OdaSchema.CHANNEL_NAME,
-    target_column: str = OdaSchema.CHANNEL_CODE,
+    channel_names_column: str = ODASchema.CHANNEL_NAME,
+    target_column: str = ODASchema.CHANNEL_CODE,
     export_missing_path: str | None = None,
 ) -> pd.DataFrame:
     """
@@ -622,12 +622,12 @@ def add_multi_channel_codes(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy(deep=True)
 
     df["name"] = np.where(
-        df[OdaSchema.AGENCY_NAME].fillna("missing")
-        == df[OdaSchema.PROVIDER_NAME].fillna("missing"),
-        df[OdaSchema.PROVIDER_NAME],
-        df[OdaSchema.PROVIDER_NAME].fillna("")
+        df[ODASchema.AGENCY_NAME].fillna("missing")
+        == df[ODASchema.PROVIDER_NAME].fillna("missing"),
+        df[ODASchema.PROVIDER_NAME],
+        df[ODASchema.PROVIDER_NAME].fillna("")
         + " "
-        + df[OdaSchema.AGENCY_NAME].fillna(""),
+        + df[ODASchema.AGENCY_NAME].fillna(""),
     )
 
     df = add_channel_codes(data=df, channel_names_column="name")

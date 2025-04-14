@@ -31,7 +31,7 @@ The package is compatible with Python 3.10 and above.
 
 ## Basic usage
 
-Most users can get the data they need by using the `OECDData` class.
+Most users can get the data they need by using the `OECDClient` class.
 
 An object of this class can handle:
 - getting data for specific indicators (one or more)
@@ -45,13 +45,13 @@ using the OECD data-explorer API.
 In the example below, we get all data for Total ODA (net disbursements), for 2012 to 2022.
 
 ```python
-from oda_data import OECDData, set_data_path
+from oda_data import OECDClient, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
-indicator = OECDData(years=range(2012, 2023))
+indicator = OECDClient(years=range(2012, 2023))
 
 # Get the desired indicator
 data = indicator.get_indicators("DAC1.10.1010")
@@ -60,13 +60,13 @@ data = indicator.get_indicators("DAC1.10.1010")
 Here's an example to get Bilateral ODA for France and the US, for 2020 and 2021. The data will be in grant equivalents, in constant 2019 Euros.
 
 ```python
-from oda_data import OECDData, set_data_path
+from oda_data import OECDClient, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
-client = OECDData(
+client = OECDClient(
     years=[2020, 2021],
     providers=[4, 302],  # Example provider codes
     measure="grant_equivalent",  # Options: "commitment", "grant_equivalent", etc.
@@ -82,7 +82,7 @@ If you intend to download many indicators, we recommend using the Bulk download 
 API has pretty low usage limits, and you could get a temporary block if you make too many repeated calls. While downloading a particular bulk file may time a few minutes, subsequently getting indicator data is much faster.
 
 ```python
-from oda_data import OECDData, set_data_path
+from oda_data import OECDClient, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
@@ -91,7 +91,7 @@ set_data_path("path/to/data/folder")
 research_indicators = ["DAC1.10.1100", "DAC1.10.1410", "DAC1.10.2102", "DAC1.10.1500"]
 
 # create object, specifying key details of the desired output
-client = OECDData(
+client = OECDClient(
     years=[2019, 2020, 2021],
     measure="net_disbursement",  # Options: "commitment", "grant_equivalent", etc.
     currency="LCU",  # To get the data in providers' own currencies
@@ -102,58 +102,58 @@ client = OECDData(
 data = client.get_indicators(research_indicators)
 ```
 
-### OECDData
+### OECDClient
 
 Over three thousand indicators are currently supported. They are mostly produced by filtering (and sometimes aggregating) data from the different DAC Tables and databases.
 
 You can get a dictionary with all supported indicators, with their code, name, description and source by using the `.available_indicators()` method:
 
 ```python
-from oda_data import OECDData
+from oda_data import OECDClient
 
-all_indicators = OECDData.available_indicators()
+all_indicators = OECDClient.available_indicators()
 ```
 
 Alternatively, you can export the indicators to a CSV by using the `.export_available_indicators()` method.
 
 ```python
-from oda_data import OECDData
+from oda_data import OECDClient
 
-OECDData.export_available_indicators(export_folder="path/to/folder/")
+OECDClient.export_available_indicators(export_folder="path/to/folder/")
 ```
 
 ### Providers
 You can get a dictionary with all available providers, with their code and name, by using the `.available_providers()` method:
 
 ```python
-from oda_data import OECDData
+from oda_data import OECDClient
 
-providers = OECDData.available_providers()
+providers = OECDClient.available_providers()
 ```
 
 ### Recipients
 You can get a dictionary with all available recipients, with their code and name, by using the `.available_recipients()` method:
 
 ```python
-from oda_data import OECDData
+from oda_data import OECDClient
 
-recipients = OECDData.available_recipients()
+recipients = OECDClient.available_recipients()
 ```
 
 ### Currencies
 You can get a dictionary with all available currencies, with their code and name, by using the `.available_currencies()` method:
 
 ```python
-from oda_data import OECDData
+from oda_data import OECDClient
 
-currencies = OECDData.available_currencies()
+currencies = OECDClient.available_currencies()
 ```
 
 ## Accessing the data
 For more advanced users, you can use this package to get and work with different tables and databases from the OECD DAC.
 
 ### DAC 1
-The `Dac1Data` class can retrieve and return DAC 1 data.
+The `DAC1Data` class can retrieve and return DAC 1 data.
 
 You can optionally specify:
 - years: to filter the data for specific years
@@ -167,13 +167,13 @@ After instantiating the object, you can call:
 - `read`: to read data as stored in the specified folder. If the data is not available, it will be downloaded.
 
 ```python
-from oda_data import Dac1Data, set_data_path
+from oda_data import DAC1Data, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # instantiate a DAC1Data object
-dac1 = Dac1Data()
+dac1 = DAC1Data()
 
 # Perform a bulk download
 dac1.download(bulk=True)
@@ -186,15 +186,14 @@ Use cases can be quite elaborate. For example, here we will download data for Fr
 
 When reading, we will also filter to get only current prices, and to only read a few columns.
 
-
 ```python
-from oda_data import Dac1Data, set_data_path
+from oda_data import DAC1Data, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # instantiate a DAC1Data object
-dac1 = Dac1Data(years=2022, providers=4, indicators=1010)
+dac1 = DAC1Data(years=2022, providers=4, indicators=1010)
 
 # Get the data by calling on read. It will be downloaded since it isn't already available.
 data = dac1.read(
@@ -205,7 +204,7 @@ data = dac1.read(
 
 
 ### DAC 2A
-The `Dac2aData` class can retrieve and return DAC2a data.
+The `DAC2AData` class can retrieve and return DAC2a data.
 
 You can optionally specify:
 - years: to filter the data for specific years
@@ -220,13 +219,13 @@ After instantiating the object, you can call:
 - `read`: to read data as stored in the specified folder. If the data is not available, it will be downloaded.
 
 ```python
-from oda_data import Dac2aData, set_data_path
+from oda_data import DAC2AData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # instantiate a DAC1Data object
-dac2a = Dac2aData()
+dac2a = DAC2AData()
 
 # Perform a bulk download
 dac2a.download(bulk=True)
@@ -240,15 +239,14 @@ multilateral aid.
 
 When reading, we will also filter to get only current prices, and to only read a few columns.
 
-
 ```python
-from oda_data import Dac2aData, set_data_path
+from oda_data import DAC2AData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # instantiate a DAC2aData object
-dac2a = Dac2aData(years=2022, providers=4, recipients=283, indicators=106)
+dac2a = DAC2AData(years=2022, providers=4, recipients=283, indicators=106)
 
 # Get the data by calling on read. It will be downloaded since it isn't already available.
 data = dac2a.read(
@@ -266,7 +264,7 @@ data = dac2a.read(
 ```
 
 ### CRS
-The `CrsData` class can retrieve and return CRS data.
+The `CRSData` class can retrieve and return CRS data.
 
 You can optionally specify:
 - years: to filter the data for specific years
@@ -279,15 +277,14 @@ You can refer to the examples above for DAC1 and DAC2a to understand the usage o
 **Note**: given the speed and rate-limiting of the dac-explorer APIs, it's recommended to always use the 
 bulk option when using the CRS class.
 
-
 ```python
-from oda_data import CrsData, set_data_path
+from oda_data import CRSData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
-# instantiate a CrsData object
-crs = CrsData(years=range(2010,2024))
+# instantiate a CRSData object
+crs = CRSData(years=range(2010, 2024))
 
 # Get the data by calling on read. It will be downloaded since it isn't already available.
 data = crs.read(using_bulk_download=True)

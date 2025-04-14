@@ -2,8 +2,8 @@ import json
 
 import pandas as pd
 
-from oda_data.clean_data.schema import OdaSchema
-from oda_data.config import OdaPATHS
+from oda_data.clean_data.schema import ODASchema
+from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 
 
@@ -20,138 +20,138 @@ def _code_name(df: pd.DataFrame, code_col: str, name_col: str) -> dict:
 
 def dac1_codes_names():
     """Return a dictionary of code to name mappings for DAC1 columns."""
-    from oda_data import Dac1Data
+    from oda_data import DAC1Data
 
-    dac1 = Dac1Data(years=[1990, 2000, 2010, 2020, 2023])
+    dac1 = DAC1Data(years=[1990, 2000, 2010, 2020, 2023])
 
     columns = [
-        OdaSchema.PROVIDER_CODE,
-        OdaSchema.PROVIDER_NAME,
-        OdaSchema.AIDTYPE_CODE,
-        OdaSchema.AIDTYPE_NAME,
-        OdaSchema.FLOWS_CODE,
-        OdaSchema.FUND_FLOWS,
+        ODASchema.PROVIDER_CODE,
+        ODASchema.PROVIDER_NAME,
+        ODASchema.AIDTYPE_CODE,
+        ODASchema.AIDTYPE_NAME,
+        ODASchema.FLOWS_CODE,
+        ODASchema.FUND_FLOWS,
     ]
 
     df = dac1.read(using_bulk_download=True, columns=columns)
 
     data = {
-        OdaSchema.PROVIDER_CODE: _code_name(
-            df, OdaSchema.PROVIDER_CODE, OdaSchema.PROVIDER_NAME
+        ODASchema.PROVIDER_CODE: _code_name(
+            df, ODASchema.PROVIDER_CODE, ODASchema.PROVIDER_NAME
         ),
-        OdaSchema.AIDTYPE_CODE: _code_name(
-            df, OdaSchema.AIDTYPE_CODE, OdaSchema.AIDTYPE_NAME
+        ODASchema.AIDTYPE_CODE: _code_name(
+            df, ODASchema.AIDTYPE_CODE, ODASchema.AIDTYPE_NAME
         ),
-        OdaSchema.FLOWS_CODE: _code_name(
-            df, OdaSchema.FLOWS_CODE, OdaSchema.FUND_FLOWS
+        ODASchema.FLOWS_CODE: _code_name(
+            df, ODASchema.FLOWS_CODE, ODASchema.FUND_FLOWS
         ),
     }
 
-    update_mapping_file(data, OdaPATHS.names / "dac1_names.json")
+    update_mapping_file(data, ODAPaths.names / "dac1_names.json")
 
 
 def dac2a_codes_names():
     """Return a dictionary of code to name mappings for DAC2a columns."""
-    from oda_data import Dac2aData
+    from oda_data import DAC2AData
 
-    dac2a = Dac2aData(years=[1990, 2000, 2010, 2020, 2023])
+    dac2a = DAC2AData(years=[1990, 2000, 2010, 2020, 2023])
 
     columns = [
-        OdaSchema.PROVIDER_CODE,
-        OdaSchema.PROVIDER_NAME,
-        OdaSchema.RECIPIENT_CODE,
-        OdaSchema.RECIPIENT_NAME,
-        OdaSchema.AIDTYPE_CODE,
-        OdaSchema.AIDTYPE_NAME,
+        ODASchema.PROVIDER_CODE,
+        ODASchema.PROVIDER_NAME,
+        ODASchema.RECIPIENT_CODE,
+        ODASchema.RECIPIENT_NAME,
+        ODASchema.AIDTYPE_CODE,
+        ODASchema.AIDTYPE_NAME,
     ]
 
     df = dac2a.read(using_bulk_download=True, columns=columns)
 
     data = {
-        OdaSchema.PROVIDER_CODE: _code_name(
-            df, OdaSchema.PROVIDER_CODE, OdaSchema.PROVIDER_NAME
+        ODASchema.PROVIDER_CODE: _code_name(
+            df, ODASchema.PROVIDER_CODE, ODASchema.PROVIDER_NAME
         ),
-        OdaSchema.RECIPIENT_CODE: _code_name(
-            df, OdaSchema.RECIPIENT_CODE, OdaSchema.RECIPIENT_NAME
+        ODASchema.RECIPIENT_CODE: _code_name(
+            df, ODASchema.RECIPIENT_CODE, ODASchema.RECIPIENT_NAME
         ),
-        OdaSchema.AIDTYPE_CODE: _code_name(
-            df, OdaSchema.AIDTYPE_CODE, OdaSchema.AIDTYPE_NAME
+        ODASchema.AIDTYPE_CODE: _code_name(
+            df, ODASchema.AIDTYPE_CODE, ODASchema.AIDTYPE_NAME
         ),
     }
 
-    update_mapping_file(data, OdaPATHS.names / "dac2a_names.json")
+    update_mapping_file(data, ODAPaths.names / "dac2a_names.json")
 
 
 def crs_codes_names():
     """Return a dictionary of code to name mappings for CRS columns."""
-    from oda_data import CrsData
+    from oda_data import CRSData
 
-    crs = CrsData(years=[1995, 2010, 2020, 2023])
+    crs = CRSData(years=[1995, 2010, 2020, 2023])
 
     columns = [
-        OdaSchema.PROVIDER_CODE,
-        OdaSchema.PROVIDER_NAME,
-        OdaSchema.PROVIDER_CODE_DE,
-        OdaSchema.AGENCY_CODE,
-        OdaSchema.AGENCY_NAME,
-        OdaSchema.RECIPIENT_CODE,
-        OdaSchema.RECIPIENT_CODE_DE,
-        OdaSchema.RECIPIENT_REGION_CODE,
-        OdaSchema.RECIPIENT_REGION_CODE_DE,
-        OdaSchema.RECIPIENT_INCOME_CODE,
-        OdaSchema.RECIPIENT_INCOME,
-        OdaSchema.RECIPIENT_REGION,
-        OdaSchema.RECIPIENT_NAME,
-        OdaSchema.FLOW_CODE,
-        OdaSchema.FLOW_NAME,
-        OdaSchema.PURPOSE_CODE,
-        OdaSchema.PURPOSE_NAME,
-        OdaSchema.SECTOR_CODE,
-        OdaSchema.SECTOR_NAME,
-        OdaSchema.CHANNEL_CODE,
-        OdaSchema.CHANNEL_NAME,
+        ODASchema.PROVIDER_CODE,
+        ODASchema.PROVIDER_NAME,
+        ODASchema.PROVIDER_CODE_DE,
+        ODASchema.AGENCY_CODE,
+        ODASchema.AGENCY_NAME,
+        ODASchema.RECIPIENT_CODE,
+        ODASchema.RECIPIENT_CODE_DE,
+        ODASchema.RECIPIENT_REGION_CODE,
+        ODASchema.RECIPIENT_REGION_CODE_DE,
+        ODASchema.RECIPIENT_INCOME_CODE,
+        ODASchema.RECIPIENT_INCOME,
+        ODASchema.RECIPIENT_REGION,
+        ODASchema.RECIPIENT_NAME,
+        ODASchema.FLOW_CODE,
+        ODASchema.FLOW_NAME,
+        ODASchema.PURPOSE_CODE,
+        ODASchema.PURPOSE_NAME,
+        ODASchema.SECTOR_CODE,
+        ODASchema.SECTOR_NAME,
+        ODASchema.CHANNEL_CODE,
+        ODASchema.CHANNEL_NAME,
     ]
 
     df = crs.read(using_bulk_download=True, columns=columns)
 
     data = {
-        OdaSchema.PROVIDER_CODE: _code_name(
-            df, OdaSchema.PROVIDER_CODE, OdaSchema.PROVIDER_NAME
+        ODASchema.PROVIDER_CODE: _code_name(
+            df, ODASchema.PROVIDER_CODE, ODASchema.PROVIDER_NAME
         ),
-        OdaSchema.PROVIDER_CODE_DE: _code_name(
-            df, OdaSchema.PROVIDER_CODE_DE, OdaSchema.PROVIDER_NAME
+        ODASchema.PROVIDER_CODE_DE: _code_name(
+            df, ODASchema.PROVIDER_CODE_DE, ODASchema.PROVIDER_NAME
         ),
-        OdaSchema.AGENCY_CODE: _code_name(
-            df, OdaSchema.AGENCY_CODE, OdaSchema.AGENCY_NAME
+        ODASchema.AGENCY_CODE: _code_name(
+            df, ODASchema.AGENCY_CODE, ODASchema.AGENCY_NAME
         ),
-        OdaSchema.RECIPIENT_CODE: _code_name(
-            df, OdaSchema.RECIPIENT_CODE, OdaSchema.RECIPIENT_NAME
+        ODASchema.RECIPIENT_CODE: _code_name(
+            df, ODASchema.RECIPIENT_CODE, ODASchema.RECIPIENT_NAME
         ),
-        OdaSchema.RECIPIENT_CODE_DE: _code_name(
-            df, OdaSchema.RECIPIENT_CODE_DE, OdaSchema.RECIPIENT_NAME
+        ODASchema.RECIPIENT_CODE_DE: _code_name(
+            df, ODASchema.RECIPIENT_CODE_DE, ODASchema.RECIPIENT_NAME
         ),
-        OdaSchema.RECIPIENT_REGION_CODE: _code_name(
-            df, OdaSchema.RECIPIENT_REGION_CODE, OdaSchema.RECIPIENT_REGION
+        ODASchema.RECIPIENT_REGION_CODE: _code_name(
+            df, ODASchema.RECIPIENT_REGION_CODE, ODASchema.RECIPIENT_REGION
         ),
-        OdaSchema.RECIPIENT_REGION_CODE_DE: _code_name(
-            df, OdaSchema.RECIPIENT_REGION_CODE_DE, OdaSchema.RECIPIENT_REGION
+        ODASchema.RECIPIENT_REGION_CODE_DE: _code_name(
+            df, ODASchema.RECIPIENT_REGION_CODE_DE, ODASchema.RECIPIENT_REGION
         ),
-        OdaSchema.RECIPIENT_INCOME_CODE: _code_name(
-            df, OdaSchema.RECIPIENT_INCOME_CODE, OdaSchema.RECIPIENT_INCOME
+        ODASchema.RECIPIENT_INCOME_CODE: _code_name(
+            df, ODASchema.RECIPIENT_INCOME_CODE, ODASchema.RECIPIENT_INCOME
         ),
-        OdaSchema.FLOW_CODE: _code_name(df, OdaSchema.FLOW_CODE, OdaSchema.FLOW_NAME),
-        OdaSchema.PURPOSE_CODE: _code_name(
-            df, OdaSchema.PURPOSE_CODE, OdaSchema.PURPOSE_NAME
+        ODASchema.FLOW_CODE: _code_name(df, ODASchema.FLOW_CODE, ODASchema.FLOW_NAME),
+        ODASchema.PURPOSE_CODE: _code_name(
+            df, ODASchema.PURPOSE_CODE, ODASchema.PURPOSE_NAME
         ),
-        OdaSchema.SECTOR_CODE: _code_name(
-            df, OdaSchema.SECTOR_CODE, OdaSchema.SECTOR_NAME
+        ODASchema.SECTOR_CODE: _code_name(
+            df, ODASchema.SECTOR_CODE, ODASchema.SECTOR_NAME
         ),
-        OdaSchema.CHANNEL_CODE: _code_name(
-            df, OdaSchema.CHANNEL_CODE, OdaSchema.CHANNEL_NAME
+        ODASchema.CHANNEL_CODE: _code_name(
+            df, ODASchema.CHANNEL_CODE, ODASchema.CHANNEL_NAME
         ),
     }
 
-    update_mapping_file(data, OdaPATHS.names / "crs_names.json")
+    update_mapping_file(data, ODAPaths.names / "crs_names.json")
 
 
 def get_merged_names_mapping():
@@ -161,7 +161,7 @@ def get_merged_names_mapping():
     merged_mapping = {}
 
     for file in files:
-        file_path = OdaPATHS.names / file
+        file_path = ODAPaths.names / file
         with open(file_path, "r") as f:
             mapping = json.load(f)
             for k, v in mapping.items():

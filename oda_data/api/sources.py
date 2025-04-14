@@ -17,7 +17,7 @@ from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
 )
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
     check_integers,
@@ -40,7 +40,7 @@ def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
     return query
 
 
-class DacSource:
+class DACSource:
     """Base class for accessing DAC datasets.
 
     This class handles validation of parameters and manages the retrieval
@@ -48,7 +48,7 @@ class DacSource:
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.OdaPATHS.raw_data, ttl_seconds=86400)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         self.de_providers = None
@@ -80,13 +80,13 @@ class DacSource:
         if self.years is not None:
             self.start = min(self.years)
             self.end = max(self.years)
-            self.add_filter(column=OdaSchema.YEAR, predicate="in", value=self.years)
+            self.add_filter(column=ODASchema.YEAR, predicate="in", value=self.years)
         else:
             self.start, self.end = None, None
 
         if self.providers is not None:
             self.add_filter(
-                column=OdaSchema.PROVIDER_CODE, predicate="in", value=self.providers
+                column=ODASchema.PROVIDER_CODE, predicate="in", value=self.providers
             )
             self.de_providers = convert_dot_stat_to_data_explorer_codes(
                 codes=self.providers
@@ -94,7 +94,7 @@ class DacSource:
 
         if self.recipients is not None:
             self.add_filter(
-                column=OdaSchema.RECIPIENT_CODE, predicate="in", value=self.recipients
+                column=ODASchema.RECIPIENT_CODE, predicate="in", value=self.recipients
             )
             self.de_recipients = convert_dot_stat_to_data_explorer_codes(
                 codes=self.recipients
@@ -102,7 +102,7 @@ class DacSource:
 
         if self.sectors is not None:
             self.add_filter(
-                column=OdaSchema.SECTOR_CODE, predicate="in", value=self.sectors
+                column=ODASchema.SECTOR_CODE, predicate="in", value=self.sectors
             )
             self.de_sectors = check_strings(sectors)
 
@@ -185,10 +185,10 @@ class DacSource:
 
         prefix = "full" if using_bulk_download else "filtered"
 
-        if not (config.OdaPATHS.raw_data / f"{prefix}{dataset}.parquet").exists():
+        if not (config.ODAPaths.raw_data / f"{prefix}{dataset}.parquet").exists():
             logger.info(f"{dataset} data not found. Downloading...")
             df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
-            df.to_parquet(config.OdaPATHS.raw_data / f"{prefix}{dataset}.parquet")
+            df.to_parquet(config.ODAPaths.raw_data / f"{prefix}{dataset}.parquet")
 
     def _read(
         self,
@@ -222,7 +222,7 @@ class DacSource:
                 dataset=dataset, using_bulk_download=using_bulk_download
             )
             df = pd.read_parquet(
-                config.OdaPATHS.raw_data / f"full{dataset}.parquet",
+                config.ODAPaths.raw_data / f"full{dataset}.parquet",
                 filters=filters,
                 engine="pyarrow",
                 columns=columns,
@@ -277,7 +277,7 @@ class DacSource:
         pass
 
 
-class Dac1Data(DacSource):
+class DAC1Data(DACSource):
     """Class to handle DAC1 data"""
 
     def __init__(
@@ -300,7 +300,7 @@ class Dac1Data(DacSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=OdaSchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -348,7 +348,7 @@ class Dac1Data(DacSource):
         )
 
 
-class Dac2aData(DacSource):
+class DAC2AData(DACSource):
     def __init__(
         self,
         years: Optional[list[int] | range | int] = None,
@@ -371,7 +371,7 @@ class Dac2aData(DacSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=OdaSchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -420,7 +420,7 @@ class Dac2aData(DacSource):
         )
 
 
-class CrsData(DacSource):
+class CRSData(DACSource):
     """Class to handle the CRS data."""
 
     def __init__(
@@ -430,7 +430,7 @@ class CrsData(DacSource):
         recipients: Optional[list[int] | int] = None,
     ):
         """
-        Initialize CrsData.
+        Initialize CRSData.
 
         Args:
             years (list[int] | range): List or range of years to filter.
@@ -491,7 +491,7 @@ class CrsData(DacSource):
         )
 
 
-class MultiSystemData(DacSource):
+class MultiSystemData(DACSource):
     """Class to handle the Providers total use of the multilateral system data."""
 
     def __init__(
@@ -521,7 +521,7 @@ class MultiSystemData(DacSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=OdaSchema.AID_TO_THRU, predicate="in", value=self.indicators
+                column=ODASchema.AID_TO_THRU, predicate="in", value=self.indicators
             )
             self.de_indicators = indicators
 
