@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-class OdaPATHS:
+class ODAPaths:
     """Class to store the paths to the data and output folders."""
 
     project = Path(__file__).resolve().parent.parent

@@ -1,4 +1,4 @@
-from oda_data.config import OdaPATHS
+from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.indicator import Indicator
 
@@ -133,5 +133,5 @@ if __name__ == "__main__":
     one_crs_indicators = crs_one_indicators()
     update_mapping_file(
         {"ONE": one_crs_indicators},
-        file_path=OdaPATHS.indicators / "crs" / "crs_indicators.json",
+        file_path=ODAPaths.indicators / "crs" / "crs_indicators.json",
     )

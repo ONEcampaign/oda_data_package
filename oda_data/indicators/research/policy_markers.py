@@ -8,7 +8,7 @@ from oda_data.api.constants import (
     MarkerScore,
 )
 from oda_data.clean_data.common import convert_units
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 
 
 def _marker_score_map(marker: PolicyMarker | str) -> list:
@@ -72,7 +72,7 @@ def bilateral_policy_marker(
     Returns:
         pd.DataFrame: Dataframe with spending by purpose.
     """
-    from oda_data.api.sources import CrsData
+    from oda_data.api.sources import CRSData
 
     # Get the relevant measure
     measure = MEASURES["CRS"][measure]["column"]
@@ -81,7 +81,7 @@ def bilateral_policy_marker(
     grouper = [
         c
         for c in EXTENDED_PROVIDER_PURPOSE_GROUPER
-        if c not in [OdaSchema.CURRENCY, OdaSchema.PRICES]
+        if c not in [ODASchema.CURRENCY, ODASchema.PRICES]
     ]
 
     # Set up filters
@@ -97,7 +97,7 @@ def bilateral_policy_marker(
         filters.append(("category", "in", [10, 60]))
 
     # Set up the CRS data object
-    crs = CrsData(providers=providers, years=years, recipients=recipients)
+    crs = CRSData(providers=providers, years=years, recipients=recipients)
 
     # Read the data and group by provider and purpose
     data = crs.read(columns=grouper + [measure], additional_filters=filters)

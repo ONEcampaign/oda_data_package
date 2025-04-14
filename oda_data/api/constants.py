@@ -1,7 +1,7 @@
 # Constants
 from typing import Literal
 
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 
 MarkerScore = Literal[
     "significant",
@@ -125,43 +125,43 @@ _EXCLUDE = [
 ]
 
 EXTENDED_PROVIDER_PURPOSE_GROUPER = [
-    OdaSchema.PROVIDER_CODE,
-    OdaSchema.PROVIDER_NAME,
-    OdaSchema.AGENCY_CODE,
-    OdaSchema.AGENCY_NAME,
-    OdaSchema.RECIPIENT_CODE,
-    OdaSchema.FLOW_MODALITY,
-    OdaSchema.FINANCE_TYPE,
-    OdaSchema.PURPOSE_CODE,
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
+    ODASchema.PROVIDER_CODE,
+    ODASchema.PROVIDER_NAME,
+    ODASchema.AGENCY_CODE,
+    ODASchema.AGENCY_NAME,
+    ODASchema.RECIPIENT_CODE,
+    ODASchema.FLOW_MODALITY,
+    ODASchema.FINANCE_TYPE,
+    ODASchema.PURPOSE_CODE,
+    ODASchema.YEAR,
+    ODASchema.CURRENCY,
+    ODASchema.PRICES,
 ]
 
 PROVIDER_PURPOSE_GROUPER = [
-    OdaSchema.PROVIDER_CODE,
-    OdaSchema.PROVIDER_NAME,
-    OdaSchema.AGENCY_CODE,
-    OdaSchema.AGENCY_NAME,
-    OdaSchema.PURPOSE_CODE,
-    OdaSchema.RECIPIENT_CODE,
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
+    ODASchema.PROVIDER_CODE,
+    ODASchema.PROVIDER_NAME,
+    ODASchema.AGENCY_CODE,
+    ODASchema.AGENCY_NAME,
+    ODASchema.PURPOSE_CODE,
+    ODASchema.RECIPIENT_CODE,
+    ODASchema.YEAR,
+    ODASchema.CURRENCY,
+    ODASchema.PRICES,
 ]
 
 CHANNEL_PURPOSE_GROUPER = [
-    OdaSchema.CHANNEL_CODE,
-    OdaSchema.PURPOSE_CODE,
-    OdaSchema.RECIPIENT_CODE,
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
+    ODASchema.CHANNEL_CODE,
+    ODASchema.PURPOSE_CODE,
+    ODASchema.RECIPIENT_CODE,
+    ODASchema.YEAR,
+    ODASchema.CURRENCY,
+    ODASchema.PRICES,
 ]
 
 CHANNEL_PURPOSE_SHARE_GROUPER = [
-    OdaSchema.YEAR,
-    OdaSchema.CURRENCY,
-    OdaSchema.PRICES,
-    OdaSchema.CHANNEL_CODE,
+    ODASchema.YEAR,
+    ODASchema.CURRENCY,
+    ODASchema.PRICES,
+    ODASchema.CHANNEL_CODE,
 ]

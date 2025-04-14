@@ -7,8 +7,8 @@ from collections import OrderedDict
 
 import pandas as pd
 
-from oda_data import CrsData
-from oda_data.config import OdaPATHS
+from oda_data import CRSData
+from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.crs.common import (
     read_crs_type_of_flow,
@@ -354,7 +354,7 @@ def crs_oecd_indicators(crs_years: list | int) -> dict:
     Returns:
         dict: Dictionary containing indicator data.
     """
-    crs_reader = CrsData(years=crs_years)
+    crs_reader = CRSData(years=crs_years)
     crs = crs_reader.read(using_bulk_download=True)
     indicators_data = unique_crs_indicator_rows(crs)
     mapping = mappings()
@@ -390,5 +390,5 @@ if __name__ == "__main__":
     # Generate and update CRS OECD indicators mapping file
     oecd = crs_oecd_indicators(2022)
     update_mapping_file(
-        {"DAC": oecd}, file_path=OdaPATHS.indicators / "crs" / "crs_indicators.json"
+        {"DAC": oecd}, file_path=ODAPaths.indicators / "crs" / "crs_indicators.json"
     )
