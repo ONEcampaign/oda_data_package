@@ -3,7 +3,8 @@
 from copy import copy
 import pandas as pd
 
-from oda_data import OECDData, provider_groupings
+from oda_data import OECDData
+from oda_data.tools.groupings import provider_groupings
 from oda_data.clean_data.schema import OdaSchema
 
 
