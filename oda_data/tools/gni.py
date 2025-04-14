@@ -3,7 +3,7 @@
 from copy import copy
 import pandas as pd
 
-from oda_data import OECDData, donor_groupings
+from oda_data import OECDData, provider_groupings
 from oda_data.clean_data.schema import OdaSchema
 
 
@@ -18,7 +18,7 @@ def _get_eu27_gni_as_eu_institutions(gni_obj: OECDData) -> pd.DataFrame:
     """
     # Create a copy of the GNI object and set the providers to EU27 countries
     eu27_obj = copy(gni_obj)
-    eu27_obj.providers = list(donor_groupings()["eu27_countries"])
+    eu27_obj.providers = list(provider_groupings()["eu27_countries"])
 
     # Fetch the data and set the provider code to 918 (EU Institutions)
     df = eu27_obj.get_indicators("DAC1.40.1")
