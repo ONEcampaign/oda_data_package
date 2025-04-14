@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from oda_data import config, Indicators
+from oda_data import config, OECDData
 
 
 @dataclass
@@ -41,7 +41,7 @@ class ODAData:
                     f"compatibility tool"
                 )
 
-            indicator_data = Indicators(
+            indicator_data = OECDData(
                 years=self.years,
                 providers=self.donors,
                 recipients=self.recipients,

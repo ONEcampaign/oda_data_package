@@ -71,7 +71,7 @@ def load_indicators() -> dict[str, dict]:
 
 
 @dataclass
-class Indicators:
+class OECDData:
     years: Optional[list | int | range] = None
     providers: list | int | None = None
     recipients: list | int | None = None
