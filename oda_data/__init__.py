@@ -32,7 +32,7 @@ __all__ = [
     "MultiSystemData",
     "CrsData",
     "bilateral_policy_marker",
-    "donor_groupings",
+    "provider_groupings",
     "recipient_groupings",
     "add_sectors",
     "add_broad_sectors",
