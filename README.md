@@ -31,7 +31,7 @@ The package is compatible with Python 3.10 and above.
 
 ## Basic usage
 
-Most users can get the data they need by using the `Indicators` class.
+Most users can get the data they need by using the `OECDData` class.
 
 An object of this class can handle:
 - getting data for specific indicators (one or more)
@@ -43,14 +43,15 @@ data for all providers, for all recipients (if applicable), as net disbursements
 using the OECD data-explorer API.
 
 In the example below, we get all data for Total ODA (net disbursements), for 2012 to 2022.
+
 ```python
-from oda_data import Indicators, set_data_path
+from oda_data import OECDData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
-indicator =  Indicators( years=range(2012,2023))
+indicator = OECDData(years=range(2012, 2023))
 
 # Get the desired indicator
 data = indicator.get_indicators("DAC1.10.1010")
@@ -59,93 +60,93 @@ data = indicator.get_indicators("DAC1.10.1010")
 Here's an example to get Bilateral ODA for France and the US, for 2020 and 2021. The data will be in grant equivalents, in constant 2019 Euros.
 
 ```python
-from oda_data import Indicators, set_data_path
+from oda_data import OECDData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
-indicator =  Indicators(
-  years=[2020, 2021],
-  providers=[4, 302],          # Example provider codes
-  measure="grant_equivalent",   # Options: "commitment", "grant_equivalent", etc.
-  currency="EUR",               # Default is USD; others include EUR, GBP, CAD, LCU
-  base_year=2019,               # Adjust data to constant prices of the specified year
+client = OECDData(
+    years=[2020, 2021],
+    providers=[4, 302],  # Example provider codes
+    measure="grant_equivalent",  # Options: "commitment", "grant_equivalent", etc.
+    currency="EUR",  # Default is USD; others include EUR, GBP, CAD, LCU
+    base_year=2019,  # Adjust data to constant prices of the specified year
 )
 
 # Get the desired indicator
-data = indicator.get_indicators("DAC1.10.11015")
+data = client.get_indicators("DAC1.10.11015")
 ```
 
 If you intend to download many indicators, we recommend using the Bulk download file instead. The OECD data-explorer
 API has pretty low usage limits, and you could get a temporary block if you make too many repeated calls. While downloading a particular bulk file may time a few minutes, subsequently getting indicator data is much faster.
 
 ```python
-from oda_data import Indicators, set_data_path
+from oda_data import OECDData, set_data_path
 
 # set the path to the folder where the data should be stored
 set_data_path("path/to/data/folder")
 
 # define a list of indicators to get
-research_indicators = ["DAC1.10.1100","DAC1.10.1410","DAC1.10.2102","DAC1.10.1500"]
+research_indicators = ["DAC1.10.1100", "DAC1.10.1410", "DAC1.10.2102", "DAC1.10.1500"]
 
 # create object, specifying key details of the desired output
-indicator =  Indicators(
-  years=[2019, 2020, 2021],
-  measure="net_disbursement",   # Options: "commitment", "grant_equivalent", etc.
-  currency="LCU", # To get the data in providers' own currencies
-  use_bulk_download=True
+client = OECDData(
+    years=[2019, 2020, 2021],
+    measure="net_disbursement",  # Options: "commitment", "grant_equivalent", etc.
+    currency="LCU",  # To get the data in providers' own currencies
+    use_bulk_download=True
 )
 
 # Get the desired indicators
-data = indicator.get_indicators(research_indicators)
+data = client.get_indicators(research_indicators)
 ```
 
-### Indicators
+### OECDData
 
 Over three thousand indicators are currently supported. They are mostly produced by filtering (and sometimes aggregating) data from the different DAC Tables and databases.
 
 You can get a dictionary with all supported indicators, with their code, name, description and source by using the `.available_indicators()` method:
 
 ```python
-from oda_data import Indicators
+from oda_data import OECDData
 
-all_indicators = Indicators.available_indicators()
+all_indicators = OECDData.available_indicators()
 ```
 
 Alternatively, you can export the indicators to a CSV by using the `.export_available_indicators()` method.
 
 ```python
-from oda_data import Indicators
+from oda_data import OECDData
 
-Indicators.export_available_indicators(export_folder="path/to/folder/")
+OECDData.export_available_indicators(export_folder="path/to/folder/")
 ```
 
 ### Providers
 You can get a dictionary with all available providers, with their code and name, by using the `.available_providers()` method:
 
 ```python
-from oda_data import Indicators
+from oda_data import OECDData
 
-providers = Indicators.available_providers()
+providers = OECDData.available_providers()
 ```
 
 ### Recipients
 You can get a dictionary with all available recipients, with their code and name, by using the `.available_recipients()` method:
 
 ```python
-from oda_data import Indicators
+from oda_data import OECDData
 
-recipients = Indicators.available_recipients()
+recipients = OECDData.available_recipients()
 ```
 
 ### Currencies
 You can get a dictionary with all available currencies, with their code and name, by using the `.available_currencies()` method:
 
 ```python
-from oda_data import Indicators
+from oda_data import OECDData
 
-currencies = Indicators.available_currencies()
+currencies = OECDData.available_currencies()
 ```
 
 ## Accessing the data
