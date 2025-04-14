@@ -21,7 +21,7 @@ from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
-from oda_data.tools.groupings import donor_groupings, recipient_groupings
+from oda_data.tools.groupings import provider_groupings, recipient_groupings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 source_to_module = {
@@ -232,7 +232,7 @@ class OECDData:
     def available_providers(cls) -> dict:
         """Returns a dictionary of available donor codes and their names"""
         logger.info("Note that not all providers may be available for all indicators")
-        return _OdaDict(donor_groupings()["all_official"])
+        return _OdaDict(provider_groupings()["all_official"])
 
     @classmethod
     def available_recipients(cls) -> dict:

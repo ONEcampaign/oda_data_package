@@ -16,9 +16,9 @@ def _read_grouping(path: Path) -> dict:
     return data
 
 
-def donor_groupings() -> dict:
-    """Read the donor groupings from the json file"""
-    path = config.OdaPATHS.settings / "donor_groupings.json"
+def provider_groupings() -> dict:
+    """Read the provider groupings from the json file"""
+    path = config.OdaPATHS.settings / "provider_groupings.json"
 
     return _read_grouping(path)
 
