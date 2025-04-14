@@ -3,7 +3,7 @@
 import pandas as pd
 
 from oda_data.api.constants import Measure
-from oda_data.api.oecd import get_measure_filter, Indicators
+from oda_data.api.oecd import get_measure_filter, OECDData
 from oda_data.api.sources import Dac1Data
 from oda_data.clean_data.schema import OdaSchema
 
@@ -110,12 +110,12 @@ def get_eui_oda_weights(
 
 
 def get_eui_plus_bilateral_providers_indicator(
-    indicators_obj: Indicators, indicator: str | list[str]
+    indicators_obj: OECDData, indicator: str | list[str]
 ) -> pd.DataFrame:
     """Fetches indicator values with adjusted EU institution contributions.
 
     Args:
-        indicators_obj: An `Indicators` instance to fetch indicator data.
+        indicators_obj: An `OECDData` instance to fetch indicator data.
         indicator: Indicator code or list of codes.
 
     Returns:

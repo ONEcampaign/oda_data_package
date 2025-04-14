@@ -3,7 +3,7 @@ from importlib.metadata import version
 __version__ = version("oda_data")
 
 from oda_data import tools
-from oda_data.api.oecd import Indicators
+from oda_data.api.oecd import OECDData
 from oda_data.api.sources import Dac1Data, Dac2aData, MultiSystemData, CrsData
 from oda_data.indicators.research.policy_markers import bilateral_policy_marker
 from oda_data.tools.compatibility import ODAData
@@ -26,7 +26,7 @@ def set_data_path(path):
 
 
 __all__ = [
-    "Indicators",
+    "OECDData",
     "Dac1Data",
     "Dac2aData",
     "MultiSystemData",
