@@ -18,13 +18,13 @@ def _read_grouping(path: Path) -> dict:
 
 def provider_groupings() -> dict:
     """Read the provider groupings from the json file"""
-    path = config.OdaPATHS.settings / "provider_groupings.json"
+    path = config.ODAPaths.settings / "provider_groupings.json"
 
     return _read_grouping(path)
 
 
 def recipient_groupings() -> dict:
     """Read the recipient groupings from the json file"""
-    path = config.OdaPATHS.settings / "recipient_groupings.json"
+    path = config.ODAPaths.settings / "recipient_groupings.json"
 
     return _read_grouping(path)

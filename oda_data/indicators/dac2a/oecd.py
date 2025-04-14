@@ -1,4 +1,4 @@
-from oda_data.config import OdaPATHS
+from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.dac2a.common import aid_type
 from oda_data.indicators.indicator import Indicator, SEPARATOR
@@ -36,5 +36,5 @@ if __name__ == "__main__":
     oecd_dac2a_indicators = dac2a_oecd_indicators()
     update_mapping_file(
         {"DAC": oecd_dac2a_indicators},
-        file_path=OdaPATHS.indicators / "dac2a" / "dac2a_indicators.json",
+        file_path=ODAPaths.indicators / "dac2a" / "dac2a_indicators.json",
     )

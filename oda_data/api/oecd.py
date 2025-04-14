@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +14,7 @@ from oda_data.api.constants import (
     _EXCLUDE,
 )
 from oda_data.api.representations import _OdaDict, _OdaList
-from oda_data.api.sources import Dac1Data, Dac2aData, CrsData, MultiSystemData
+from oda_data.api.sources import DAC1Data, DAC2AData, CRSData, MultiSystemData
 from oda_data.clean_data import common as clean
 from oda_data.clean_data.validation import validate_currency, validate_measure
 from oda_data.indicators.crs import crs_functions
@@ -22,7 +23,6 @@ from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
 from oda_data.logger import logger
 from oda_data.tools.groupings import provider_groupings, recipient_groupings
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 source_to_module = {
     "DAC1": dac1_functions,
@@ -31,9 +31,9 @@ source_to_module = {
 }
 
 READERS: dict[str, callable] = {
-    "DAC1": Dac1Data,
-    "DAC2A": Dac2aData,
-    "CRS": CrsData,
+    "DAC1": DAC1Data,
+    "DAC2A": DAC2AData,
+    "CRS": CRSData,
     "MULTISYSTEM": MultiSystemData,
 }
 
@@ -49,15 +49,15 @@ def get_measure_filter(source: str, measure: str) -> int | str:
 def load_indicators() -> dict[str, dict]:
     """Load indicator settings from JSON files."""
     dac1_indicators = clean.read_settings(
-        config.OdaPATHS.indicators / "dac1" / "dac1_indicators.json"
+        config.ODAPaths.indicators / "dac1" / "dac1_indicators.json"
     )
 
     dac2a_indicators = clean.read_settings(
-        config.OdaPATHS.indicators / "dac2a" / "dac2a_indicators.json"
+        config.ODAPaths.indicators / "dac2a" / "dac2a_indicators.json"
     )
 
     crs_indicators = clean.read_settings(
-        config.OdaPATHS.indicators / "crs" / "crs_indicators.json"
+        config.ODAPaths.indicators / "crs" / "crs_indicators.json"
     )
 
     combined = {}
@@ -71,7 +71,7 @@ def load_indicators() -> dict[str, dict]:
 
 
 @dataclass
-class OECDData:
+class OECDClient:
     years: Optional[list | int | range] = None
     providers: list | int | None = None
     recipients: list | int | None = None

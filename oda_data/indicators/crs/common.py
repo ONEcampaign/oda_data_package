@@ -4,7 +4,7 @@ from typing import Callable, Dict, Any
 import pandas as pd
 
 from oda_data.api.constants import MEASURES, Measure
-from oda_data.config import OdaPATHS
+from oda_data.config import ODAPaths
 
 
 def load_json(file_path: str) -> dict:
@@ -57,7 +57,7 @@ def create_mapping_file(
 
 def generate_crs_type_of_flow_mapping(crs: pd.DataFrame) -> None:
     """Generate a mapping of CRS flow types to category names."""
-    flow_types = load_json(OdaPATHS.settings / "flow_types.json")
+    flow_types = load_json(ODAPaths.settings / "flow_types.json")
     mapping_func = lambda category: {
         "code": int(category),
         "name": flow_types[str(int(category))],
@@ -66,7 +66,7 @@ def generate_crs_type_of_flow_mapping(crs: pd.DataFrame) -> None:
         crs=crs,
         column="category",
         mapping_func=mapping_func,
-        output_file=OdaPATHS.settings / "crs_flow_types.json",
+        output_file=ODAPaths.settings / "crs_flow_types.json",
     )
 
 
@@ -74,7 +74,7 @@ def read_crs_type_of_flow() -> dict:
     """Read CRS type of flow mapping."""
     return {
         int(k): v
-        for k, v in load_json(OdaPATHS.settings / "crs_flow_types.json").items()
+        for k, v in load_json(ODAPaths.settings / "crs_flow_types.json").items()
     }
 
 
@@ -111,7 +111,7 @@ def generate_crs_type_of_finance_mapping(crs: pd.DataFrame) -> None:
         crs=crs,
         column="type_of_finance",
         mapping_func=mapping_func,
-        output_file=OdaPATHS.settings / "crs_type_of_finance.json",
+        output_file=ODAPaths.settings / "crs_type_of_finance.json",
     )
 
 
@@ -119,7 +119,7 @@ def read_crs_type_of_finance_mapping() -> dict:
     """Read CRS type of finance mapping."""
     return {
         int(k): v
-        for k, v in load_json(OdaPATHS.settings / "crs_type_of_finance.json").items()
+        for k, v in load_json(ODAPaths.settings / "crs_type_of_finance.json").items()
     }
 
 
@@ -154,13 +154,13 @@ def generate_crs_modality_mapping(crs: pd.DataFrame) -> None:
         crs=crs,
         column="modality",
         mapping_func=mapping_func,
-        output_file=OdaPATHS.settings / "crs_modalities.json",
+        output_file=ODAPaths.settings / "crs_modalities.json",
     )
 
 
 def read_crs_modality_mapping() -> dict:
     """Read CRS modality mapping."""
-    return load_json(OdaPATHS.settings / "crs_modalities.json")
+    return load_json(ODAPaths.settings / "crs_modalities.json")
 
 
 def generate_crs_purpose_mapping(crs: pd.DataFrame) -> None:
@@ -204,7 +204,7 @@ def generate_crs_purpose_mapping(crs: pd.DataFrame) -> None:
         crs=crs,
         column="sector_code",
         mapping_func=mapping_func,
-        output_file=OdaPATHS.settings / "crs_purpose.json",
+        output_file=ODAPaths.settings / "crs_purpose.json",
         fill_value=998,
     )
 
@@ -212,7 +212,7 @@ def generate_crs_purpose_mapping(crs: pd.DataFrame) -> None:
 def read_crs_purpose_mapping() -> dict:
     """Read CRS purpose mapping."""
     return {
-        int(k): v for k, v in load_json(OdaPATHS.settings / "crs_purpose.json").items()
+        int(k): v for k, v in load_json(ODAPaths.settings / "crs_purpose.json").items()
     }
 
 
@@ -232,12 +232,12 @@ def generate_crs_policy_markers() -> None:
         "climate_adaptation": "CA",
         "desertification": "DES",
     }
-    save_json(markers, OdaPATHS.settings / "crs_policy_markers.json")
+    save_json(markers, ODAPaths.settings / "crs_policy_markers.json")
 
 
 def read_crs_policy_markers() -> dict:
     """Read CRS policy markers mapping."""
-    return load_json(OdaPATHS.settings / "crs_policy_markers.json")
+    return load_json(ODAPaths.settings / "crs_policy_markers.json")
 
 
 def crs_value_cols() -> dict:

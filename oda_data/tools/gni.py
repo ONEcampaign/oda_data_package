@@ -3,16 +3,16 @@
 from copy import copy
 import pandas as pd
 
-from oda_data import OECDData
+from oda_data import OECDClient
 from oda_data.tools.groupings import provider_groupings
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 
 
-def _get_eu27_gni_as_eu_institutions(gni_obj: OECDData) -> pd.DataFrame:
+def _get_eu27_gni_as_eu_institutions(gni_obj: OECDClient) -> pd.DataFrame:
     """Aggregate EU27 GNI and reassign it to EU Institutions (provider code 918).
 
     Args:
-        gni_obj: An OECDData object configured to fetch GNI data.
+        gni_obj: An OECDClient object configured to fetch GNI data.
 
     Returns:
         A DataFrame with the aggregated GNI for EU27, assigned to provider 918.
@@ -23,24 +23,24 @@ def _get_eu27_gni_as_eu_institutions(gni_obj: OECDData) -> pd.DataFrame:
 
     # Fetch the data and set the provider code to 918 (EU Institutions)
     df = eu27_obj.get_indicators("DAC1.40.1")
-    df[OdaSchema.PROVIDER_CODE] = 918
-    df[OdaSchema.PROVIDER_NAME] = "EU Institutions"
+    df[ODASchema.PROVIDER_CODE] = 918
+    df[ODASchema.PROVIDER_NAME] = "EU Institutions"
 
-    group_columns = [col for col in df.columns if col != OdaSchema.VALUE]
+    group_columns = [col for col in df.columns if col != ODASchema.VALUE]
 
     # Group by year and provider code, summing the GNI values
     return (
-        df.groupby(group_columns, dropna=False, observed=True)[[OdaSchema.VALUE]]
+        df.groupby(group_columns, dropna=False, observed=True)[[ODASchema.VALUE]]
         .sum()
         .reset_index()
     )
 
 
-def _get_gni_data(indicators_obj: OECDData) -> pd.DataFrame:
+def _get_gni_data(indicators_obj: OECDClient) -> pd.DataFrame:
     """Fetch GNI data and optionally include EU Institutions' aggregate.
 
     Args:
-        indicators_obj: An OECDData object for the main data context.
+        indicators_obj: An OECDClient object for the main data context.
 
     Returns:
         A DataFrame with GNI values per provider and year.
@@ -59,11 +59,11 @@ def _get_gni_data(indicators_obj: OECDData) -> pd.DataFrame:
         eu_gni_df = _get_eu27_gni_as_eu_institutions(gni_obj)
         gni_df = pd.concat([gni_df, eu_gni_df], ignore_index=True)
 
-    return gni_df.filter([OdaSchema.YEAR, OdaSchema.PROVIDER_CODE, OdaSchema.VALUE])
+    return gni_df.filter([ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
 
 
 def add_gni_share_column(
-    indicators_obj: OECDData, indicators: str | list[str]
+    indicators_obj: OECDClient, indicators: str | list[str]
 ) -> pd.DataFrame:
     """Add a GNI share column (%) to the dataset.
 
@@ -71,7 +71,7 @@ def add_gni_share_column(
     indicator data, and computes each value's share of GNI.
 
     Args:
-        indicators_obj: Configured OECDData object to fetch data.
+        indicators_obj: Configured OECDClient object to fetch data.
         indicators: A string or list of indicator codes to retrieve.
 
     Returns:
@@ -83,12 +83,12 @@ def add_gni_share_column(
     merged = indicator_data.merge(
         gni_data,
         how="left",
-        on=[OdaSchema.YEAR, OdaSchema.PROVIDER_CODE],
+        on=[ODASchema.YEAR, ODASchema.PROVIDER_CODE],
         suffixes=("", "_gni"),
     )
 
     merged["gni_share_pct"] = round(
-        100 * merged[OdaSchema.VALUE] / merged[f"{OdaSchema.VALUE}_gni"], 2
+        100 * merged[ODASchema.VALUE] / merged[f"{ODASchema.VALUE}_gni"], 2
     )
 
     return merged

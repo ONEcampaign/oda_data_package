@@ -9,7 +9,7 @@ from oda_data.api.constants import (
 )
 from oda_data.clean_data.channels import add_multi_channel_codes
 from oda_data.clean_data.common import convert_units
-from oda_data.clean_data.schema import OdaSchema
+from oda_data.clean_data.schema import ODASchema
 
 
 def rolling_period_total(
@@ -28,23 +28,23 @@ def rolling_period_total(
     data = pd.DataFrame()
 
     if grouper is None:
-        grouper = [c for c in df.columns if c not in [OdaSchema.YEAR, OdaSchema.VALUE]]
+        grouper = [c for c in df.columns if c not in [ODASchema.YEAR, ODASchema.VALUE]]
 
-    for y in range(df[OdaSchema.YEAR].max(), df[OdaSchema.YEAR].min() + 1, -1):
+    for y in range(df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + 1, -1):
         years = [y - i for i in range(period_length)]
         _ = (
             df.copy(deep=True)
-            .loc[lambda d: d[OdaSchema.YEAR].isin(years)]
+            .loc[lambda d: d[ODASchema.YEAR].isin(years)]
             .groupby(grouper, observed=True, dropna=False)
-            .agg({OdaSchema.VALUE: "sum", OdaSchema.YEAR: "max"})
-            .assign(**{OdaSchema.YEAR: y})
+            .agg({ODASchema.VALUE: "sum", ODASchema.YEAR: "max"})
+            .assign(**{ODASchema.YEAR: y})
             .reset_index()
         )
         data = pd.concat([data, _], ignore_index=True)
 
     return (
-        data.assign(year=lambda d: d[OdaSchema.YEAR].astype("int16[pyarrow]"))
-        .loc[lambda d: d[OdaSchema.YEAR].notna()]
+        data.assign(year=lambda d: d[ODASchema.YEAR].astype("int16[pyarrow]"))
+        .loc[lambda d: d[ODASchema.YEAR].notna()]
         .reset_index(drop=True)
     )
 
@@ -61,8 +61,8 @@ def share_by_purpose(
     Returns:
         pd.DataFrame: Dataframe with an additional share column.
     """
-    df[OdaSchema.SHARE] = df.groupby(grouper, observed=True, dropna=False)[
-        OdaSchema.VALUE
+    df[ODASchema.SHARE] = df.groupby(grouper, observed=True, dropna=False)[
+        ODASchema.VALUE
     ].transform(lambda p: p / p.sum())
 
     return df.loc[lambda d: d.share.notna()].reset_index(drop=True)
@@ -84,17 +84,17 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
                 for c in df.columns
                 if c
                 not in [
-                    OdaSchema.PROVIDER_NAME,
-                    OdaSchema.PROVIDER_CODE,
-                    OdaSchema.AGENCY_CODE,
-                    OdaSchema.AGENCY_NAME,
+                    ODASchema.PROVIDER_NAME,
+                    ODASchema.PROVIDER_CODE,
+                    ODASchema.AGENCY_CODE,
+                    ODASchema.AGENCY_NAME,
                     "name",
-                    OdaSchema.VALUE,
+                    ODASchema.VALUE,
                 ]
             ],
             observed=True,
             dropna=False,
-        )[[OdaSchema.VALUE]]
+        )[[ODASchema.VALUE]]
         .sum()
         .reset_index()
     )
@@ -157,7 +157,7 @@ def spending_by_purpose(
     Returns:
         pd.DataFrame: Dataframe with spending by purpose.
     """
-    from oda_data.api.sources import CrsData
+    from oda_data.api.sources import CRSData
 
     # Get the relevant measure
     measure = MEASURES["CRS"][measure]["column"]
@@ -166,7 +166,7 @@ def spending_by_purpose(
     grouper = [
         c
         for c in PROVIDER_PURPOSE_GROUPER
-        if c not in [OdaSchema.CURRENCY, OdaSchema.PRICES]
+        if c not in [ODASchema.CURRENCY, ODASchema.PRICES]
     ]
 
     # Set up filters
@@ -176,7 +176,7 @@ def spending_by_purpose(
         filters = []
 
     # Set up the CRS data object
-    crs = CrsData(providers=providers, years=years)
+    crs = CRSData(providers=providers, years=years)
 
     # Read the data and group by provider and purpose
     data = (
@@ -229,7 +229,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
         )
     )
 
-    return data.drop(columns=[OdaSchema.VALUE])
+    return data.drop(columns=[ODASchema.VALUE])
 
 
 def core_multilateral_contributions_by_provider(
@@ -258,7 +258,7 @@ def core_multilateral_contributions_by_provider(
 
     # Get the relevant measure and columns
     measure = MEASURES["Multisystem"][measure]["filter"]
-    cols = [OdaSchema.PROVIDER_CODE, OdaSchema.CHANNEL_CODE, OdaSchema.YEAR]
+    cols = [ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE, ODASchema.YEAR]
 
     # Set up filters
     filters = [
@@ -279,11 +279,11 @@ def core_multilateral_contributions_by_provider(
 
     # Read the data and group by provider and channel
     data = (
-        ms.read(columns=cols + [OdaSchema.AMOUNT], additional_filters=filters)
-        .groupby(cols, dropna=False, observed=True)[[OdaSchema.AMOUNT]]
+        ms.read(columns=cols + [ODASchema.AMOUNT], additional_filters=filters)
+        .groupby(cols, dropna=False, observed=True)[[ODASchema.AMOUNT]]
         .sum()
         .reset_index()
-        .rename(columns={OdaSchema.AMOUNT: "value"})
+        .rename(columns={ODASchema.AMOUNT: "value"})
     )
 
     # Convert the data to the target currency and prices
@@ -309,10 +309,10 @@ def _compute_imputations(
     data = multi_spending_shares.merge(
         core_contributions,
         on=[
-            OdaSchema.CHANNEL_CODE,
-            OdaSchema.YEAR,
-            OdaSchema.CURRENCY,
-            OdaSchema.PRICES,
+            ODASchema.CHANNEL_CODE,
+            ODASchema.YEAR,
+            ODASchema.CURRENCY,
+            ODASchema.PRICES,
         ],
         how="inner",
     )
@@ -320,10 +320,10 @@ def _compute_imputations(
     # Compute imputed spending
     data = (
         data.assign(
-            **{OdaSchema.VALUE: lambda d: d[OdaSchema.VALUE] * d[OdaSchema.SHARE]}
+            **{ODASchema.VALUE: lambda d: d[ODASchema.VALUE] * d[ODASchema.SHARE]}
         )
-        .drop(labels=[OdaSchema.SHARE], axis=1)
-        .loc[lambda d: d[OdaSchema.VALUE] != 0]
+        .drop(labels=[ODASchema.SHARE], axis=1)
+        .loc[lambda d: d[ODASchema.VALUE] != 0]
         .reset_index(drop=True)
     )
 
