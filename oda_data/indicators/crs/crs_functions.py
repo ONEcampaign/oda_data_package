@@ -7,10 +7,10 @@ from oda_data.indicators.crs.common import crs_value_cols
 
 def _multi_donors_only(data: pd.DataFrame) -> pd.DataFrame:
     """Filter the data to only include multi-donors."""
-    from oda_data import donor_groupings
+    from oda_data import provider_groupings
 
     return data.loc[
-        lambda d: d[OdaSchema.PROVIDER_CODE].isin(donor_groupings()["multilateral"])
+        lambda d: d[OdaSchema.PROVIDER_CODE].isin(provider_groupings()["multilateral"])
     ]
 
 

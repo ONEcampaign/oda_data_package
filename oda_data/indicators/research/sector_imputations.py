@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data import donor_groupings
+from oda_data import provider_groupings
 from oda_data.api.constants import (
     Measure,
     MEASURES,
@@ -213,7 +213,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
     """
 
     # Get the multilateral providers
-    multilateral_providers = list(donor_groupings()["multilateral"])
+    multilateral_providers = list(provider_groupings()["multilateral"])
 
     # Get the spending data by purpose
     data = (

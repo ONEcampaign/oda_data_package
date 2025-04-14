@@ -126,9 +126,9 @@ def map_column_schema(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
-    from oda_data import donor_groupings
+    from oda_data import provider_groupings
 
-    multilateral = donor_groupings()["multilateral"]
+    multilateral = provider_groupings()["multilateral"]
     df = df.loc[lambda d: d[OdaSchema.PROVIDER_CODE].isin(multilateral)]
 
     return df
