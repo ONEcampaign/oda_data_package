@@ -3,7 +3,7 @@
 import pandas as pd
 
 from oda_data.api.constants import Measure
-from oda_data.api.main import get_measure_filter, Indicators
+from oda_data.api.oecd import get_measure_filter, Indicators
 from oda_data.api.sources import Dac1Data
 from oda_data.clean_data.schema import OdaSchema
 
