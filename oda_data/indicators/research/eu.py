@@ -11,6 +11,7 @@ from oda_data.clean_data.schema import ODASchema
 def _load_dac1_eui_data(
     years: list[int] | int | range,
     measure: Measure | str,
+    use_bulk_download: bool,
 ) -> pd.DataFrame:
     """Loads DAC1 data with specific filters applied."""
     indicators = [1010, 2102]
@@ -26,7 +27,7 @@ def _load_dac1_eui_data(
 
     df = (
         DAC1Data(years=years, indicators=indicators)
-        .read(additional_filters=filters)
+        .read(additional_filters=filters, using_bulk_download=use_bulk_download)
         .loc[lambda d: d[ODASchema.FLOWS_CODE] == measure_filter]
         .filter(idx + [ODASchema.PROVIDER_CODE, ODASchema.VALUE])
     )
@@ -79,6 +80,7 @@ def get_eui_oda_weights(
     years: list[int] | int | range = None,
     providers: list[int] | int | None = None,
     measure: Measure | str = "gross_disbursement",
+    use_bulk_download: bool = False,
 ) -> dict[int, float]:
     """Computes weight adjustments for EU institution ODA contributions.
 
@@ -89,11 +91,14 @@ def get_eui_oda_weights(
         years: Year or range of years for which to compute weights.
         providers: List of provider codes or a single provider code.
         measure: The financial measure to use (e.g. gross/net disbursement).
+        use_bulk_download: Whether to use bulk download for data retrieval.
 
     Returns:
         A dictionary mapping each year to its corresponding EU institution weight.
     """
-    df = _load_dac1_eui_data(years=years, measure=measure)
+    df = _load_dac1_eui_data(
+        years=years, measure=measure, use_bulk_download=use_bulk_download
+    )
 
     spending = _compute_spending_by_eui(df)
     inflows = _compute_inflows_by_providers(df, providers)
@@ -125,6 +130,7 @@ def get_eui_plus_bilateral_providers_indicator(
         years=indicators_obj.years,
         providers=indicators_obj.providers,
         measure=indicators_obj.measure[0],
+        use_bulk_download=indicators_obj.use_bulk_download,
     )
 
     if 918 not in indicators_obj.providers:
