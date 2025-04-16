@@ -133,6 +133,7 @@ class ODASchema:
     FUND_FLOWS: str = "fund_flows"
     AID_TO_THRU: str = "aid_to_or_thru"
     AMOUNT_TYPE_CODE: str = "amounttype_code"
+    MEASURE: str = "measure"
 
 
 CRS_MAPPING: dict[str, str] = {
