@@ -4,6 +4,7 @@ from typing import Callable, Dict, Any
 import pandas as pd
 
 from oda_data.api.constants import MEASURES, Measure
+from oda_data.clean_data.schema import ODASchema
 from oda_data.config import ODAPaths
 
 
@@ -280,6 +281,14 @@ def group_data_based_on_indicator(
         data.groupby(valid_grouper, dropna=False, observed=True)[measures]
         .sum()
         .reset_index()
+    )
+
+    data = data.melt(
+        id_vars=valid_grouper, value_vars=measures, var_name=ODASchema.MEASURE
+    )
+
+    data[ODASchema.MEASURE] = data[ODASchema.MEASURE].map(
+        {v: k for k, v in columns.items()}
     )
 
     return data

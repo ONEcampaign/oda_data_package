@@ -153,7 +153,7 @@ class OECDClient:
 
             # Define reader kwargs
             reader_kwargs = {"years": self.years, "providers": self.providers}
-            if source == "DAC2A":
+            if source in ["DAC2A", "CRS"]:
                 reader_kwargs["recipients"] = self.recipients
             if source in ["DAC1", "DAC2A", "MULTISYSTEM"]:
                 reader_kwargs["indicators"] = self.indicators_filter
