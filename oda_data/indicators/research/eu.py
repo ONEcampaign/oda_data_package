@@ -115,28 +115,28 @@ def get_eui_oda_weights(
 
 
 def get_eui_plus_bilateral_providers_indicator(
-    indicators_obj: OECDClient, indicator: str | list[str]
+    client_obj: OECDClient, indicator: str | list[str]
 ) -> pd.DataFrame:
     """Fetches indicator values with adjusted EU institution contributions.
 
     Args:
-        indicators_obj: An `OECDClient` instance to fetch indicator data.
+        client_obj: An `OECDClient` instance to fetch indicator data.
         indicator: Indicator code or list of codes.
 
     Returns:
         A DataFrame containing indicator values with adjusted EU contributions.
     """
     eui_weights = get_eui_oda_weights(
-        years=indicators_obj.years,
-        providers=indicators_obj.providers,
-        measure=indicators_obj.measure[0],
-        use_bulk_download=indicators_obj.use_bulk_download,
+        years=client_obj.years,
+        providers=client_obj.providers,
+        measure=client_obj.measure[0],
+        use_bulk_download=client_obj.use_bulk_download,
     )
 
-    if 918 not in indicators_obj.providers:
-        indicators_obj.providers.append(918)
+    if 918 not in client_obj.providers:
+        client_obj.providers.append(918)
 
-    data = indicators_obj.get_indicators(indicator)
+    data = client_obj.get_indicators(indicator)
     eui_mask = data[ODASchema.PROVIDER_CODE] == 918
 
     data.loc[eui_mask, ODASchema.VALUE] = data.loc[
