@@ -36,22 +36,22 @@ def _get_eu27_gni_as_eu_institutions(gni_obj: OECDClient) -> pd.DataFrame:
     )
 
 
-def _get_gni_data(indicators_obj: OECDClient) -> pd.DataFrame:
+def _get_gni_data(client_obj: OECDClient) -> pd.DataFrame:
     """Fetch GNI data and optionally include EU Institutions' aggregate.
 
     Args:
-        indicators_obj: An OECDClient object for the main data context.
+        client_obj: An OECDClient object for the main data context.
 
     Returns:
         A DataFrame with GNI values per provider and year.
     """
     # Create a copy of the indicators object and set the measure to "net_disbursement"
-    gni_obj = copy(indicators_obj)
+    gni_obj = copy(client_obj)
     gni_obj.measure = ["net_disbursement"]
 
     # Fetch GNI data for the specified indicators
     gni_df = gni_obj.get_indicators("DAC1.40.1")
-    providers = indicators_obj.providers or []
+    providers = client_obj.providers or []
 
     # Check if EU Institutions (provider code 918) is in the list of providers
     # If it is, aggregate GNI for EU27 countries and assign it to provider 918
