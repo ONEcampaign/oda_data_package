@@ -2,7 +2,6 @@ from abc import abstractmethod
 from typing import Optional
 
 import pandas as pd
-from cachetools import TTLCache
 from oda_reader import (
     download_crs,
     bulk_download_crs,
@@ -24,7 +23,6 @@ from oda_data.clean_data.validation import (
     check_strings,
 )
 from oda_data.logger import logger
-from oda_data.tools.cache import OnDiskCache, generate_param_hash
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
@@ -46,9 +44,6 @@ class DACSource:
     This class handles validation of parameters and manages the retrieval
     of data in the form of a pandas DataFrame.
     """
-
-    memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         self.de_providers = None
@@ -174,7 +169,10 @@ class DACSource:
                 )
 
     def _check_file_is_available(
-        self, dataset: str, using_bulk_download: bool = False
+        self,
+        dataset: str,
+        using_bulk_download: bool = False,
+        filters: list[tuple] = None,
     ) -> None:
         """Checks if a dataset file is available locally, triggering a download if not.
 
@@ -190,9 +188,8 @@ class DACSource:
             df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
             df.to_parquet(config.ODAPaths.raw_data / f"{prefix}{dataset}.parquet")
 
-    def _read(
+    def read(
         self,
-        dataset: str,
         using_bulk_download: bool = False,
         additional_filters: Optional[list[tuple]] = None,
         columns: Optional[list] = None,
@@ -200,7 +197,6 @@ class DACSource:
         """Reads a dataset from a local parquet file, applying filters if needed.
 
         Args:
-            dataset (str): The name of the dataset.
             using_bulk_download (bool, optional): Whether to read from the bulk file. Defaults to False.
             additional_filters (Optional[list[tuple]], optional): Additional filters to apply. Defaults to None.
             columns (Optional[list], optional): Subset of columns to read. Defaults to None.
@@ -214,66 +210,24 @@ class DACSource:
             if additional_filters is not None
             else self.filters
         )
+
         if len(filters) == 0:
             filters = None
 
-        if using_bulk_download:
-            self._check_file_is_available(
-                dataset=dataset, using_bulk_download=using_bulk_download
-            )
-            df = pd.read_parquet(
-                config.ODAPaths.raw_data / f"full{dataset}.parquet",
-                filters=filters,
-                engine="pyarrow",
-                columns=columns,
-            )
-            self._check_completeness(data=df, filters=filters)
-            return df
+        query = _filters_to_query(filters) if filters else None
 
-        # Create hash for caching
-        param_hash = generate_param_hash(filters=filters)
+        df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
 
-        if self.refresh_data:
-            self.disk_cache.cleanup(hash_str=param_hash, force=True)
-            self.memory_cache.clear()
+        if query:
+            df = df.query(query)
+        if columns:
+            df = df.filter(columns)
 
-        # Check in memory cache
-        df = self.memory_cache.get(param_hash)
-        if df is not None:
-            query = _filters_to_query(filters) if filters else None
-            if query:
-                df = df.query(query)
-            if columns:
-                df = df.filter(columns)
-            self._check_completeness(data=df, filters=filters)
-            logger.info(f"Returning {dataset} data from in-memory cache.")
-            return df
-
-        # Check on-disk cache
-        df = self.disk_cache.load(dataset, param_hash, filters, columns)
-        if df is not None:
-            self._check_completeness(data=df, filters=filters)
-            logger.info(f"Returning {dataset} data from disk cache.")
-            self.memory_cache[param_hash] = df
-            return df
-
-        # 3. Not cached, perform download
-        logger.info(f"{dataset} not found in cache. Downloading...")
-        df = self.download().pipe(clean_raw_df)
-
-        # 4. Store in caches
-        self.disk_cache.save(dataset, param_hash, df)
-        self.memory_cache[param_hash] = df.copy(deep=True)
         return df
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
         """Abstract method to download the dataset."""
-        pass
-
-    @abstractmethod
-    def read(self, **kwargs):
-        """Abstract method to read the dataset."""
         pass
 
 
@@ -324,29 +278,6 @@ class DAC1Data(DACSource):
 
         return df
 
-    def read(
-        self,
-        using_bulk_download: bool = False,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
-    ):
-        """Reads DAC1 data from a local parquet file.
-
-        Args:
-            using_bulk_download (bool, optional): Whether to read from bulk file. Defaults to False.
-            additional_filters (Optional[list[tuple]], optional): Additional filters. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None, which reads all.
-
-        Returns:
-            pd.DataFrame: The loaded dataset.
-        """
-        return self._read(
-            dataset="DAC1",
-            using_bulk_download=using_bulk_download,
-            additional_filters=additional_filters,
-            columns=columns,
-        )
-
 
 class DAC2AData(DACSource):
     def __init__(
@@ -396,29 +327,6 @@ class DAC2AData(DACSource):
 
         return df
 
-    def read(
-        self,
-        using_bulk_download: bool = False,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
-    ):
-        """Reads DAC2A data from a local parquet file.
-
-        Args:
-            using_bulk_download (bool, optional): Whether to read from a bulk download file. Defaults to False.
-            additional_filters (Optional[list[tuple]], optional): Additional filters. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
-
-        Returns:
-            pd.DataFrame: The loaded dataset.
-        """
-        return self._read(
-            dataset="DAC2a",
-            using_bulk_download=using_bulk_download,
-            additional_filters=additional_filters,
-            columns=columns,
-        )
-
 
 class CRSData(DACSource):
     """Class to handle the CRS data."""
@@ -466,29 +374,6 @@ class CRSData(DACSource):
         logger.info(f"CRS data downloaded successfully.")
 
         return df
-
-    def read(
-        self,
-        using_bulk_download: bool = True,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
-    ):
-        """Reads CRS data from a local parquet file.
-
-        Args:
-            using_bulk_download (bool, optional): Whether to read from bulk file. Defaults to True.
-            additional_filters (Optional[list[tuple]], optional): Additional filters. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
-
-        Returns:
-            pd.DataFrame: The loaded dataset.
-        """
-        return self._read(
-            dataset="CRS",
-            using_bulk_download=using_bulk_download,
-            additional_filters=additional_filters,
-            columns=columns,
-        )
 
 
 class MultiSystemData(DACSource):
@@ -551,26 +436,3 @@ class MultiSystemData(DACSource):
         logger.info(f"Multisystem data downloaded successfully.")
 
         return df
-
-    def read(
-        self,
-        using_bulk_download: bool = True,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
-    ):
-        """Reads Multisystem data from a local parquet file.
-
-        Args:
-            using_bulk_download (bool, optional): Whether to read from a bulk download file. Defaults to True.
-            additional_filters (Optional[list[tuple]], optional): Additional filters. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
-
-        Returns:
-            pd.DataFrame: The loaded dataset.
-        """
-        return self._read(
-            dataset="Multisystem",
-            using_bulk_download=using_bulk_download,
-            additional_filters=additional_filters,
-            columns=columns,
-        )

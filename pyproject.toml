@@ -8,7 +8,7 @@ requires-python = ">=3.10, <4.0"
 dependencies = ["pandas >=2",
     "thefuzz >=0.22.1",
     "pyarrow >=14, <20",
-    "oda-reader >=1",
+    "oda-reader >=1.1.3",
     "pydeflate >=2.0.1",
     "cachetools (>=5.5.1,<6.0.0)"]
 

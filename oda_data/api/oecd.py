@@ -79,7 +79,6 @@ class OECDClient:
     currency: str = "USD"
     base_year: int | None = None
     use_bulk_download: bool = False
-    refresh_data: bool = False
 
     def __post_init__(self) -> None:
         """Initialize and validate the ODAData2 instance."""
@@ -160,9 +159,6 @@ class OECDClient:
 
             # Initialize reader
             reader = READERS[source](**reader_kwargs)
-
-            if self.refresh_data:
-                reader.refresh_data = True
 
             file = reader.read(
                 additional_filters=filters[source],

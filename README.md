@@ -1,12 +1,13 @@
 [![pypi](https://img.shields.io/pypi/v/oda_data.svg)](https://pypi.org/project/oda_data/)
 [![python](https://img.shields.io/pypi/pyversions/oda_data.svg)](https://pypi.org/project/oda_data/)
-[![codecov](https://codecov.io/gh/ONEcampaign/oda_data_package/branch/main/graph/badge.svg?token=G8N8BWWPL8)](https://codecov.io/gh/ONEcampaign/oda_data_package)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # The ODA Data Package
 This is a Python package designed for accessing, processing, and analyzing Official Development Assistance (ODA) data from OECD DAC. With an intuitive API, it simplifies common tasks like retrieving ODA indicators, converting currencies, filtering data, and handling bulk downloads.
 
-**Note: You are currently looking at a pre-release version of the package. We are aiming for a stable release mid-April 2025. The documentation is still incomplete, and features and APIs may change before release.**
+**Note: This is the new version of the package (V2). This release includes many breaking changes and previous workflows
+will not work. The previous 1.4.x version remains available on PyPI and we will continue to support it at least until
+August 2025.**
 
 Interacting with the DAC databases can be a complex task. There are many databases, tables, and web interfaces which
 can be used to get the data you need. This means that getting the right ODA data can require expert knowledge not only
@@ -47,7 +48,7 @@ In the example below, we get all data for Total ODA (net disbursements), for 201
 ```python
 from oda_data import OECDClient, set_data_path
 
-# set the path to the folder where the data should be stored
+# set the path to the folder where the raw data should be cached
 set_data_path("path/to/data/folder")
 
 # create object, specifying key details of the desired output
