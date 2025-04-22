@@ -22,10 +22,10 @@ the [issues page](https://github.com/ONEcampaign/oda_data_package/issues).
 
 ### Installation
 
-The beta version of the package can be installed using pip:
+The latest version of the package can be installed using pip:
 
 ```bash
-pip install --pre oda-data --upgrade
+pip install oda-data --upgrade
 ```
 
 The package is compatible with Python 3.10 and above.
