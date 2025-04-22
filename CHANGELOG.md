@@ -1,9 +1,12 @@
 # Changes to the oda_data package
 
-## [2.0.0bx]
-This is the first beta of version 2. Version 2 is a complete refactoring of the package 
-which breaks backwards compatibility. We will continue to support v1.5.x for the coming months 
-but we expect to fully transition to v2 by the fall of 2025.
+## [2.0.0]
+This major release is a complete refactoring of the `oda-data` package. It is now faster,
+more stable, and better organised.
+
+However, it also introduces major braking changes. Please refer to the project README for
+details on how to use this new version. Versions ~1.5.x will remain supported until at least
+August 2025 to allow time to migrate workflows.
 
 ---
 
