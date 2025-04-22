@@ -20,7 +20,7 @@ def set_data_path(path):
     from pydeflate import set_pydeflate_path
 
     """Set the path to the data folder."""
-    global ODAPaths
+    global OdaPATHS
 
     ODAPaths.raw_data = Path(path).resolve()
     set_pydeflate_path(ODAPaths.raw_data)

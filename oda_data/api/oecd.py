@@ -13,7 +13,7 @@ from oda_data.api.constants import (
     PRICES,
     _EXCLUDE,
 )
-from oda_data.api.representations import _ODADict, _ODAList
+from oda_data.api.representations import _OdaDict, _OdaList
 from oda_data.api.sources import DAC1Data, DAC2AData, CRSData, MultiSystemData
 from oda_data.clean_data import common as clean
 from oda_data.clean_data.validation import validate_currency, validate_measure
@@ -228,18 +228,18 @@ class OECDClient:
     def available_providers(cls) -> dict:
         """Returns a dictionary of available donor codes and their names"""
         logger.info("Note that not all providers may be available for all indicators")
-        return _ODADict(provider_groupings()["all_official"])
+        return _OdaDict(provider_groupings()["all_official"])
 
     @classmethod
     def available_recipients(cls) -> dict:
         """Returns a dictionary of available recipient codes"""
         logger.info("Note that not all recipients may be available for all indicators")
-        return _ODADict(recipient_groupings()["all_developing_countries_regions"])
+        return _OdaDict(recipient_groupings()["all_developing_countries_regions"])
 
     @classmethod
     def available_currencies(cls) -> list:
         """Returns a dictionary of available currencies"""
-        return _ODAList(CURRENCIES)
+        return _OdaList(CURRENCIES)
 
     @classmethod
     def available_indicators(cls) -> dict:
@@ -250,7 +250,7 @@ class OECDClient:
                 n: v for n, v in i.items() if n in ["name", "description", "sources"]
             }
 
-        return _ODADict(indicators)
+        return _OdaDict(indicators)
 
     @classmethod
     def export_available_indicators(cls, export_folder: str | Path) -> None:
