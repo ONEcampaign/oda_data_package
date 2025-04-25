@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [2.0.1]
+- Improves caching performance by keeping a memory and disk cache of parquet files.
+
 ## [2.0.0]
 This major release is a complete refactoring of the `oda-data` package. It is now faster,
 more stable, and better organised.

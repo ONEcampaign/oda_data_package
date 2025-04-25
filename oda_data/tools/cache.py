@@ -37,7 +37,7 @@ class OnDiskCache:
 
     def get_file_path(self, dataset_name: str, param_hash: str) -> Path:
         """Returns the on-disk path for the given dataset and parameter hash."""
-        return self.base_dir / f"filtered{dataset_name}-{param_hash}.parquet"
+        return self.base_dir / f"{dataset_name}-{param_hash}.parquet"
 
     def load(
         self,
@@ -65,9 +65,9 @@ class OnDiskCache:
 
     def cleanup(self, hash_str: Optional[str] = None, force: bool = False):
         """Removes expired cache files."""
-        pattern = f"filtered*{hash_str}*.parquet" if hash_str else "filtered*.parquet"
+        pattern = f"*{hash_str}*.parquet"
 
         for file in self.base_dir.glob(pattern):
             if self._is_expired(file) or force:
                 file.unlink(missing_ok=True)
-                logger.info(f"Deleted expired cache file: {file}")
+                logger.info(f"Deleted cache file: {file}")
