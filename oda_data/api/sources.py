@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Optional
 
 import pandas as pd
+from cachetools import TTLCache
 from oda_reader import (
     download_crs,
     bulk_download_crs,
@@ -10,6 +11,7 @@ from oda_reader import (
     bulk_download_multisystem,
     download_multisystem,
 )
+from oda_reader._cache import memory
 
 from oda_data import config
 from oda_data.clean_data.common import (
@@ -23,6 +25,7 @@ from oda_data.clean_data.validation import (
     check_strings,
 )
 from oda_data.logger import logger
+from oda_data.tools.cache import OnDiskCache, generate_param_hash
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
@@ -45,13 +48,15 @@ class DACSource:
     of data in the form of a pandas DataFrame.
     """
 
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
     def __init__(self):
         self.de_providers = None
         self.de_recipients = None
         self.de_indicators = None
         self.filters = None
         self.de_sectors = None
-        self.refresh_data = False
 
     def _init_filters(
         self,
@@ -168,25 +173,48 @@ class DACSource:
                     f"Missing values in {column}: {', '.join(map(str, missing_values))}"
                 )
 
-    def _check_file_is_available(
-        self,
-        dataset: str,
-        using_bulk_download: bool = False,
-        filters: list[tuple] = None,
-    ) -> None:
-        """Checks if a dataset file is available locally, triggering a download if not.
+    def _get_read_filters(
+        self, additional_filters: Optional[list[tuple]] = None
+    ) -> list[tuple[str, str, list]] | None:
+        filters = (
+            self.filters + additional_filters if additional_filters else self.filters
+        )
+        return filters or None
 
-        Args:
-            dataset (str): The dataset name.
-            using_bulk_download (bool, optional): Whether to check for a filtered version. Defaults to False.
-        """
+    def _get_cached_dataset(
+        self, param_hash: str, filters: list[tuple], columns: list[str]
+    ) -> pd.DataFrame | None:
 
-        prefix = "full" if using_bulk_download else "filtered"
+        cached_df = self.memory_cache.get(param_hash)
 
-        if not (config.ODAPaths.raw_data / f"{prefix}{dataset}.parquet").exists():
-            logger.info(f"{dataset} data not found. Downloading...")
-            df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
-            df.to_parquet(config.ODAPaths.raw_data / f"{prefix}{dataset}.parquet")
+        if cached_df is None:
+            cached_df = self.disk_cache.load(
+                self.__class__.__name__, param_hash, filters, columns
+            )
+
+        return cached_df
+
+    def _cache_dataset(self, param_hash: str, df: pd.DataFrame) -> None:
+        """Caches the dataset in memory and on disk."""
+        self.memory_cache[param_hash] = df.copy(deep=True)
+        self.disk_cache.save(self.__class__.__name__, param_hash, df)
+
+    def _apply_query_and_cache(
+        self, df: pd.DataFrame, query: str | None, param_hash: str, bulk: bool
+    ):
+        if bulk:
+            self._cache_dataset(param_hash=param_hash, df=df)
+
+        if query:
+            df = df.query(query)
+
+        if not bulk:
+            self._cache_dataset(param_hash=param_hash, df=df)
+
+        return df
+
+    def _bulk_hash(self) -> str:
+        return generate_param_hash(filters=[("bulk", "==", self.__class__.__name__)])
 
     def read(
         self,
@@ -205,21 +233,35 @@ class DACSource:
             pd.DataFrame: The loaded dataset.
         """
         # Create filters
-        filters = (
-            self.filters + additional_filters
-            if additional_filters is not None
-            else self.filters
-        )
+        filters = self._get_read_filters(additional_filters=additional_filters)
 
-        if len(filters) == 0:
-            filters = None
-
+        # Generate a query string from the filters
         query = _filters_to_query(filters) if filters else None
 
-        df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
+        # Generate a hash string with the filters and the type of file
+        param_hash = (
+            self._bulk_hash()
+            if using_bulk_download
+            else generate_param_hash(filters=filters)
+        )
 
-        if query:
-            df = df.query(query)
+        # If caching is not active, clear the cache
+        if not memory().store_backend:
+            self.disk_cache.cleanup(hash_str=param_hash, force=True)
+            self.memory_cache.clear()
+
+        # Check if the data is already cached in memory or on disk
+        df = self._get_cached_dataset(
+            param_hash=param_hash, filters=filters, columns=columns
+        )
+
+        # If not cached, download the data
+        if df is None:
+            df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
+            df = self._apply_query_and_cache(
+                df=df, query=query, param_hash=param_hash, bulk=using_bulk_download
+            )
+
         if columns:
             df = df.filter(columns)
 

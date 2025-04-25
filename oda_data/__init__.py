@@ -3,7 +3,7 @@ from importlib.metadata import version
 __version__ = version("oda_data")
 
 from oda_data import tools
-from oda_reader import set_cache_dir
+from oda_reader import set_cache_dir, disable_cache, enable_cache, clear_cache
 from oda_data.api.oecd import OECDClient
 from oda_data.api.sources import DAC1Data, DAC2AData, MultiSystemData, CRSData
 from oda_data.indicators.research.policy_markers import bilateral_policy_marker
@@ -43,4 +43,7 @@ __all__ = [
     "add_names_columns",
     "add_gni_share_column",
     "set_cache_dir",
+    "disable_cache",
+    "enable_cache",
+    "clear_cache",
 ]
