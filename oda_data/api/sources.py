@@ -10,6 +10,7 @@ from oda_reader import (
     download_dac2a,
     bulk_download_multisystem,
     download_multisystem,
+    download_aiddata
 )
 from oda_reader._cache import memory
 
@@ -18,7 +19,10 @@ from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
 )
-from oda_data.clean_data.schema import ODASchema
+from oda_data.clean_data.schema import (
+    ODASchema,
+    AidDataSchema
+)
 from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
     check_integers,
@@ -41,8 +45,8 @@ def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
     return query
 
 
-class DACSource:
-    """Base class for accessing DAC datasets.
+class Source:
+    """Base class for accessing any dataset.
 
     This class handles validation of parameters and manages the retrieval
     of data in the form of a pandas DataFrame.
@@ -57,6 +61,7 @@ class DACSource:
         self.de_indicators = None
         self.filters = None
         self.de_sectors = None
+        self.schema = ODASchema # TODO: check this is OK as a default value
 
     def _init_filters(
         self,
@@ -80,13 +85,13 @@ class DACSource:
         if self.years is not None:
             self.start = min(self.years)
             self.end = max(self.years)
-            self.add_filter(column=ODASchema.YEAR, predicate="in", value=self.years)
+            self.add_filter(column=self.schema.YEAR, predicate="in", value=self.years)
         else:
             self.start, self.end = None, None
 
         if self.providers is not None:
             self.add_filter(
-                column=ODASchema.PROVIDER_CODE, predicate="in", value=self.providers
+                column=self.schema.PROVIDER_CODE, predicate="in", value=self.providers
             )
             self.de_providers = convert_dot_stat_to_data_explorer_codes(
                 codes=self.providers
@@ -94,7 +99,7 @@ class DACSource:
 
         if self.recipients is not None:
             self.add_filter(
-                column=ODASchema.RECIPIENT_CODE, predicate="in", value=self.recipients
+                column=self.schema.RECIPIENT_CODE, predicate="in", value=self.recipients
             )
             self.de_recipients = convert_dot_stat_to_data_explorer_codes(
                 codes=self.recipients
@@ -102,7 +107,7 @@ class DACSource:
 
         if self.sectors is not None:
             self.add_filter(
-                column=ODASchema.SECTOR_CODE, predicate="in", value=self.sectors
+                column=self.schema.SECTOR_CODE, predicate="in", value=self.sectors
             )
             self.de_sectors = check_strings(sectors)
 
@@ -272,6 +277,21 @@ class DACSource:
         """Abstract method to download the dataset."""
         pass
 
+class DACSource(Source):
+    """Base class for accessing DAC datasets.
+
+    This class handles validation of parameters and manages the retrieval
+    of data in the form of a pandas DataFrame.
+    """
+
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
+    def __init__(self):
+        super().__init__()
+
+        self.schema = ODASchema
+
 
 class DAC1Data(DACSource):
     """Class to handle DAC1 data"""
@@ -296,7 +316,7 @@ class DAC1Data(DACSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+                column=self.schema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -344,7 +364,7 @@ class DAC2AData(DACSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+                column=self.schema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -448,7 +468,7 @@ class MultiSystemData(DACSource):
 
         if self.indicators is not None:
             self.add_filter(
-                column=ODASchema.AID_TO_THRU, predicate="in", value=self.indicators
+                column=self.schema.AID_TO_THRU, predicate="in", value=self.indicators
             )
             self.de_indicators = indicators
 
@@ -478,3 +498,54 @@ class MultiSystemData(DACSource):
         logger.info(f"Multisystem data downloaded successfully.")
 
         return df
+    
+class AidDataSource(Source):
+    """Base class for accessing AidData datasets.
+
+    This class handles validation of parameters and manages the retrieval
+    of data in the form of a pandas DataFrame.
+    """
+
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
+    def __init__(self):
+        super().__init__()
+
+        self.schema = AidDataSchema
+
+    def __init__(
+        self,
+        years: Optional[list[int] | range | int] = None,
+        providers: Optional[list[int] | int] = None,
+        indicators: Optional[list[int] | int] = None,
+    ):
+        """Initializes the AidData data handler.
+
+        Args:
+            years (Optional[list[int] | range | int]): The years to filter.
+            providers (Optional[list[int] | int]): The provider codes.
+            indicators (Optional[list[int] | int]): The indicator codes.
+        """
+        super().__init__()
+
+        self._init_filters(years=years, providers=providers)
+        self.indicators = check_integers(indicators) if indicators else None
+
+        if self.indicators is not None:
+            self.add_filter(
+                column=self.schema.AIDTYPE_CODE, predicate="in", value=self.indicators
+            )
+            self.de_indicators = check_strings(indicators)
+
+    def download(self):
+        """Downloads the full AidData dataset.
+        """
+        
+        logger.info("Bulk downloading AidData may take a long time")
+        df = download_aiddata()
+
+        logger.info(f"AidData data downloaded successfully.")
+
+        return df
+
