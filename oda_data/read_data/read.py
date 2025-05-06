@@ -8,6 +8,7 @@ from oda_data.get_data.crs import download_crs
 from oda_data.get_data.dac1 import download_dac1
 from oda_data.get_data.dac2a import download_dac2a
 from oda_data.get_data.multisystem import download_multisystem
+from oda_data.get_data.aiddata import download_aiddata
 from oda_data.logger import logger
 
 
@@ -140,3 +141,31 @@ def read_multisystem(
         return __read_table(
             years=years, file_name="multisystem_raw.parquet", filters=filters
         )
+    
+def read_aidata(
+    years: int | list | range,
+    filters: list[tuple] | None = None,
+    columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Read the AidData data for the specified years."""
+    # Check that list of years is valid
+    years = common.check_integers(years)
+
+    # check that all years are available. If not, download the missing years
+    if not (config.OdaPATHS.raw_data / "aiddata.parquet").exists():
+        logger.info(f"AidData data not found. Downloading...")
+        download_aiddata()
+
+    # If using the parquet file, use predicate pushdown to filter the data by year
+    # and avoid reading too much data into memory
+    if (config.OdaPATHS.raw_data / "aiddata.parquet").exists():
+        filters = add_years_to_filter(filters, years)
+
+        df = pd.read_parquet(
+            config.OdaPATHS.raw_data / "aiddata.parquet",
+            filters=filters,
+            engine="pyarrow",
+            columns=columns,
+        )#.pipe(clean_raw_df) TODO: implement this for AidData
+
+        return df#.pipe(set_default_types) TODO: implement this for AidData
