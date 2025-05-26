@@ -61,7 +61,7 @@ class Source:
         self.de_indicators = None
         self.filters = None
         self.de_sectors = None
-        self.schema = ODASchema # TODO: check this is OK as a default value
+        self.schema = None
 
     def _init_filters(
         self,
