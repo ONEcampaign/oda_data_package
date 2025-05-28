@@ -23,6 +23,37 @@ def official_oda(data: pd.DataFrame) -> pd.DataFrame:
     return data.query(oda_query)
 
 
+def official_oda_gni(data: pd.DataFrame) -> pd.DataFrame:
+    """Filters the dataset to include only Official Development Assistance (ODA)
+    and computes the ratio of ODA to Gross National Income (GNI).
+
+    Args:
+        data: A pandas DataFrame containing aid data.
+
+    Returns:
+        A filtered pandas DataFrame with only official ODA rows.
+    """
+    oda = official_oda(data)
+
+    gni = (
+        data.query("aidtype_code == 1")
+        .rename(columns={ODASchema.VALUE: "gni_value"})
+        .filter([ODASchema.YEAR, ODASchema.PROVIDER_CODE, "gni_value"])
+    )
+
+    df = oda.merge(gni, on=[ODASchema.YEAR, ODASchema.PROVIDER_CODE], how="left")
+    df[ODASchema.VALUE] = round(df[ODASchema.VALUE] / df["gni_value"], 6)
+
+    df = df.drop(columns=["gni_value"])
+
+    df[ODASchema.AIDTYPE_CODE] = 1010110101
+    df[ODASchema.AIDTYPE_NAME] = (
+        "Official Development Assistance, as a share of GNI (official definition)"
+    )
+
+    return df
+
+
 def one_core_oda(data: pd.DataFrame) -> pd.DataFrame:
     """Computes ONE's Core ODA metric: ODA excluding in-donor spending
     but including administrative costs.
