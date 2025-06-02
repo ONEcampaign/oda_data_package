@@ -340,6 +340,7 @@ class DAC1Data(DACSource):
 
 
 class DAC2AData(DACSource):
+    """Class to handle the DAC2A data."""
     def __init__(
         self,
         years: Optional[list[int] | range | int] = None,
@@ -546,11 +547,7 @@ class AidDataSource(Source):
 
 
 class AidDataData(AidDataSource):
-    """Base class for accessing AidData datasets.
-
-    This class handles validation of parameters and manages the retrieval
-    of data in the form of a pandas DataFrame.
-    """
+    """Class to handle the AidData data."""
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
     disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
