@@ -9,7 +9,7 @@ class ODAPaths:
     raw_data = scripts / ".raw_data"
     pydeflate = raw_data / ".pydeflate"
     indicators = scripts / "indicators"
-    names = scripts/ "tools"/ "names"
+    names = scripts / "tools" / "names"
     cleaning = scripts / "clean_data"
     settings = scripts / "settings"
     sectors = indicators / "sectors"
