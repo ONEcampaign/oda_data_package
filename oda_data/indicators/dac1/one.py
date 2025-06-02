@@ -76,7 +76,7 @@ def core_oda() -> Indicator:
         code="ONE.10.1010C",
         name="Total Core ODA (ONE Definition)",
         description="Official Development Assistance (ODA) excluding in-donor spending but"
-                    "including administrative costs.",
+        "including administrative costs.",
         sources=["DAC1"],
         filters={
             "DAC1": {

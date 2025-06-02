@@ -278,6 +278,7 @@ CRS_MAPPING: dict[str, str] = {
     "incomegroup_name": ODASchema.RECIPIENT_INCOME,
 }
 
+
 @dataclass
 class AidDataSchema:
     AIDDATA_ID: str = "aiddata_id"
@@ -342,11 +343,15 @@ class AidDataSchema:
     PLANNED_IMPLEMENTATION_DATE: str = "expected_start_date"
     ACTUAL_IMPLEMENTATION_DATE: str = "actual_start_date"
     ACTUAL_IMPLEMENTATION_DATE_ESTIMATED: str = "actual_start_date_estimated"
-    DEVIATION_PLANNED_ACTUAL_IMPLEMENTATION_DATE: str = "deviation_expected_actual_start_date"
+    DEVIATION_PLANNED_ACTUAL_IMPLEMENTATION_DATE: str = (
+        "deviation_expected_actual_start_date"
+    )
     PLANNED_COMPLETION_DATE: str = "expected_completion_date"
     ACTUAL_COMPLETION_DATE: str = "actual_completion_date"
     ACTUAL_COMPLETION_DATE_ESTIMATED: str = "actual_completion_date_estimated"
-    DEVIATION_PLANNED_ACTUAL_COMPLETION_DATE: str = "deviation_expected_actual_completion_date"
+    DEVIATION_PLANNED_ACTUAL_COMPLETION_DATE: str = (
+        "deviation_expected_actual_completion_date"
+    )
     MATURITY: str = "maturity"
     INTEREST_RATE: str = "interest_rate"
     GRACE_PERIOD: str = "grace_period"
@@ -362,7 +367,9 @@ class AidDataSchema:
     GRANT_ELEMENT_IMF: str = "grant_element_imf"
     NUMBER_OF_LENDERS: str = "number_of_lenders"
     EXPORT_BUYERS_CREDIT: str = "export_buyers_credit"
-    SUPPLIERS_CREDIT_EXPORT_SELLERS_CREDIT: str = "suppliers_credit_export_sellers_credit"
+    SUPPLIERS_CREDIT_EXPORT_SELLERS_CREDIT: str = (
+        "suppliers_credit_export_sellers_credit"
+    )
     INTEREST_FREE_LOAN: str = "interest_free_loan"
     REFINANCING: str = "refinancing"
     INVESTMENT_PROJECT_LOAN: str = "investment_project_loan"
@@ -384,8 +391,12 @@ class AidDataSchema:
     NON_CHINESE_FINANCIER: str = "non_chinese_financier"
     SHORT_TERM: str = "short_term"
     RESCUE: str = "rescue"
-    PROJECT_JV_SPV_HOST_GOVERNMENT_OWNERSHIP: str = "project_jv_spv_host_government_ownership"
-    PROJECT_JV_SPV_CHINESE_GOVERNMENT_OWNERSHIP: str = "project_jv_spv_chinese_government_ownership"
+    PROJECT_JV_SPV_HOST_GOVERNMENT_OWNERSHIP: str = (
+        "project_jv_spv_host_government_ownership"
+    )
+    PROJECT_JV_SPV_CHINESE_GOVERNMENT_OWNERSHIP: str = (
+        "project_jv_spv_chinese_government_ownership"
+    )
     LEVEL_OF_PUBLIC_LIABILITY: str = "level_of_public_liability"
     TOTAL_SOURCE_COUNT: str = "total_source_count"
     OFFICIAL_SOURCE_COUNT: str = "official_source_count"

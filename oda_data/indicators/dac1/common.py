@@ -36,5 +36,3 @@ def dac1_aid_name_mapping() -> dict[int, str]:
     file_path = ODAPaths.settings / "dac1_aid_flow_types.json"
     mapping = load_json_file(file_path)
     return {int(k): v["aidtype_name"] for k, v in mapping.items()}
-
-

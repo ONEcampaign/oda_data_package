@@ -10,7 +10,7 @@ from oda_reader import (
     download_dac2a,
     bulk_download_multisystem,
     download_multisystem,
-    download_aiddata
+    download_aiddata,
 )
 from oda_reader._cache import memory
 
@@ -19,10 +19,7 @@ from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
 )
-from oda_data.clean_data.schema import (
-    ODASchema,
-    AidDataSchema
-)
+from oda_data.clean_data.schema import ODASchema, AidDataSchema
 from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
     check_integers,
@@ -101,11 +98,11 @@ class DACSource(Source):
         self.schema = ODASchema
 
     def _init_filters(
-            self,
-            years: Optional[list[int] | range | int] = None,
-            providers: Optional[list[int] | int] = None,
-            recipients: Optional[list[int] | int] = None,
-            sectors: Optional[list[int] | int] = None,
+        self,
+        years: Optional[list[int] | range | int] = None,
+        providers: Optional[list[int] | int] = None,
+        recipients: Optional[list[int] | int] = None,
+        sectors: Optional[list[int] | int] = None,
     ):
 
         self.years, self.providers, self.recipients = (
@@ -500,6 +497,7 @@ class MultiSystemData(DACSource):
 
         return df
 
+
 class AidDataSource(Source):
     """Base class for accessing AidData datasets.
 
@@ -516,10 +514,10 @@ class AidDataSource(Source):
         self.schema = AidDataSchema
 
     def _init_filters(
-            self,
-            years: Optional[list[int] | range | int] = None,
-            recipients: Optional[list[str] | str] = None,
-            sectors: Optional[list[int] | int] = None,
+        self,
+        years: Optional[list[int] | range | int] = None,
+        recipients: Optional[list[str] | str] = None,
+        sectors: Optional[list[int] | int] = None,
     ):
         self.years = check_integers(years)
         self.recipients = check_strings(recipients)
@@ -530,7 +528,9 @@ class AidDataSource(Source):
         if self.years is not None:
             self.start = min(self.years)
             self.end = max(self.years)
-            self._add_filter(column=self.schema.COMMITMENT_YEAR, predicate="in", value=self.years)
+            self._add_filter(
+                column=self.schema.COMMITMENT_YEAR, predicate="in", value=self.years
+            )
         else:
             self.start, self.end = None, None
 
@@ -545,7 +545,6 @@ class AidDataSource(Source):
             )
 
 
-    
 class AidDataData(AidDataSource):
     """Base class for accessing AidData datasets.
 
@@ -560,7 +559,7 @@ class AidDataData(AidDataSource):
         self,
         years: Optional[list[int] | range | int] = None,
         recipients: Optional[list[str] | str] = None,
-        sectors: Optional[list[int] | int] = None
+        sectors: Optional[list[int] | int] = None,
     ):
         """Initializes the AidData data handler.
 
@@ -584,11 +583,12 @@ class AidDataData(AidDataSource):
 
         logger.info(f"Filtering the data")
 
-        self.filters = self.filters + additional_filters if additional_filters else self.filters
+        self.filters = (
+            self.filters + additional_filters if additional_filters else self.filters
+        )
 
         query = filters_to_query(self.filters)
 
         df = df.query(query)
 
         return df
-
