@@ -1008,23 +1008,21 @@ files = [
 
 [[package]]
 name = "oda-reader"
-version = "1.1.4"
-description = "A simple package to import ODA data using the OECD Data API"
+version = "1.2.0"
+description = "A simple package to import ODA data from the OECD's API and AidData's database"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "oda_reader-1.2.0-py3-none-any.whl", hash = "sha256:e76f2060babbd4424a73159ca5dff674199a49f24d7f800c017018f95e4ac41b"},
+    {file = "oda_reader-1.2.0.tar.gz", hash = "sha256:60210ebc180fa430515b2f0dea5dc5c74e34ad62001a28f0e95acd8efd8c8700"},
+]
 
 [package.dependencies]
-joblib = "^1.4.2"
-pandas = "^2.2.2"
+joblib = ">=1.4.2,<2.0.0"
+pandas = ">=2.2.2,<3.0.0"
 pyarrow = ">=16.0.0"
-requests = "^2.31.0"
-
-[package.source]
-type = "directory"
-url = "../oda_reader"
+requests = ">=2.31.0,<3.0.0"
 
 [[package]]
 name = "openpyxl"
@@ -2456,4 +2454,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "862da44c48e83f1ac8166f89ce54d9f239414d341ac12a9b4084df0e2eb7fd4b"
+content-hash = "1ede713fd1dc18b04d8f30d67751ebd6502dfb33de535d7976720f3c6a35ea86"

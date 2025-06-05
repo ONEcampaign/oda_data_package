@@ -19,7 +19,7 @@ thefuzz = ">=0.22.1"
 pyarrow = ">=14,<20"
 pydeflate = ">=2.0.1"
 cachetools = ">=5.5.1,<6.0.0"
-oda-reader = {path = "../oda_reader", develop = true}
+oda-reader = "^1.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=24"
