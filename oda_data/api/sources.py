@@ -29,7 +29,7 @@ from oda_data.logger import logger
 from oda_data.tools.cache import OnDiskCache, generate_param_hash
 
 
-def filters_to_query(filters: list[tuple[str, str, list]]) -> str:
+def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
     """Transform a list of filters into a query string."""
     query = ""
     for column, predicate, values in filters:
@@ -254,7 +254,7 @@ class DACSource(Source):
         filters = self._get_read_filters(additional_filters=additional_filters)
 
         # Generate a query string from the filters
-        query = filters_to_query(filters) if filters else None
+        query = _filters_to_query(filters) if filters else None
 
         # Generate a hash string with the filters and the type of file
         param_hash = (
@@ -584,7 +584,7 @@ class AidDataData(AidDataSource):
             self.filters + additional_filters if additional_filters else self.filters
         )
 
-        query = filters_to_query(self.filters)
+        query = _filters_to_query(self.filters)
 
         df = df.query(query)
 
