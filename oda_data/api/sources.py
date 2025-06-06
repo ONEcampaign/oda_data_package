@@ -10,6 +10,7 @@ from oda_reader import (
     download_dac2a,
     bulk_download_multisystem,
     download_multisystem,
+    download_aiddata,
 )
 from oda_reader._cache import memory
 
@@ -18,7 +19,7 @@ from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
 )
-from oda_data.clean_data.schema import ODASchema
+from oda_data.clean_data.schema import ODASchema, AidDataSchema
 from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
     check_integers,
@@ -41,8 +42,8 @@ def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
     return query
 
 
-class DACSource:
-    """Base class for accessing DAC datasets.
+class Source:
+    """Base class for accessing any dataset.
 
     This class handles validation of parameters and manages the retrieval
     of data in the form of a pandas DataFrame.
@@ -57,6 +58,44 @@ class DACSource:
         self.de_indicators = None
         self.filters = None
         self.de_sectors = None
+        self.schema = None
+
+    def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
+        """Adds a filter to the dataset, ensuring no duplicate columns.
+
+        If a filter for the same column already exists, it is replaced with a warning.
+
+        Args:
+            column (str): The name of the column to filter.
+            predicate (str): The condition to apply (e.g., "in").
+            value (str | int | list): The value(s) to filter by.
+        """
+        existing_filter = next((f for f in self.filters if f[0] == column), None)
+
+        if existing_filter:
+            logger.warning(
+                f"A filter for {column} already exists. Replacing with new filter."
+            )
+
+        # Remove existing filter (if any) and add the new one
+        self.filters = [(c, p, v) for c, p, v in self.filters if c != column]
+        self.filters.append((column, predicate, value))
+
+
+class DACSource(Source):
+    """Base class for accessing DAC datasets.
+
+    This class handles validation of parameters and manages the retrieval
+    of data in the form of a pandas DataFrame.
+    """
+
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
+    def __init__(self):
+        super().__init__()
+
+        self.schema = ODASchema
 
     def _init_filters(
         self,
@@ -80,52 +119,31 @@ class DACSource:
         if self.years is not None:
             self.start = min(self.years)
             self.end = max(self.years)
-            self.add_filter(column=ODASchema.YEAR, predicate="in", value=self.years)
+            self._add_filter(column=self.schema.YEAR, predicate="in", value=self.years)
         else:
             self.start, self.end = None, None
 
         if self.providers is not None:
-            self.add_filter(
-                column=ODASchema.PROVIDER_CODE, predicate="in", value=self.providers
+            self._add_filter(
+                column=self.schema.PROVIDER_CODE, predicate="in", value=self.providers
             )
             self.de_providers = convert_dot_stat_to_data_explorer_codes(
                 codes=self.providers
             )
 
         if self.recipients is not None:
-            self.add_filter(
-                column=ODASchema.RECIPIENT_CODE, predicate="in", value=self.recipients
+            self._add_filter(
+                column=self.schema.RECIPIENT_CODE, predicate="in", value=self.recipients
             )
             self.de_recipients = convert_dot_stat_to_data_explorer_codes(
                 codes=self.recipients
             )
 
         if self.sectors is not None:
-            self.add_filter(
-                column=ODASchema.SECTOR_CODE, predicate="in", value=self.sectors
+            self._add_filter(
+                column=self.schema.SECTOR_CODE, predicate="in", value=self.sectors
             )
             self.de_sectors = check_strings(sectors)
-
-    def add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
-        """Adds a filter to the dataset, ensuring no duplicate columns.
-
-        If a filter for the same column already exists, it is replaced with a warning.
-
-        Args:
-            column (str): The name of the column to filter.
-            predicate (str): The condition to apply (e.g., "in").
-            value (str | int | list): The value(s) to filter by.
-        """
-        existing_filter = next((f for f in self.filters if f[0] == column), None)
-
-        if existing_filter:
-            logger.warning(
-                f"A filter for {column} already exists. Replacing with new filter."
-            )
-
-        # Remove existing filter (if any) and add the new one
-        self.filters = [(c, p, v) for c, p, v in self.filters if c != column]
-        self.filters.append((column, predicate, value))
 
     def _get_filtered_download_filters(self):
         """Generates a dictionary of filters for downloading the dataset.
@@ -295,8 +313,8 @@ class DAC1Data(DACSource):
         self.indicators = check_integers(indicators) if indicators else None
 
         if self.indicators is not None:
-            self.add_filter(
-                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+            self._add_filter(
+                column=self.schema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -322,6 +340,7 @@ class DAC1Data(DACSource):
 
 
 class DAC2AData(DACSource):
+    """Class to handle the DAC2A data."""
     def __init__(
         self,
         years: Optional[list[int] | range | int] = None,
@@ -343,8 +362,8 @@ class DAC2AData(DACSource):
         self.indicators = check_integers(indicators) if indicators else None
 
         if self.indicators is not None:
-            self.add_filter(
-                column=ODASchema.AIDTYPE_CODE, predicate="in", value=self.indicators
+            self._add_filter(
+                column=self.schema.AIDTYPE_CODE, predicate="in", value=self.indicators
             )
             self.de_indicators = check_strings(indicators)
 
@@ -447,8 +466,8 @@ class MultiSystemData(DACSource):
         self.indicators = check_strings(indicators) if indicators else None
 
         if self.indicators is not None:
-            self.add_filter(
-                column=ODASchema.AID_TO_THRU, predicate="in", value=self.indicators
+            self._add_filter(
+                column=self.schema.AID_TO_THRU, predicate="in", value=self.indicators
             )
             self.de_indicators = indicators
 
@@ -476,5 +495,97 @@ class MultiSystemData(DACSource):
         df = clean_raw_df(df)
 
         logger.info(f"Multisystem data downloaded successfully.")
+
+        return df
+
+
+class AidDataSource(Source):
+    """Base class for accessing AidData datasets.
+
+    This class handles validation of parameters and manages the retrieval
+    of data in the form of a pandas DataFrame.
+    """
+
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
+    def __init__(self):
+        super().__init__()
+
+        self.schema = AidDataSchema
+
+    def _init_filters(
+        self,
+        years: Optional[list[int] | range | int] = None,
+        recipients: Optional[list[str] | str] = None,
+        sectors: Optional[list[int] | int] = None,
+    ):
+        self.years = check_integers(years)
+        self.recipients = check_strings(recipients)
+        self.sectors = check_integers(sectors)
+
+        self.filters = []
+
+        if self.years is not None:
+            self.start = min(self.years)
+            self.end = max(self.years)
+            self._add_filter(
+                column=self.schema.COMMITMENT_YEAR, predicate="in", value=self.years
+            )
+        else:
+            self.start, self.end = None, None
+
+        if self.recipients is not None:
+            self._add_filter(
+                column=self.schema.RECIPIENT_NAME, predicate="in", value=self.recipients
+            )
+
+        if self.sectors is not None:
+            self._add_filter(
+                column=self.schema.SECTOR_CODE, predicate="in", value=self.sectors
+            )
+
+
+class AidDataData(AidDataSource):
+    """Class to handle the AidData data."""
+
+    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+
+    def __init__(
+        self,
+        years: Optional[list[int] | range | int] = None,
+        recipients: Optional[list[str] | str] = None,
+        sectors: Optional[list[int] | int] = None,
+    ):
+        """Initializes the AidData data handler.
+
+        Args:
+            years (Optional[list[int] | range | int]): Years to filter based on commitment year.
+            recipients (Optional[list[str] | str]): Recipient names to filter.
+            sectors (Optional[list[int] | int]): Sector codes to filter.
+        """
+        super().__init__()
+
+        self._init_filters(years=years, recipients=recipients, sectors=sectors)
+
+    def download(self, additional_filters: Optional[list[tuple]] = None):
+        """Downloads the full AidData dataset and applies filters.
+
+        Args:
+            additional_filters (Optional[list[tuple]], optional): Additional filters to apply. Defaults to None.
+        """
+
+        df = download_aiddata()
+
+        logger.info(f"Filtering the data")
+
+        self.filters = (
+            self.filters + additional_filters if additional_filters else self.filters
+        )
+
+        query = _filters_to_query(self.filters)
+
+        df = df.query(query)
 
         return df

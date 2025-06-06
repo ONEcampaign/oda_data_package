@@ -5,7 +5,13 @@ __version__ = version("oda_data")
 from oda_data import tools
 from oda_reader import set_cache_dir, disable_cache, enable_cache, clear_cache
 from oda_data.api.oecd import OECDClient
-from oda_data.api.sources import DAC1Data, DAC2AData, MultiSystemData, CRSData
+from oda_data.api.sources import (
+    DAC1Data,
+    DAC2AData,
+    MultiSystemData,
+    CRSData,
+    AidDataData,
+)
 from oda_data.indicators.research.policy_markers import bilateral_policy_marker
 from oda_data.tools.compatibility import ODAData
 from oda_data.tools.gni import add_gni_share_column
@@ -33,6 +39,7 @@ __all__ = [
     "DAC2AData",
     "MultiSystemData",
     "CRSData",
+    "AidDataData",
     "bilateral_policy_marker",
     "provider_groupings",
     "recipient_groupings",

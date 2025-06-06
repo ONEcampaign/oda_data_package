@@ -49,7 +49,7 @@ class ODAData:
                 currency=self.currency,
                 base_year=self.base_year,
                 use_bulk_download=self.use_bulk_download
-                                  | self._mapping[indicator]["bulk"],
+                | self._mapping[indicator]["bulk"],
             ).get_indicators(indicators=self._mapping[indicator]["indicator"])
 
             self.indicators[indicator] = indicator_data
