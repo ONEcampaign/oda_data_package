@@ -221,7 +221,9 @@ class DACSource(Source):
 
     def _cache_dataset(self, param_hash: str, df: pd.DataFrame) -> None:
         """Caches the dataset in memory and on disk."""
-        # self.memory_cache[param_hash] = df.copy(deep=True)
+        size = df.memory_usage(deep=True).sum() / (1024 * 1024)  # in MB
+        if size < 50:
+            self.memory_cache[param_hash] = df.copy(deep=True)
         self.disk_cache.save(self.__class__.__name__, param_hash, df)
 
     def _apply_query_and_cache(
