@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -96,6 +97,7 @@ class DACSource(Source):
         super().__init__()
 
         self.schema = ODASchema
+        self._param_hash = None
 
     def _init_filters(
         self,
@@ -212,9 +214,14 @@ class DACSource(Source):
 
         return cached_df
 
+    def _bulk_filename(self) -> Path:
+        return self.disk_cache.get_file_path(
+            dataset_name=self.__class__.__name__, param_hash=self._param_hash
+        )
+
     def _cache_dataset(self, param_hash: str, df: pd.DataFrame) -> None:
         """Caches the dataset in memory and on disk."""
-        self.memory_cache[param_hash] = df.copy(deep=True)
+        # self.memory_cache[param_hash] = df.copy(deep=True)
         self.disk_cache.save(self.__class__.__name__, param_hash, df)
 
     def _apply_query_and_cache(
@@ -263,6 +270,8 @@ class DACSource(Source):
             else generate_param_hash(filters=filters)
         )
 
+        self._param_hash = param_hash
+
         # If caching is not active, clear the cache
         if not memory().store_backend:
             self.disk_cache.cleanup(hash_str=param_hash, force=True)
@@ -275,10 +284,17 @@ class DACSource(Source):
 
         # If not cached, download the data
         if df is None:
-            df = self.download(bulk=using_bulk_download).pipe(clean_raw_df)
-            df = self._apply_query_and_cache(
-                df=df, query=query, param_hash=param_hash, bulk=using_bulk_download
-            )
+            df = self.download(bulk=using_bulk_download)
+            if df is None:
+                df = self._get_cached_dataset(
+                    param_hash=param_hash, filters=filters, columns=columns
+                )
+            else:
+                df = self._apply_query_and_cache(
+                    df=df, query=query, param_hash=param_hash, bulk=using_bulk_download
+                )
+
+        df = df.pipe(clean_raw_df)
 
         if columns:
             df = df.filter(columns)
@@ -341,6 +357,7 @@ class DAC1Data(DACSource):
 
 class DAC2AData(DACSource):
     """Class to handle the DAC2A data."""
+
     def __init__(
         self,
         years: Optional[list[int] | range | int] = None,
@@ -408,6 +425,7 @@ class CRSData(DACSource):
         """
         super().__init__()
         self._init_filters(years=years, providers=providers, recipients=recipients)
+        self._param_hash = None
 
     def download(self, bulk: bool = True):
         """Downloads CRS data, either filtered or full dataset.
@@ -422,19 +440,16 @@ class CRSData(DACSource):
                 end_year=self.end,
                 filters=self._get_filtered_download_filters(),
             )
+            logger.info(f"CRS data downloaded successfully.")
+            return clean_raw_df(df)
+
         else:
             logger.info(
                 "The full, detailed CRS is only available as a large file (>1GB). "
                 "The package will now download the data, but it may take a while."
             )
-            df = bulk_download_crs()
-
-        # Clean the DataFrame
-        df = clean_raw_df(df)
-
-        logger.info(f"CRS data downloaded successfully.")
-
-        return df
+            bulk_download_crs(save_to_path=self._bulk_filename())
+            return None
 
 
 class MultiSystemData(DACSource):
@@ -484,19 +499,16 @@ class MultiSystemData(DACSource):
                 end_year=self.end,
                 filters=self._get_filtered_download_filters(),
             )
+            logger.info(f"Multisystem data downloaded successfully.")
+            return clean_raw_df(df)
+
         else:
             logger.info(
                 "The full, detailed Multisystem is a large file (>1GB). "
                 "The package will now download the data, but it may take a while."
             )
-            df = bulk_download_multisystem()
-
-        # Clean the DataFrame
-        df = clean_raw_df(df)
-
-        logger.info(f"Multisystem data downloaded successfully.")
-
-        return df
+            bulk_download_multisystem(save_to_path=self._bulk_filename())
+            return None
 
 
 class AidDataSource(Source):
