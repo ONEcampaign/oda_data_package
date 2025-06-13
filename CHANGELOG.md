@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [2.0.3]
+- Adds better bulk file memory management.
+
 ## [2.0.2]
 - Adds functionality to calculate the official ODA/GNI.
 
