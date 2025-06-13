@@ -7,6 +7,38 @@ from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 
 
+def snake_to_pascal(name: str, *, keep_single_letter: bool = False) -> str:
+    """
+    Convert a snake_case string to PascalCase.
+
+    Parameters
+    ----------
+    name : str
+        The snake_case identifier to convert.
+    keep_single_letter : bool, default False
+        If True, preserve the underscore that precedes a 1-letter
+        segment (e.g. 'aid_t' → 'Aid_T').  If False, drop it
+        ('aid_t' → 'AidT').
+
+    Returns
+    -------
+    str
+        The PascalCase version.
+    """
+    parts = name.split("_")
+    if not keep_single_letter:
+        # Simple path: just capitalise everything and join.
+        return "".join(p.capitalize() for p in parts)
+
+    # Preserve “_” before any single-letter trailing part.
+    out: list[str] = []
+    for part in parts:
+        if len(part) == 1 and out:
+            out[-1] = out[-1] + "_" + part.upper()
+        else:
+            out.append(part.capitalize())
+    return "".join(out)
+
 def _code_name(df: pd.DataFrame, code_col: str, name_col: str) -> dict:
     """Return a dictionary mapping code to name."""
     return (

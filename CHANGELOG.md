@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [2.0.5]
+- Fixes a bug given that the Providers multisystem dataset uses a form of pascal case.
+
 ## [2.0.4]
 - Improvement: CRS research indicators use bulk downloads by default.
 
