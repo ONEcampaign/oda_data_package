@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [2.0.4]
+- Improvement: CRS research indicators use bulk downloads by default.
+
 ## [2.0.3]
 - Adds better bulk file memory management.
 

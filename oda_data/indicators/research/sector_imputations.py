@@ -183,6 +183,7 @@ def spending_by_purpose(
         crs.read(
             columns=grouper + [measure],
             additional_filters=filters,
+            using_bulk_download=True,
         )
         .groupby(grouper, dropna=False, observed=True)[[measure]]
         .sum()
@@ -279,7 +280,11 @@ def core_multilateral_contributions_by_provider(
 
     # Read the data and group by provider and channel
     data = (
-        ms.read(columns=cols + [ODASchema.AMOUNT], additional_filters=filters)
+        ms.read(
+            columns=cols + [ODASchema.AMOUNT],
+            additional_filters=filters,
+            using_bulk_download=True,
+        )
         .groupby(cols, dropna=False, observed=True)[[ODASchema.AMOUNT]]
         .sum()
         .reset_index()

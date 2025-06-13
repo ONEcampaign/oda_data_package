@@ -100,7 +100,11 @@ def bilateral_policy_marker(
     crs = CRSData(providers=providers, years=years, recipients=recipients)
 
     # Read the data and group by provider and purpose
-    data = crs.read(columns=grouper + [measure], additional_filters=filters)
+    data = crs.read(
+        columns=grouper + [measure],
+        additional_filters=filters,
+        using_bulk_download=True,
+    )
 
     # if marker is not_screened, we need to filter out the screened data
     if marker == "not_screened":
