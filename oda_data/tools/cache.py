@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 from oda_data.logger import logger
+from oda_data.tools.names.create_mapping import snake_to_pascal
 
 
 def generate_param_hash(filters: list[tuple]) -> str:
@@ -48,6 +49,13 @@ class OnDiskCache:
     ) -> pd.DataFrame | None:
         """Loads a DataFrame from disk if available and not expired."""
         path = self.get_file_path(dataset_name, param_hash)
+        if dataset_name == "MultiSystemData":
+            columns = [snake_to_pascal(col) for col in columns] if columns else columns
+            filters = (
+                [(snake_to_pascal(col), op, val) for col, op, val in filters]
+                if filters
+                else None
+            )
         if not path.exists():
             return None
         if self._is_expired(path):
