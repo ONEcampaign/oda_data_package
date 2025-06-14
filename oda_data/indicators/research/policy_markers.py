@@ -1,6 +1,5 @@
 import pandas as pd
 
-from oda_data import set_data_path
 from oda_data.api.constants import (
     Measure,
     PolicyMarker,
@@ -10,9 +9,6 @@ from oda_data.api.constants import (
 )
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
-from oda_data.config import ODAPaths
-
-set_data_path(ODAPaths.raw_data)
 
 
 def _marker_score_map(marker: PolicyMarker | str) -> list:
