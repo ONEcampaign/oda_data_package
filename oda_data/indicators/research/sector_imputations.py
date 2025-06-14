@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data import provider_groupings
+from oda_data import provider_groupings, set_data_path
 from oda_data.api.constants import (
     Measure,
     MEASURES,
@@ -10,6 +10,9 @@ from oda_data.api.constants import (
 from oda_data.clean_data.channels import add_multi_channel_codes
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
+from oda_data.config import ODAPaths
+
+set_data_path(ODAPaths.raw_data)
 
 
 def rolling_period_total(
