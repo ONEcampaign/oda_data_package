@@ -2,16 +2,13 @@ import hashlib
 import json
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from oda_data import set_data_path
-from oda_data.config import ODAPaths
 from oda_data.logger import logger
 from oda_data.tools.names.create_mapping import snake_to_pascal
 
-set_data_path(ODAPaths.raw_data)
 
 def generate_param_hash(filters: list[tuple]) -> str:
     """Generates a reproducible hash from a list of tuples."""
