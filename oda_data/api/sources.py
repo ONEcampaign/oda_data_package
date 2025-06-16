@@ -61,6 +61,7 @@ class Source:
         self.filters = None
         self.de_sectors = None
         self.schema = None
+        self._param_hash = None
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
@@ -83,6 +84,35 @@ class Source:
         self.filters = [(c, p, v) for c, p, v in self.filters if c != column]
         self.filters.append((column, predicate, value))
 
+    def _get_read_filters(
+        self, additional_filters: Optional[list[tuple]] = None
+    ) -> list[tuple[str, str, list]] | None:
+        filters = (
+            self.filters + additional_filters if additional_filters else self.filters
+        )
+        return filters or None
+
+    def _bulk_hash(self) -> str:
+        return generate_param_hash(filters=[("bulk", "==", self.__class__.__name__)])
+
+    def _bulk_filename(self) -> Path:
+        return self.disk_cache.get_file_path(
+            dataset_name=self.__class__.__name__, param_hash=self._param_hash
+        )
+
+    def _get_cached_dataset(
+        self, param_hash: str, filters: list[tuple], columns: list[str]
+    ) -> pd.DataFrame | None:
+
+        cached_df = self.memory_cache.get(param_hash)
+
+        if cached_df is None:
+            cached_df = self.disk_cache.load(
+                self.__class__.__name__, param_hash, filters, columns
+            )
+
+        return cached_df
+
 
 class DACSource(Source):
     """Base class for accessing DAC datasets.
@@ -98,7 +128,6 @@ class DACSource(Source):
         super().__init__()
 
         self.schema = ODASchema
-        self._param_hash = None
 
     def _init_filters(
         self,
@@ -194,32 +223,6 @@ class DACSource(Source):
                     f"Missing values in {column}: {', '.join(map(str, missing_values))}"
                 )
 
-    def _get_read_filters(
-        self, additional_filters: Optional[list[tuple]] = None
-    ) -> list[tuple[str, str, list]] | None:
-        filters = (
-            self.filters + additional_filters if additional_filters else self.filters
-        )
-        return filters or None
-
-    def _get_cached_dataset(
-        self, param_hash: str, filters: list[tuple], columns: list[str]
-    ) -> pd.DataFrame | None:
-
-        cached_df = self.memory_cache.get(param_hash)
-
-        if cached_df is None:
-            cached_df = self.disk_cache.load(
-                self.__class__.__name__, param_hash, filters, columns
-            )
-
-        return cached_df
-
-    def _bulk_filename(self) -> Path:
-        return self.disk_cache.get_file_path(
-            dataset_name=self.__class__.__name__, param_hash=self._param_hash
-        )
-
     def _cache_dataset(self, param_hash: str, df: pd.DataFrame) -> None:
         """Caches the dataset in memory and on disk."""
         size = df.memory_usage(deep=True).sum() / (1024 * 1024)  # in MB
@@ -240,9 +243,6 @@ class DACSource(Source):
             self._cache_dataset(param_hash=param_hash, df=df)
 
         return df
-
-    def _bulk_hash(self) -> str:
-        return generate_param_hash(filters=[("bulk", "==", self.__class__.__name__)])
 
     def read(
         self,
@@ -584,23 +584,47 @@ class AidDataData(AidDataSource):
 
         self._init_filters(years=years, recipients=recipients, sectors=sectors)
 
-    def download(self, additional_filters: Optional[list[tuple]] = None):
-        """Downloads the full AidData dataset and applies filters.
+    def download(self) -> None:
+        """Downloads the full AidData dataset."""
+        download_aiddata(save_to_path=self._bulk_filename())
+
+    def read(
+        self,
+        additional_filters: Optional[list[tuple]] = None,
+        columns: Optional[list] = None,
+    ):
+        """Reads a dataset from a local parquet file, applying filters if needed.
 
         Args:
             additional_filters (Optional[list[tuple]], optional): Additional filters to apply. Defaults to None.
+            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
+
+        Returns:
+            pd.DataFrame: The loaded dataset.
         """
+        # Create filters
+        filters = self._get_read_filters(additional_filters=additional_filters)
 
-        df = download_aiddata()
+        # Generate a hash string with the filters and the type of file
+        param_hash = self._bulk_hash()
 
-        logger.info(f"Filtering the data")
+        self._param_hash = param_hash
 
-        self.filters = (
-            self.filters + additional_filters if additional_filters else self.filters
+        # If caching is not active, clear the cache
+        if not memory().store_backend:
+            self.disk_cache.cleanup(hash_str=param_hash, force=True)
+            self.memory_cache.clear()
+
+        # Check if the data is already cached in memory or on disk
+        df = self._get_cached_dataset(
+            param_hash=param_hash, filters=filters, columns=columns
         )
 
-        query = _filters_to_query(self.filters)
-
-        df = df.query(query)
+        # If not cached, download the data
+        if df is None:
+            self.download()
+            df = self._get_cached_dataset(
+                param_hash=param_hash, filters=filters, columns=columns
+            )
 
         return df

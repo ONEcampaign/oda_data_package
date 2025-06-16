@@ -82,6 +82,9 @@ def check_integers(values: list | int | None) -> list[int] | None:
 
 def check_strings(values: list | int | str) -> list[str]:
     """Take a list or int and return a list of integers."""
+    if not values:
+        return values
+
     if isinstance(values, range):
         return [str(i) for i in list(values)]
 
