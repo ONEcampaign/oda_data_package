@@ -26,6 +26,7 @@ from oda_data.clean_data.validation import (
     check_integers,
     check_strings,
 )
+from oda_data.config import ODAPaths
 from oda_data.logger import logger
 from oda_data.tools.cache import OnDiskCache, generate_param_hash
 
@@ -51,7 +52,7 @@ class Source:
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         self.de_providers = None
@@ -91,7 +92,7 @@ class DACSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
@@ -521,7 +522,7 @@ class AidDataSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
+    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
