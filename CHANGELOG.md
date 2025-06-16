@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [2.0.6]
+- Fixes a bug when trying to calculate
+multilateral imputations in constant prices
+
 ## [2.0.5]
 - Fixes a bug given that the Providers multisystem dataset uses a form of pascal case.
 

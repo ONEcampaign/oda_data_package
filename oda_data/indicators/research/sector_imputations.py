@@ -230,7 +230,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
         )
     )
 
-    return data.drop(columns=[ODASchema.VALUE])
+    return data.drop(columns=[ODASchema.VALUE, ODASchema.PRICES, ODASchema.CURRENCY])
 
 
 def core_multilateral_contributions_by_provider(
@@ -313,12 +313,7 @@ def _compute_imputations(
     # Merge core contributions with spending shares
     data = multi_spending_shares.merge(
         core_contributions,
-        on=[
-            ODASchema.CHANNEL_CODE,
-            ODASchema.YEAR,
-            ODASchema.CURRENCY,
-            ODASchema.PRICES,
-        ],
+        on=[ODASchema.CHANNEL_CODE, ODASchema.YEAR],
         how="inner",
     )
 
