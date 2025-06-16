@@ -1,4 +1,6 @@
 # Changes to the oda_data package
+## [2.1.0]
+- Improves AidDataData to behave more like other Sources.
 
 ## [2.0.6]
 - Fixes a bug when trying to calculate
