@@ -143,7 +143,9 @@ def convert_units(
     if indicator is None:
         indicator = ""
 
-    if ".40." in indicator or (currency == "USD" and base_year is None):
+    if ((".40." in indicator) and ("DAC1.40.1" != indicator)) or (
+        currency == "USD" and base_year is None
+    ):
         return data.assign(currency=currency, prices="current")
 
     elif base_year is None:
