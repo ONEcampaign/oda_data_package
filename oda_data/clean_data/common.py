@@ -12,8 +12,6 @@ from oda_data.clean_data.validation import validate_currency
 from oda_data.config import ODAPaths
 from oda_data.logger import logger
 
-set_pydeflate_path(ODAPaths.raw_data)
-
 
 def clean_column_name(column_name: str) -> str:
     """Clean a column name by removing spaces, special characters, and lowercasing.
@@ -140,6 +138,14 @@ def convert_units(
     currency: str = "USD",
     base_year: Optional[int] = None,
 ):
+    # Ensure pydeflate has the current data path and directory exists (lazy init)
+    try:
+        ODAPaths.raw_data.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # In read-only environments, let downstream functions surface meaningful errors
+        pass
+    set_pydeflate_path(ODAPaths.raw_data)
+
     if indicator is None:
         indicator = ""
 

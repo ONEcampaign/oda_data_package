@@ -15,6 +15,3 @@ class ODAPaths:
     sectors = indicators / "sectors"
     tests = project / "tests"
     test_files = tests / "files"
-
-
-ODAPaths.raw_data.mkdir(parents=True, exist_ok=True)
