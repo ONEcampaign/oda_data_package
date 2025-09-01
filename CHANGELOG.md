@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [2.1.2]
+- Fixes caching paths to respect user-defined data directories and defaults to
+  a `.raw_data` folder relative to the working directory.
+
 ## [2.1.1]
 - Fixes a bug where GNI may not get converted to constant prices, even
 if a base year is specified.

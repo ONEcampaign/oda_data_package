@@ -15,7 +15,6 @@ from oda_reader import (
 )
 from oda_reader._cache import memory
 
-from oda_data import config
 from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
@@ -52,9 +51,9 @@ class Source:
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
+        self._disk_cache = None
         self.de_providers = None
         self.de_recipients = None
         self.de_indicators = None
@@ -62,6 +61,15 @@ class Source:
         self.de_sectors = None
         self.schema = None
         self._param_hash = None
+
+    @property
+    def disk_cache(self) -> OnDiskCache:
+        if (
+            self._disk_cache is None
+            or self._disk_cache.base_dir != ODAPaths.raw_data
+        ):
+            self._disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
+        return self._disk_cache
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
@@ -122,7 +130,6 @@ class DACSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
@@ -522,7 +529,6 @@ class AidDataSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
@@ -565,7 +571,6 @@ class AidDataData(AidDataSource):
     """Class to handle the AidData data."""
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(
         self,

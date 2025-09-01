@@ -29,6 +29,7 @@ def set_data_path(path):
     global ODAPaths
 
     ODAPaths.raw_data = Path(path).resolve()
+    ODAPaths.pydeflate = ODAPaths.raw_data / ".pydeflate"
     set_pydeflate_path(ODAPaths.raw_data)
     set_cache_dir(ODAPaths.raw_data)
 
