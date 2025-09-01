@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
+import threading
 
 import pandas as pd
 from cachetools import TTLCache
@@ -52,8 +53,11 @@ class Source:
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
 
+    # Shared, process-wide disk cache and lock
+    _shared_disk_cache: Optional[OnDiskCache] = None
+    _shared_disk_cache_lock = threading.Lock()
+
     def __init__(self):
-        self._disk_cache = None
         self.de_providers = None
         self.de_recipients = None
         self.de_indicators = None
@@ -64,12 +68,19 @@ class Source:
 
     @property
     def disk_cache(self) -> OnDiskCache:
-        if (
-            self._disk_cache is None
-            or self._disk_cache.base_dir != ODAPaths.raw_data
-        ):
-            self._disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
-        return self._disk_cache
+        # Fast-path without lock (shared, process-wide cache)
+        dc = Source._shared_disk_cache
+        if dc is not None and dc.base_dir == ODAPaths.raw_data:
+            return dc
+
+        # Slow-path with lock to ensure single initialization across threads
+        with Source._shared_disk_cache_lock:
+            dc = Source._shared_disk_cache
+            if dc is None or dc.base_dir != ODAPaths.raw_data:
+                Source._shared_disk_cache = OnDiskCache(
+                    ODAPaths.raw_data, ttl_seconds=86400
+                )
+            return Source._shared_disk_cache
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
