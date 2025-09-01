@@ -6,7 +6,7 @@ class ODAPaths:
 
     project = Path(__file__).resolve().parent.parent
     scripts = project / "oda_data"
-    raw_data = scripts / ".raw_data"
+    raw_data = (Path.cwd() / ".raw_data").resolve()
     pydeflate = raw_data / ".pydeflate"
     indicators = scripts / "indicators"
     names = scripts / "tools" / "names"

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
+import threading
 
 import pandas as pd
 from cachetools import TTLCache
@@ -15,7 +16,6 @@ from oda_reader import (
 )
 from oda_reader._cache import memory
 
-from oda_data import config
 from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
@@ -52,7 +52,10 @@ class Source:
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
+
+    # Shared, process-wide disk cache and lock
+    _shared_disk_cache: Optional[OnDiskCache] = None
+    _shared_disk_cache_lock = threading.Lock()
 
     def __init__(self):
         self.de_providers = None
@@ -62,6 +65,24 @@ class Source:
         self.de_sectors = None
         self.schema = None
         self._param_hash = None
+
+    @property
+    def disk_cache(self) -> OnDiskCache:
+        # Snapshot path to avoid inconsistency if it changes mid-check
+        current_raw = ODAPaths.raw_data
+        # Fast-path without lock (shared, process-wide cache)
+        dc = Source._shared_disk_cache
+        if dc is not None and dc.base_dir == current_raw:
+            return dc
+
+        # Slow-path with lock to ensure single initialization across threads
+        with Source._shared_disk_cache_lock:
+            dc = Source._shared_disk_cache
+            if dc is None or dc.base_dir != current_raw:
+                Source._shared_disk_cache = OnDiskCache(
+                    current_raw, ttl_seconds=86400
+                )
+            return Source._shared_disk_cache
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
@@ -122,7 +143,6 @@ class DACSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
@@ -522,7 +542,6 @@ class AidDataSource(Source):
     """
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(self):
         super().__init__()
@@ -565,7 +584,6 @@ class AidDataData(AidDataSource):
     """Class to handle the AidData data."""
 
     memory_cache = TTLCache(maxsize=20, ttl=6000)
-    disk_cache = OnDiskCache(config.ODAPaths.raw_data, ttl_seconds=86400)
 
     def __init__(
         self,
