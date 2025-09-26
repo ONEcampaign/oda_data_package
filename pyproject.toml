@@ -23,6 +23,3 @@ dependencies = [
 Homepage = "https://github.com/ONEcampaign/oda_data_package"
 Repository = "https://github.com/ONEcampaign/oda_data_package"
 Documentation = "https://github.com/ONEcampaign/oda_data_package"
-
-[tool.setuptools.packages.find]
-include = ["oda_data"]
