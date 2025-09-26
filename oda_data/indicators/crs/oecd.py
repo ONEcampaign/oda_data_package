@@ -11,12 +11,12 @@ from oda_data import CRSData
 from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.crs.common import (
-    read_crs_type_of_flow,
-    read_crs_type_of_finance_mapping,
     read_crs_modality_mapping,
     read_crs_purpose_mapping,
+    read_crs_type_of_finance_mapping,
+    read_crs_type_of_flow,
 )
-from oda_data.indicators.indicator import Indicator, SEPARATOR
+from oda_data.indicators.indicator import SEPARATOR, Indicator
 
 
 def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
@@ -34,7 +34,6 @@ def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
 
     # Iteratively group and aggregate data to generate totals
     for idx, column in enumerate(crs_indicators.columns):
-
         # Create a grouping Total
         if idx >= 2:
             columns_g.append(column)

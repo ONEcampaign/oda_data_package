@@ -1,11 +1,12 @@
 """Compute GNI share indicators, including EU Institutions if applicable."""
 
 from copy import copy
+
 import pandas as pd
 
 from oda_data import OECDClient
-from oda_data.tools.groupings import provider_groupings
 from oda_data.clean_data.schema import ODASchema
+from oda_data.tools.groupings import provider_groupings
 
 
 def _get_eu27_gni_as_eu_institutions(gni_obj: OECDClient) -> pd.DataFrame:
