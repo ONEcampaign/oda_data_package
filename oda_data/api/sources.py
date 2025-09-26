@@ -1,18 +1,18 @@
+import threading
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
-import threading
 
 import pandas as pd
 from cachetools import TTLCache
 from oda_reader import (
-    download_crs,
     bulk_download_crs,
+    bulk_download_multisystem,
+    download_aiddata,
+    download_crs,
     download_dac1,
     download_dac2a,
-    bulk_download_multisystem,
     download_multisystem,
-    download_aiddata,
 )
 from oda_reader._cache import memory
 
@@ -20,15 +20,31 @@ from oda_data.clean_data.common import (
     clean_raw_df,
     convert_dot_stat_to_data_explorer_codes,
 )
-from oda_data.clean_data.schema import ODASchema, AidDataSchema
+from oda_data.clean_data.schema import (
+    CORE_CRS_MAPPING,
+    AidDataSchema,
+    ODASchema,
+)
 from oda_data.clean_data.validation import (
-    validate_years_providers_recipients,
     check_integers,
     check_strings,
+    validate_years_providers_recipients,
 )
 from oda_data.config import ODAPaths
 from oda_data.logger import logger
 from oda_data.tools.cache import OnDiskCache, generate_param_hash
+
+
+def translate_cols_and_filters_to_raw(columns, filters) -> tuple[list, list]:
+    crs_mapping = {v: k for k, v in CORE_CRS_MAPPING.items()}
+    cols = [crs_mapping.get(col, col) for col in columns] if columns else columns
+    filters = (
+        [(crs_mapping.get(col, col), op, val) for col, op, val in filters]
+        if filters
+        else None
+    )
+
+    return cols, filters
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
@@ -79,9 +95,7 @@ class Source:
         with Source._shared_disk_cache_lock:
             dc = Source._shared_disk_cache
             if dc is None or dc.base_dir != current_raw:
-                Source._shared_disk_cache = OnDiskCache(
-                    current_raw, ttl_seconds=86400
-                )
+                Source._shared_disk_cache = OnDiskCache(current_raw, ttl_seconds=86400)
             return Source._shared_disk_cache
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
@@ -124,7 +138,6 @@ class Source:
     def _get_cached_dataset(
         self, param_hash: str, filters: list[tuple], columns: list[str]
     ) -> pd.DataFrame | None:
-
         cached_df = self.memory_cache.get(param_hash)
 
         if cached_df is None:
@@ -156,7 +169,6 @@ class DACSource(Source):
         recipients: Optional[list[int] | int] = None,
         sectors: Optional[list[int] | int] = None,
     ):
-
         self.years, self.providers, self.recipients = (
             validate_years_providers_recipients(
                 years=years, providers=providers, recipients=recipients
@@ -317,10 +329,13 @@ class DACSource(Source):
                     df=df, query=query, param_hash=param_hash, bulk=using_bulk_download
                 )
 
-        df = df.pipe(clean_raw_df)
-
         if columns:
-            df = df.filter(columns)
+            try:
+                df = df[columns]
+            except Exception as e:
+                df = df.pipe(clean_raw_df)[columns]
+
+        df = df.pipe(clean_raw_df)
 
         return df
 

@@ -1,11 +1,11 @@
 from oda_data.config import ODAPaths
+from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.dac1.common import (
     dac1_aid_flow_type_mapping,
     dac1_aid_name_mapping,
     flow_types,
 )
-from oda_data.indicators.common import update_mapping_file
-from oda_data.indicators.indicator import Indicator, SEPARATOR
+from oda_data.indicators.indicator import SEPARATOR, Indicator
 
 
 def dac1_oecd_indicators():

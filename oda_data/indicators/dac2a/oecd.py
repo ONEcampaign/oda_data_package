@@ -1,7 +1,7 @@
 from oda_data.config import ODAPaths
 from oda_data.indicators.common import update_mapping_file
 from oda_data.indicators.dac2a.common import aid_type
-from oda_data.indicators.indicator import Indicator, SEPARATOR
+from oda_data.indicators.indicator import SEPARATOR, Indicator
 
 
 def dac2a_oecd_indicators():
