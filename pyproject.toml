@@ -1,8 +1,8 @@
 [project]
 name = "oda_data"
-version = "2.2.0"
+version = "2.2.1"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 license = {text = "MIT"}
 readme = "README.md"

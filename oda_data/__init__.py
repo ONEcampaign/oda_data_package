@@ -1,10 +1,5 @@
-from importlib.metadata import version
-
-__version__ = version("oda_data")
-
 from oda_reader import clear_cache, disable_cache, enable_cache, set_cache_dir
 
-from oda_data import tools
 from oda_data.api.oecd import OECDClient
 from oda_data.api.sources import (
     AidDataData,
