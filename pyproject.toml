@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "2.2.2"
+version = "2.2.2post1"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 requires-python = ">=3.11"
 

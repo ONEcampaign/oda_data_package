@@ -4,7 +4,7 @@ from pathlib import Path
 class ODAPaths:
     """Class to store the paths to the data and output folders."""
 
-    project = Path(__file__).resolve().parent.parent.parent
+    project = Path(__file__).resolve().parent.parent
     scripts = project / "oda_data"
     raw_data = (Path.cwd() / ".raw_data").resolve()
     pydeflate = raw_data / ".pydeflate"
