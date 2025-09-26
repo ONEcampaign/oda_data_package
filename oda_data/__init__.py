@@ -19,6 +19,7 @@ from oda_data.tools.gni import add_gni_share_column
 from oda_data.tools.groupings import provider_groupings, recipient_groupings
 from oda_data.tools.names.add import add_names_columns
 from oda_data.tools.sector_lists import add_broad_sectors, add_sectors
+from oda_data.indicators.research import sector_imputations
 
 
 def set_data_path(path):
@@ -59,4 +60,5 @@ __all__ = [
     "disable_cache",
     "enable_cache",
     "clear_cache",
+    "sector_imputations",
 ]
