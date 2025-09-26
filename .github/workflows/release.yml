@@ -1,39 +1,44 @@
-name: Publish to PyPI
+name: release & publish
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
-  publish:
-    name: Publish to PyPI
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         python-versions: ["3.10"]
 
+    permissions:
+      contents: write  # needed by action-gh-release
+
     steps:
-      - name: Check out the repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Extract version from tag
+        id: tag_name
+        run: echo "current_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Set up uv (and Python)
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-versions }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
+      - name: Build sdist and wheel (uv)
+        run: uv build --no-sources
 
-      - name: Build the package
-        run: poetry build
+      - name: Show dist/
+        run: ls -l dist
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.10.3
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          skip_existing: true
-          verify_metadata: true
+      - name: Publish to PyPI (uv)
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
