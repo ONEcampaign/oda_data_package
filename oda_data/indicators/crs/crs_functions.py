@@ -1,6 +1,6 @@
 import pandas as pd
 
-from oda_data.clean_data.channels import add_multi_channel_codes, add_channel_names
+from oda_data.clean_data.channels import add_channel_names, add_multi_channel_codes
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.crs.common import crs_value_cols
 

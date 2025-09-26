@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Dict, Any
+from typing import Any, Callable, Dict
 
 import pandas as pd
 

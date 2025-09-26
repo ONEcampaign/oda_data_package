@@ -1,5 +1,9 @@
 # Changes to the oda_data package
 
+## [2.2.0]
+- Fixes some issues with filter passing given schema changes in bulk files on the OECD side.
+- Introduces access to sector imputations as `from oda_data import sector_imputations`
+
 ## [2.1.2]
 - Fixes caching paths to respect user-defined data directories and defaults to
   a `.raw_data` folder relative to the working directory.
