@@ -1,5 +1,8 @@
 # Changes to the oda_data package
 
+## [2.2.2]
+- Fixes a bug with marker calculations
+
 ## [2.2.1]
 - Fixes some issues with filter passing given schema changes in bulk files on the OECD side.
 - Introduces access to sector imputations as `from oda_data import sector_imputations`
