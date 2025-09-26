@@ -4,7 +4,7 @@ from functools import partial
 from typing import Optional
 
 import pandas as pd
-from pydeflate import set_pydeflate_path, oecd_dac_deflate, oecd_dac_exchange
+from pydeflate import oecd_dac_deflate, oecd_dac_exchange, set_pydeflate_path
 
 from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import CRS_MAPPING, ODASchema

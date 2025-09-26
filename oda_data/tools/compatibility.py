@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from oda_data import config, OECDClient
+from oda_data import OECDClient, config
 
 
 @dataclass

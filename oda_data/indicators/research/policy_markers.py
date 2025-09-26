@@ -1,13 +1,15 @@
 import pandas as pd
+from pyarrow import ArrowInvalid
 
 from oda_data.api.constants import (
+    EXTENDED_PROVIDER_PURPOSE_GROUPER,
+    MEASURES,
+    MarkerScore,
     Measure,
     PolicyMarker,
-    MEASURES,
-    EXTENDED_PROVIDER_PURPOSE_GROUPER,
-    MarkerScore,
 )
-from oda_data.clean_data.common import convert_units
+from oda_data.api.sources import translate_cols_and_filters_to_raw
+from oda_data.clean_data.common import clean_raw_df, convert_units
 from oda_data.clean_data.schema import ODASchema
 
 
@@ -23,7 +25,7 @@ def _marker_score_map(marker: PolicyMarker | str) -> list:
 def _marker_modality_filter() -> list:
     return [
         (
-            "modality",
+            ODASchema.FLOW_MODALITY,
             "in",
             [
                 "A02",
@@ -94,17 +96,34 @@ def bilateral_policy_marker(
         filters.append((marker, "in", marker_filter))
 
     if oda_only:
-        filters.append(("category", "in", [10, 60]))
+        filters.append(
+            (
+                ODASchema.CATEGORY,
+                "in",
+                [11, 13, 19, 60],
+            )
+        )
 
     # Set up the CRS data object
     crs = CRSData(providers=providers, years=years, recipients=recipients)
 
     # Read the data and group by provider and purpose
-    data = crs.read(
-        columns=grouper + [measure],
-        additional_filters=filters,
-        using_bulk_download=True,
-    )
+
+    cols = grouper + [measure]
+
+    try:
+        data = crs.read(
+            columns=cols,
+            additional_filters=filters,
+            using_bulk_download=True,
+        )
+    except ArrowInvalid as e:
+        c, f = translate_cols_and_filters_to_raw(cols, filters)
+        data = crs.read(
+            columns=c,
+            additional_filters=f,
+            using_bulk_download=True,
+        )
 
     # if marker is not_screened, we need to filter out the screened data
     if marker == "not_screened":

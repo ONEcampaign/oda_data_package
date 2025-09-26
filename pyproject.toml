@@ -24,6 +24,7 @@ oda-reader = "^1.2"
 [tool.poetry.group.dev.dependencies]
 black = ">=25"
 pytest = ">=8"
+ruff = "^0.13.2"
 
 
 [tool.poetry-dynamic-versioning]

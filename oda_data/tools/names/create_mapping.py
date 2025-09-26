@@ -39,6 +39,7 @@ def snake_to_pascal(name: str, *, keep_single_letter: bool = False) -> str:
             out.append(part.capitalize())
     return "".join(out)
 
+
 def _code_name(df: pd.DataFrame, code_col: str, name_col: str) -> dict:
     """Return a dictionary mapping code to name."""
     return (
@@ -187,7 +188,6 @@ def crs_codes_names():
 
 
 def get_merged_names_mapping():
-
     files = ["dac1_names.json", "dac2a_names.json", "crs_names.json"]
 
     merged_mapping = {}
