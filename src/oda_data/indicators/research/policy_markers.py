@@ -98,7 +98,7 @@ def bilateral_policy_marker(
     if oda_only:
         filters.append(
             (
-                ODASchema.CATEGORY,
+                ODASchema.FLOW_CODE,
                 "in",
                 [11, 13, 19, 60],
             )
