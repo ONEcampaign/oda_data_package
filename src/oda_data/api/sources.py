@@ -102,7 +102,9 @@ class Source:
     MEMORY_CACHE_MAX_ITEM_MB = 50  # Maximum size of individual cached items
 
     # Shared thread-safe memory cache (class-level, shared across all instances)
-    memory_cache = ThreadSafeMemoryCache(maxsize=MEMORY_CACHE_MAXSIZE, ttl=MEMORY_CACHE_TTL)
+    memory_cache = ThreadSafeMemoryCache(
+        maxsize=MEMORY_CACHE_MAXSIZE, ttl=MEMORY_CACHE_TTL
+    )
 
     # Shared bulk and query caches (singletons per process)
     _shared_bulk_cache: Optional[BulkCacheManager] = None
@@ -197,7 +199,10 @@ class Source:
             self.memory_cache[param_hash] = df.copy(deep=True)
 
     def _apply_columns_and_clean(
-        self, df: pd.DataFrame, columns: Optional[list] = None, already_cleaned: bool = False
+        self,
+        df: pd.DataFrame,
+        columns: Optional[list] = None,
+        already_cleaned: bool = False,
     ) -> pd.DataFrame:
         """Apply cleaning and column selection to DataFrame.
 
@@ -236,8 +241,7 @@ class DACSource(Source):
 
     # Use thread-safe memory cache with inherited constants
     memory_cache = ThreadSafeMemoryCache(
-        maxsize=Source.MEMORY_CACHE_MAXSIZE,
-        ttl=Source.MEMORY_CACHE_TTL
+        maxsize=Source.MEMORY_CACHE_MAXSIZE, ttl=Source.MEMORY_CACHE_TTL
     )
 
     def __init__(self):
@@ -342,6 +346,7 @@ class DACSource(Source):
         """Get package version for cache invalidation."""
         try:
             from importlib.metadata import version
+
             return version("oda_data")
         except Exception:
             return "unknown"
@@ -354,7 +359,7 @@ class DACSource(Source):
         This method uses FileLock via BulkCacheManager - if another thread is
         downloading, this call blocks until download completes.
 
-        Uses PyArrow predicate pushdown for efficient filtering at read time.
+        Uses PyArrow predicate pushdown and column projection for maximum efficiency.
         """
         entry = BulkCacheEntry(
             key=f"{self.__class__.__name__}_bulk",
@@ -366,19 +371,17 @@ class DACSource(Source):
         # This blocks if another thread is downloading (prevents concurrent waste)
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
 
-        # Use PyArrow predicate pushdown for efficient filtering
+        # Use PyArrow predicate pushdown and column selection for maximum efficiency
         logger.info(f"Reading from bulk cache: {bulk_path}")
 
-        # Convert filters to PyArrow format
-        # Our format: [('column', 'in', [values])] or [('column', '==', value)]
-        # PyArrow format: same!
         pyarrow_filters = filters if filters else None
 
-        # Read with predicate pushdown (filters) - much faster than loading all data
-        # Note: Column selection deferred to caller (query cache needs all columns)
+        # Read with both predicate pushdown (filters) AND column selection
+        # This minimizes I/O and memory usage
         df = pd.read_parquet(
             bulk_path,
             filters=pyarrow_filters,
+            columns=columns,
             engine="pyarrow"
         )
 
@@ -431,23 +434,32 @@ class DACSource(Source):
             return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache (on-disk parquet, fast)
-        # Note: Load full data (all columns) since param_hash doesn't include columns
-        # Column selection happens later to avoid caching column-subset data
-        df = self.query_cache.load(
-            self.__class__.__name__, param_hash, None, None
-        )
+        # Use column selection at parquet read level for efficiency
+        # If columns specified, read only those; otherwise read all for memory caching
+        df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
         if df is not None:
             logger.info("Cache hit: query cache")
-            self._cache_in_memory(param_hash, df)
-            # Data is already cleaned, apply column selection before returning
-            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+            # Only cache in memory if we loaded full data (no column selection)
+            # This way memory cache is reusable for queries with different column subsets
+            if not columns:
+                self._cache_in_memory(param_hash, df)
+            # Data is already cleaned and column-selected at parquet read level
+            return df
 
         # 3. Cache miss - need to fetch data
         logger.info("Cache miss - fetching data")
 
         if using_bulk_download:
-            # Fetch from bulk cache (coordinated download)
-            df = self._fetch_from_bulk_cache(filters, columns)
+            # Fetch from bulk cache with predicate pushdown and column selection
+            # If columns specified, read directly without caching (targeted read)
+            if columns:
+                # Targeted read: use full PyArrow optimization, no caching
+                df = self._fetch_from_bulk_cache(filters, columns)
+                # Data is already cleaned and column-selected, return directly
+                return df
+            else:
+                # Full read: get all columns for caching
+                df = self._fetch_from_bulk_cache(filters, None)
         else:
             # Download via API (uses init-time filters only)
             df = self.download()
@@ -461,12 +473,12 @@ class DACSource(Source):
             if query:
                 df = df.query(query)
 
-        # 4. Cache the result (cleaned, filtered data; columns NOT yet selected)
+        # 4. Cache the result (cleaned, filtered data with all columns)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # 5. Apply column selection (data already cleaned above or in bulk fetch)
-        return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+        # 5. Return full data (already cleaned, no column selection needed)
+        return df
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
@@ -507,6 +519,7 @@ class DAC1Data(DACSource):
         DAC1 bulk is downloaded directly as DataFrame (no zip file).
         Column names are cleaned before caching.
         """
+
         def fetcher(target_path: Path):
             logger.info("Downloading DAC1 bulk data")
             df = download_dac1()  # No filters = full dataset
@@ -567,6 +580,7 @@ class DAC2AData(DACSource):
         DAC2A bulk is downloaded directly as DataFrame (no zip file).
         Column names are cleaned before caching.
         """
+
         def fetcher(target_path: Path):
             logger.info("Downloading DAC2A bulk data")
             df = download_dac2a()  # No filters = full dataset
@@ -700,8 +714,7 @@ class AidDataSource(Source):
 
     # Use thread-safe memory cache with inherited constants
     memory_cache = ThreadSafeMemoryCache(
-        maxsize=Source.MEMORY_CACHE_MAXSIZE,
-        ttl=Source.MEMORY_CACHE_TTL
+        maxsize=Source.MEMORY_CACHE_MAXSIZE, ttl=Source.MEMORY_CACHE_TTL
     )
 
     def __init__(self):
@@ -746,8 +759,7 @@ class AidDataData(AidDataSource):
 
     # Use thread-safe memory cache with inherited constants
     memory_cache = ThreadSafeMemoryCache(
-        maxsize=Source.MEMORY_CACHE_MAXSIZE,
-        ttl=Source.MEMORY_CACHE_TTL
+        maxsize=Source.MEMORY_CACHE_MAXSIZE, ttl=Source.MEMORY_CACHE_TTL
     )
 
     def __init__(
@@ -778,6 +790,7 @@ class AidDataData(AidDataSource):
         """Get package version for cache invalidation."""
         try:
             from importlib.metadata import version
+
             return version("oda_data")
         except Exception:
             return "unknown"
@@ -814,16 +827,15 @@ class AidDataData(AidDataSource):
             return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache
-        # Note: Load full data (all columns) since param_hash doesn't include columns
-        # Column selection happens later to avoid caching column-subset data
-        df = self.query_cache.load(
-            self.__class__.__name__, param_hash, None, None
-        )
+        # Use column selection at parquet read level for efficiency
+        df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
         if df is not None:
             logger.info("Cache hit: query cache")
-            self._cache_in_memory(param_hash, df)
-            # Data is already cleaned, apply column selection before returning
-            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+            # Only cache in memory if we loaded full data (no column selection)
+            if not columns:
+                self._cache_in_memory(param_hash, df)
+            # Data is already cleaned and column-selected at parquet read level
+            return df
 
         # 3. Fetch from bulk cache (always bulk for AidData)
         logger.info("Cache miss - fetching from bulk cache")
@@ -836,21 +848,32 @@ class AidDataData(AidDataSource):
 
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
 
-        # Use PyArrow predicate pushdown for efficient filtering
+        # Use PyArrow predicate pushdown and column selection for maximum efficiency
         logger.info(f"Reading from bulk cache: {bulk_path}")
         pyarrow_filters = filters if filters else None
 
-        # Bulk parquet already contains cleaned data (cleaned in fetcher)
-        # Use predicate pushdown for efficiency
-        df = pd.read_parquet(
-            bulk_path,
-            filters=pyarrow_filters,
-            engine="pyarrow"
-        )
+        # If columns specified, read directly without caching (targeted read)
+        if columns:
+            # Targeted read: use full PyArrow optimization, no caching
+            df = pd.read_parquet(
+                bulk_path,
+                filters=pyarrow_filters,
+                columns=columns,
+                engine="pyarrow"
+            )
+            # Data is already cleaned and column-selected, return directly
+            return df
+        else:
+            # Full read: get all columns for caching
+            df = pd.read_parquet(
+                bulk_path,
+                filters=pyarrow_filters,
+                engine="pyarrow"
+            )
 
-        # 4. Cache the result (cleaned, filtered data; columns NOT yet selected)
+        # 4. Cache the result (cleaned, filtered data with all columns)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # 5. Apply column selection (data already cleaned in bulk fetcher)
-        return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+        # 5. Return full data (already cleaned, no column selection needed)
+        return df
