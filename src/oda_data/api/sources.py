@@ -60,8 +60,12 @@ def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
             query += " and "
         if predicate == "in":
             query += f"{column} in {values}"
-        if predicate == "==":
-            query += f"{column} == '{values}'"
+        elif predicate == "==":
+            # Quote strings, but not numbers or booleans
+            if isinstance(values, str):
+                query += f"{column} == '{values}'"
+            else:
+                query += f"{column} == {values}"
     return query
 
 
@@ -391,8 +395,18 @@ class DACSource(Source):
             # Fetch from bulk cache (coordinated download)
             df = self._fetch_from_bulk_cache(filters, columns)
         else:
-            # Download via API
+            # Download via API (uses init-time filters only)
             df = self.download(bulk=False)
+
+            # Apply additional filters if provided
+            # (download() only knows about init-time filters, not additional_filters)
+            query = _filters_to_query(filters) if filters else None
+            if query:
+                df = df.query(query)
+
+            # Apply column selection
+            if columns:
+                df = df[[c for c in columns if c in df.columns]]
 
         # 4. Cache the result
         self.query_cache.save(self.__class__.__name__, param_hash, df)
