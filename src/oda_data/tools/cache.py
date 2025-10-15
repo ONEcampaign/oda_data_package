@@ -472,12 +472,13 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for CRS bulk download.
 
     The fetcher downloads a zip file from oda_reader, extracts the parquet
-    file, and writes it to the target path.
+    file, cleans the column names, and writes it to the target path.
 
     Returns:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_crs
+    from oda_data.clean_data.common import clean_raw_df
 
     def fetcher(target_path: Path):
         import tempfile
@@ -500,8 +501,9 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
                 zf.extract(parquet_files[0], tmpdir)
                 extracted = tmpdir / parquet_files[0]
 
-                # Read and write to target (ensures consistent format)
+                # Read, clean, and write to target
                 df = pd.read_parquet(extracted)
+                df = df.pipe(clean_raw_df)  # Clean column names before caching
                 df.to_parquet(target_path)
 
     return fetcher
@@ -514,6 +516,7 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_multisystem
+    from oda_data.clean_data.common import clean_raw_df
 
     def fetcher(target_path: Path):
         import tempfile
@@ -536,8 +539,9 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
                 zf.extract(parquet_files[0], tmpdir)
                 extracted = tmpdir / parquet_files[0]
 
-                # Read and write to target
+                # Read, clean, and write to target
                 df = pd.read_parquet(extracted)
+                df = df.pipe(clean_raw_df)  # Clean column names before caching
                 df.to_parquet(target_path)
 
     return fetcher
@@ -550,6 +554,7 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import download_aiddata
+    from oda_data.clean_data.common import clean_raw_df
 
     def fetcher(target_path: Path):
         import tempfile
@@ -572,8 +577,9 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
                 zf.extract(parquet_files[0], tmpdir)
                 extracted = tmpdir / parquet_files[0]
 
-                # Read and write to target
+                # Read, clean, and write to target
                 df = pd.read_parquet(extracted)
+                df = df.pipe(clean_raw_df)  # Clean column names before caching
                 df.to_parquet(target_path)
 
     return fetcher

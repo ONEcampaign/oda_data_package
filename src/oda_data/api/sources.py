@@ -170,15 +170,22 @@ class Source:
     def _apply_columns_and_clean(
         self, df: pd.DataFrame, columns: Optional[list] = None
     ) -> pd.DataFrame:
-        """Apply column selection and cleaning to DataFrame."""
-        if columns:
-            try:
-                df = df[columns]
-            except KeyError:
-                # Columns might need cleaning first
-                df = df.pipe(clean_raw_df)[columns]
+        """Apply cleaning and column selection to DataFrame.
 
+        IMPORTANT: Cleaning must happen BEFORE column selection because
+        user-facing column names (e.g., "recipient_name") only exist after
+        clean_raw_df() normalizes the raw column names.
+        """
+        # Always clean first to normalize column names
         df = df.pipe(clean_raw_df)
+
+        # Then select columns if requested
+        if columns:
+            # Filter to only columns that exist (some might not be in this dataset)
+            available_cols = [c for c in columns if c in df.columns]
+            if available_cols:
+                df = df[available_cols]
+
         return df
 
 
@@ -305,6 +312,10 @@ class DACSource(Source):
 
         This method uses FileLock via BulkCacheManager - if another thread is
         downloading, this call blocks until download completes.
+
+        Note: Column selection is deferred until after clean_raw_df() runs,
+        because user-facing column names (e.g., "recipient_name") only exist
+        after cleaning/renaming.
         """
         entry = BulkCacheEntry(
             key=f"{self.__class__.__name__}_bulk",
@@ -325,8 +336,8 @@ class DACSource(Source):
         if query:
             df = df.query(query)
 
-        if columns:
-            df = df[[c for c in columns if c in df.columns]]
+        # DO NOT select columns here - column names need cleaning first
+        # Column selection happens in _apply_columns_and_clean()
 
         return df
 
@@ -377,7 +388,12 @@ class DACSource(Source):
         df = self.memory_cache.get(param_hash)
         if df is not None:
             logger.info("Cache hit: memory")
-            return self._apply_columns_and_clean(df, columns)
+            # Data is already cleaned, just select columns if needed
+            if columns:
+                available_cols = [c for c in columns if c in df.columns]
+                if available_cols:
+                    df = df[available_cols]
+            return df
 
         # 2. Try query cache (on-disk parquet, fast)
         df = self.query_cache.load(
@@ -386,7 +402,8 @@ class DACSource(Source):
         if df is not None:
             logger.info("Cache hit: query cache")
             self._cache_in_memory(param_hash, df)
-            return self._apply_columns_and_clean(df, columns)
+            # Data is already cleaned and columns selected by parquet, just return
+            return df
 
         # 3. Cache miss - need to fetch data
         logger.info("Cache miss - fetching data")
@@ -398,21 +415,28 @@ class DACSource(Source):
             # Download via API (uses init-time filters only)
             df = self.download(bulk=False)
 
+            # Clean data first (needed for filter column names to match)
+            df = df.pipe(clean_raw_df)
+
             # Apply additional filters if provided
             # (download() only knows about init-time filters, not additional_filters)
             query = _filters_to_query(filters) if filters else None
             if query:
                 df = df.query(query)
 
-            # Apply column selection
-            if columns:
-                df = df[[c for c in columns if c in df.columns]]
+            # DO NOT select columns here - that happens in _apply_columns_and_clean()
 
-        # 4. Cache the result
+        # 4. Cache the result (cleaned, filtered data; columns selected later)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        return self._apply_columns_and_clean(df, columns)
+        # Column selection happens here (data already cleaned above or in bulk fetch)
+        if columns:
+            available_cols = [c for c in columns if c in df.columns]
+            if available_cols:
+                df = df[available_cols]
+
+        return df
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
@@ -451,10 +475,12 @@ class DAC1Data(DACSource):
         """Create fetcher for DAC1 bulk download.
 
         DAC1 bulk is downloaded directly as DataFrame (no zip file).
+        Column names are cleaned before caching.
         """
         def fetcher(target_path: Path):
             logger.info("Downloading DAC1 bulk data")
             df = download_dac1()  # No filters = full dataset
+            df = df.pipe(clean_raw_df)  # Clean column names before caching
             logger.info("Writing DAC1 bulk data to cache")
             df.to_parquet(target_path)
 
@@ -515,10 +541,12 @@ class DAC2AData(DACSource):
         """Create fetcher for DAC2A bulk download.
 
         DAC2A bulk is downloaded directly as DataFrame (no zip file).
+        Column names are cleaned before caching.
         """
         def fetcher(target_path: Path):
             logger.info("Downloading DAC2A bulk data")
             df = download_dac2a()  # No filters = full dataset
+            df = df.pipe(clean_raw_df)  # Clean column names before caching
             logger.info("Writing DAC2A bulk data to cache")
             df.to_parquet(target_path)
 
@@ -775,7 +803,12 @@ class AidDataData(AidDataSource):
         df = self.memory_cache.get(param_hash)
         if df is not None:
             logger.info("Cache hit: memory")
-            return self._apply_columns_and_clean(df, columns)
+            # Data is already cleaned, just select columns if needed
+            if columns:
+                available_cols = [c for c in columns if c in df.columns]
+                if available_cols:
+                    df = df[available_cols]
+            return df
 
         # 2. Try query cache
         df = self.query_cache.load(
@@ -784,7 +817,8 @@ class AidDataData(AidDataSource):
         if df is not None:
             logger.info("Cache hit: query cache")
             self._cache_in_memory(param_hash, df)
-            return self._apply_columns_and_clean(df, columns)
+            # Data is already cleaned and columns selected by parquet, just return
+            return df
 
         # 3. Fetch from bulk cache (always bulk for AidData)
         logger.info("Cache miss - fetching from bulk cache")
@@ -798,14 +832,19 @@ class AidDataData(AidDataSource):
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
         query = _filters_to_query(filters) if filters else None
 
+        # Bulk parquet already contains cleaned data (cleaned in fetcher)
         df = pd.read_parquet(bulk_path)
         if query:
             df = df.query(query)
-        if columns:
-            df = df[[c for c in columns if c in df.columns]]
 
-        # 4. Cache the result
+        # 4. Cache the result (cleaned, filtered data; columns selected below)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        return self._apply_columns_and_clean(df, columns)
+        # Column selection (data already cleaned in bulk fetcher)
+        if columns:
+            available_cols = [c for c in columns if c in df.columns]
+            if available_cols:
+                df = df[available_cols]
+
+        return df
