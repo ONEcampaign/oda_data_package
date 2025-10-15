@@ -53,13 +53,34 @@ def translate_cols_and_filters_to_raw(columns, filters) -> tuple[list, list]:
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
-    """Transform a list of filters into a query string."""
+    """Transform a list of filters into a query string.
+
+    Args:
+        filters: List of (column, predicate, values) tuples
+
+    Returns:
+        Query string for pandas DataFrame.query()
+    """
     query = ""
     for column, predicate, values in filters:
         if query:
             query += " and "
         if predicate == "in":
-            query += f"{column} in {values}"
+            # Handle list of mixed types - quote strings, keep numbers/booleans as-is
+            if isinstance(values, list):
+                quoted = []
+                for v in values:
+                    if isinstance(v, str):
+                        quoted.append(f"'{v}'")
+                    else:
+                        quoted.append(str(v))
+                query += f"{column} in [{', '.join(quoted)}]"
+            else:
+                # Single value wrapped in list
+                if isinstance(values, str):
+                    query += f"{column} in ['{values}']"
+                else:
+                    query += f"{column} in [{values}]"
         elif predicate == "==":
             # Quote strings, but not numbers or booleans
             if isinstance(values, str):
@@ -76,8 +97,13 @@ class Source:
     of data in the form of a pandas DataFrame.
     """
 
+    # Cache configuration constants
+    MEMORY_CACHE_MAXSIZE = 20
+    MEMORY_CACHE_TTL = 6000  # seconds
+    MEMORY_CACHE_MAX_ITEM_MB = 50  # Maximum size of individual cached items
+
     # Shared thread-safe memory cache (class-level, shared across all instances)
-    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
+    memory_cache = ThreadSafeMemoryCache(maxsize=MEMORY_CACHE_MAXSIZE, ttl=MEMORY_CACHE_TTL)
 
     # Shared bulk and query caches (singletons per process)
     _shared_bulk_cache: Optional[BulkCacheManager] = None
@@ -99,16 +125,16 @@ class Source:
 
         Creates one bulk cache per process, recreating if data directory changes.
         """
-        current_raw = ODAPaths.raw_data
+        current_raw = Path(ODAPaths.raw_data).resolve()
         # Fast-path without lock
         bc = Source._shared_bulk_cache
-        if bc is not None and bc.base_dir.parent == current_raw:
+        if bc is not None and bc.base_dir.parent.resolve() == current_raw:
             return bc
 
         # Slow-path with lock
         with Source._cache_lock:
             bc = Source._shared_bulk_cache
-            if bc is None or bc.base_dir.parent != current_raw:
+            if bc is None or bc.base_dir.parent.resolve() != current_raw:
                 Source._shared_bulk_cache = BulkCacheManager(current_raw)
             return Source._shared_bulk_cache
 
@@ -118,16 +144,16 @@ class Source:
 
         Creates one query cache per process, recreating if data directory changes.
         """
-        current_raw = ODAPaths.raw_data
+        current_raw = Path(ODAPaths.raw_data).resolve()
         # Fast-path without lock
         qc = Source._shared_query_cache
-        if qc is not None and qc.base_dir.parent == current_raw:
+        if qc is not None and qc.base_dir.parent.resolve() == current_raw:
             return qc
 
         # Slow-path with lock
         with Source._cache_lock:
             qc = Source._shared_query_cache
-            if qc is None or qc.base_dir.parent != current_raw:
+            if qc is None or qc.base_dir.parent.resolve() != current_raw:
                 Source._shared_query_cache = QueryCacheManager(current_raw)
             return Source._shared_query_cache
 
@@ -161,23 +187,36 @@ class Source:
         return filters or None
 
     def _cache_in_memory(self, param_hash: str, df: pd.DataFrame) -> None:
-        """Cache DataFrame in memory if it's small enough."""
+        """Cache DataFrame in memory if it's small enough.
+
+        Only caches if size is below MEMORY_CACHE_MAX_ITEM_MB threshold to avoid
+        excessive memory usage.
+        """
         size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
-        if size_mb < 50:
+        if size_mb < self.MEMORY_CACHE_MAX_ITEM_MB:
             # Make a copy to avoid mutations affecting cache
             self.memory_cache[param_hash] = df.copy(deep=True)
 
     def _apply_columns_and_clean(
-        self, df: pd.DataFrame, columns: Optional[list] = None
+        self, df: pd.DataFrame, columns: Optional[list] = None, already_cleaned: bool = False
     ) -> pd.DataFrame:
         """Apply cleaning and column selection to DataFrame.
 
         IMPORTANT: Cleaning must happen BEFORE column selection because
         user-facing column names (e.g., "recipient_name") only exist after
         clean_raw_df() normalizes the raw column names.
+
+        Args:
+            df: DataFrame to process
+            columns: Optional list of columns to select
+            already_cleaned: If True, skip cleaning step (data already normalized)
+
+        Returns:
+            Cleaned and filtered DataFrame
         """
-        # Always clean first to normalize column names
-        df = df.pipe(clean_raw_df)
+        # Clean first to normalize column names (unless already done)
+        if not already_cleaned:
+            df = df.pipe(clean_raw_df)
 
         # Then select columns if requested
         if columns:
@@ -196,8 +235,11 @@ class DACSource(Source):
     of data in the form of a pandas DataFrame.
     """
 
-    # Use thread-safe memory cache (inherited from Source)
-    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache with inherited constants
+    memory_cache = ThreadSafeMemoryCache(
+        maxsize=Source.MEMORY_CACHE_MAXSIZE,
+        ttl=Source.MEMORY_CACHE_TTL
+    )
 
     def __init__(self):
         super().__init__()
@@ -336,9 +378,8 @@ class DACSource(Source):
         if query:
             df = df.query(query)
 
-        # DO NOT select columns here - column names need cleaning first
-        # Column selection happens in _apply_columns_and_clean()
-
+        # Note: Data is already cleaned (cleaned in bulk fetcher before caching)
+        # Column selection deferred to caller's _apply_columns_and_clean()
         return df
 
     @abstractmethod
@@ -389,11 +430,7 @@ class DACSource(Source):
         if df is not None:
             logger.info("Cache hit: memory")
             # Data is already cleaned, just select columns if needed
-            if columns:
-                available_cols = [c for c in columns if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-            return df
+            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache (on-disk parquet, fast)
         df = self.query_cache.load(
@@ -413,7 +450,7 @@ class DACSource(Source):
             df = self._fetch_from_bulk_cache(filters, columns)
         else:
             # Download via API (uses init-time filters only)
-            df = self.download(bulk=False)
+            df = self.download()
 
             # Clean data first (needed for filter column names to match)
             df = df.pipe(clean_raw_df)
@@ -424,19 +461,12 @@ class DACSource(Source):
             if query:
                 df = df.query(query)
 
-            # DO NOT select columns here - that happens in _apply_columns_and_clean()
-
-        # 4. Cache the result (cleaned, filtered data; columns selected later)
+        # 4. Cache the result (cleaned, filtered data; columns NOT yet selected)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # Column selection happens here (data already cleaned above or in bulk fetch)
-        if columns:
-            available_cols = [c for c in columns if c in df.columns]
-            if available_cols:
-                df = df[available_cols]
-
-        return df
+        # 5. Apply column selection (data already cleaned above or in bulk fetch)
+        return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
@@ -486,18 +516,12 @@ class DAC1Data(DACSource):
 
         return fetcher
 
-    def download(self, bulk: bool = False):
+    def download(self):
         """Downloads DAC1 data via API (filtered query).
 
-        Args:
-            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
+        Note: For bulk downloads, use read(using_bulk_download=True) instead.
+              Bulk downloads are handled by the cache system.
         """
-        if bulk:
-            raise RuntimeError(
-                "Bulk downloads are handled by cache system. "
-                "Use read(using_bulk_download=True) instead."
-            )
-
         df = download_dac1(
             start_year=self.start,
             end_year=self.end,
@@ -552,18 +576,12 @@ class DAC2AData(DACSource):
 
         return fetcher
 
-    def download(self, bulk: bool = False):
+    def download(self):
         """Downloads DAC2A data via API (filtered query).
 
-        Args:
-            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
+        Note: For bulk downloads, use read(using_bulk_download=True) instead.
+              Bulk downloads are handled by the cache system.
         """
-        if bulk:
-            raise RuntimeError(
-                "Bulk downloads are handled by cache system. "
-                "Use read(using_bulk_download=True) instead."
-            )
-
         df = download_dac2a(
             start_year=self.start,
             end_year=self.end,
@@ -602,18 +620,12 @@ class CRSData(DACSource):
         """
         return create_crs_bulk_fetcher()
 
-    def download(self, bulk: bool = False):
+    def download(self):
         """Downloads CRS data via API (filtered query).
 
-        Args:
-            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
+        Note: For bulk downloads, use read(using_bulk_download=True) instead.
+              Bulk downloads are handled by the cache system.
         """
-        if bulk:
-            raise RuntimeError(
-                "Bulk downloads are handled by cache system. "
-                "Use read(using_bulk_download=True) instead."
-            )
-
         df = download_crs(
             start_year=self.start,
             end_year=self.end,
@@ -664,18 +676,12 @@ class MultiSystemData(DACSource):
         """
         return create_multisystem_bulk_fetcher()
 
-    def download(self, bulk: bool = False):
+    def download(self):
         """Downloads MultiSystem data via API (filtered query).
 
-        Args:
-            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
+        Note: For bulk downloads, use read(using_bulk_download=True) instead.
+              Bulk downloads are handled by the cache system.
         """
-        if bulk:
-            raise RuntimeError(
-                "Bulk downloads are handled by cache system. "
-                "Use read(using_bulk_download=True) instead."
-            )
-
         df = download_multisystem(
             start_year=self.start,
             end_year=self.end,
@@ -692,8 +698,11 @@ class AidDataSource(Source):
     of data in the form of a pandas DataFrame.
     """
 
-    # Use thread-safe memory cache (inherited from Source)
-    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache with inherited constants
+    memory_cache = ThreadSafeMemoryCache(
+        maxsize=Source.MEMORY_CACHE_MAXSIZE,
+        ttl=Source.MEMORY_CACHE_TTL
+    )
 
     def __init__(self):
         super().__init__()
@@ -735,8 +744,11 @@ class AidDataSource(Source):
 class AidDataData(AidDataSource):
     """Class to handle the AidData data."""
 
-    # Use thread-safe memory cache (inherited from Source)
-    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache with inherited constants
+    memory_cache = ThreadSafeMemoryCache(
+        maxsize=Source.MEMORY_CACHE_MAXSIZE,
+        ttl=Source.MEMORY_CACHE_TTL
+    )
 
     def __init__(
         self,
@@ -804,11 +816,7 @@ class AidDataData(AidDataSource):
         if df is not None:
             logger.info("Cache hit: memory")
             # Data is already cleaned, just select columns if needed
-            if columns:
-                available_cols = [c for c in columns if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-            return df
+            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache
         df = self.query_cache.load(
@@ -837,14 +845,9 @@ class AidDataData(AidDataSource):
         if query:
             df = df.query(query)
 
-        # 4. Cache the result (cleaned, filtered data; columns selected below)
+        # 4. Cache the result (cleaned, filtered data; columns NOT yet selected)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # Column selection (data already cleaned in bulk fetcher)
-        if columns:
-            available_cols = [c for c in columns if c in df.columns]
-            if available_cols:
-                df = df[available_cols]
-
-        return df
+        # 5. Apply column selection (data already cleaned in bulk fetcher)
+        return self._apply_columns_and_clean(df, columns, already_cleaned=True)

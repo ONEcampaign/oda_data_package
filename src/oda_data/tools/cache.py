@@ -166,8 +166,10 @@ class BulkCacheManager:
             with open(tmp_path, "w") as f:
                 json.dump(manifest, f, indent=2)
             tmp_path.replace(self.manifest_path)
-        finally:
+        except Exception:
+            # Only clean up temp file if replace failed
             tmp_path.unlink(missing_ok=True)
+            raise
 
     def _is_stale(self, record: dict, entry: BulkCacheEntry) -> bool:
         """Check if a cached entry is stale."""
@@ -389,9 +391,11 @@ class QueryCacheManager:
             )
 
         if not path.exists():
+            logger.debug(f"Query cache miss: {dataset_name}-{param_hash}")
             return None
 
         if self._is_expired(path):
+            logger.debug(f"Query cache expired: {dataset_name}-{param_hash}")
             # Expired - try to delete (non-blocking)
             try:
                 path.unlink()
@@ -400,6 +404,7 @@ class QueryCacheManager:
             return None
 
         try:
+            logger.debug(f"Query cache hit: {dataset_name}-{param_hash}")
             return pd.read_parquet(path, filters=filters, engine="pyarrow", columns=columns)
         except Exception as e:
             logger.warning(f"Failed to load query cache: {e}")
