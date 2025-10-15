@@ -1,14 +1,10 @@
 import threading
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
-from cachetools import TTLCache
 from oda_reader import (
-    bulk_download_crs,
-    bulk_download_multisystem,
-    download_aiddata,
     download_crs,
     download_dac1,
     download_dac2a,
@@ -32,7 +28,16 @@ from oda_data.clean_data.validation import (
 )
 from oda_data.config import ODAPaths
 from oda_data.logger import logger
-from oda_data.tools.cache import OnDiskCache, generate_param_hash
+from oda_data.tools.cache import (
+    BulkCacheEntry,
+    BulkCacheManager,
+    QueryCacheManager,
+    ThreadSafeMemoryCache,
+    create_aiddata_bulk_fetcher,
+    create_crs_bulk_fetcher,
+    create_multisystem_bulk_fetcher,
+    generate_param_hash,
+)
 
 
 def translate_cols_and_filters_to_raw(columns, filters) -> tuple[list, list]:
@@ -67,11 +72,13 @@ class Source:
     of data in the form of a pandas DataFrame.
     """
 
-    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    # Shared thread-safe memory cache (class-level, shared across all instances)
+    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
 
-    # Shared, process-wide disk cache and lock
-    _shared_disk_cache: Optional[OnDiskCache] = None
-    _shared_disk_cache_lock = threading.Lock()
+    # Shared bulk and query caches (singletons per process)
+    _shared_bulk_cache: Optional[BulkCacheManager] = None
+    _shared_query_cache: Optional[QueryCacheManager] = None
+    _cache_lock = threading.Lock()
 
     def __init__(self):
         self.de_providers = None
@@ -83,20 +90,42 @@ class Source:
         self._param_hash = None
 
     @property
-    def disk_cache(self) -> OnDiskCache:
-        # Snapshot path to avoid inconsistency if it changes mid-check
-        current_raw = ODAPaths.raw_data
-        # Fast-path without lock (shared, process-wide cache)
-        dc = Source._shared_disk_cache
-        if dc is not None and dc.base_dir == current_raw:
-            return dc
+    def bulk_cache(self) -> BulkCacheManager:
+        """Get bulk cache manager singleton.
 
-        # Slow-path with lock to ensure single initialization across threads
-        with Source._shared_disk_cache_lock:
-            dc = Source._shared_disk_cache
-            if dc is None or dc.base_dir != current_raw:
-                Source._shared_disk_cache = OnDiskCache(current_raw, ttl_seconds=86400)
-            return Source._shared_disk_cache
+        Creates one bulk cache per process, recreating if data directory changes.
+        """
+        current_raw = ODAPaths.raw_data
+        # Fast-path without lock
+        bc = Source._shared_bulk_cache
+        if bc is not None and bc.base_dir.parent == current_raw:
+            return bc
+
+        # Slow-path with lock
+        with Source._cache_lock:
+            bc = Source._shared_bulk_cache
+            if bc is None or bc.base_dir.parent != current_raw:
+                Source._shared_bulk_cache = BulkCacheManager(current_raw)
+            return Source._shared_bulk_cache
+
+    @property
+    def query_cache(self) -> QueryCacheManager:
+        """Get query cache manager singleton.
+
+        Creates one query cache per process, recreating if data directory changes.
+        """
+        current_raw = ODAPaths.raw_data
+        # Fast-path without lock
+        qc = Source._shared_query_cache
+        if qc is not None and qc.base_dir.parent == current_raw:
+            return qc
+
+        # Slow-path with lock
+        with Source._cache_lock:
+            qc = Source._shared_query_cache
+            if qc is None or qc.base_dir.parent != current_raw:
+                Source._shared_query_cache = QueryCacheManager(current_raw)
+            return Source._shared_query_cache
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
@@ -127,25 +156,26 @@ class Source:
         )
         return filters or None
 
-    def _bulk_hash(self) -> str:
-        return generate_param_hash(filters=[("bulk", "==", self.__class__.__name__)])
+    def _cache_in_memory(self, param_hash: str, df: pd.DataFrame) -> None:
+        """Cache DataFrame in memory if it's small enough."""
+        size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+        if size_mb < 50:
+            # Make a copy to avoid mutations affecting cache
+            self.memory_cache[param_hash] = df.copy(deep=True)
 
-    def _bulk_filename(self) -> Path:
-        return self.disk_cache.get_file_path(
-            dataset_name=self.__class__.__name__, param_hash=self._param_hash
-        )
+    def _apply_columns_and_clean(
+        self, df: pd.DataFrame, columns: Optional[list] = None
+    ) -> pd.DataFrame:
+        """Apply column selection and cleaning to DataFrame."""
+        if columns:
+            try:
+                df = df[columns]
+            except KeyError:
+                # Columns might need cleaning first
+                df = df.pipe(clean_raw_df)[columns]
 
-    def _get_cached_dataset(
-        self, param_hash: str, filters: list[tuple], columns: list[str]
-    ) -> pd.DataFrame | None:
-        cached_df = self.memory_cache.get(param_hash)
-
-        if cached_df is None:
-            cached_df = self.disk_cache.load(
-                self.__class__.__name__, param_hash, filters, columns
-            )
-
-        return cached_df
+        df = df.pipe(clean_raw_df)
+        return df
 
 
 class DACSource(Source):
@@ -155,7 +185,8 @@ class DACSource(Source):
     of data in the form of a pandas DataFrame.
     """
 
-    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache (inherited from Source)
+    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
 
     def __init__(self):
         super().__init__()
@@ -255,26 +286,58 @@ class DACSource(Source):
                     f"Missing values in {column}: {', '.join(map(str, missing_values))}"
                 )
 
-    def _cache_dataset(self, param_hash: str, df: pd.DataFrame) -> None:
-        """Caches the dataset in memory and on disk."""
-        size = df.memory_usage(deep=True).sum() / (1024 * 1024)  # in MB
-        if size < 50:
-            self.memory_cache[param_hash] = df.copy(deep=True)
-        self.disk_cache.save(self.__class__.__name__, param_hash, df)
+    def _get_package_version(self) -> str:
+        """Get package version for cache invalidation."""
+        try:
+            from importlib.metadata import version
+            return version("oda_data")
+        except Exception:
+            return "unknown"
 
-    def _apply_query_and_cache(
-        self, df: pd.DataFrame, query: str | None, param_hash: str, bulk: bool
-    ):
-        if bulk:
-            self._cache_dataset(param_hash=param_hash, df=df)
+    def _fetch_from_bulk_cache(
+        self, filters: list[tuple] | None, columns: list | None
+    ) -> pd.DataFrame:
+        """Fetch data from bulk cache with download coordination.
+
+        This method uses FileLock via BulkCacheManager - if another thread is
+        downloading, this call blocks until download completes.
+        """
+        entry = BulkCacheEntry(
+            key=f"{self.__class__.__name__}_bulk",
+            fetcher=self._create_bulk_fetcher(),
+            ttl_days=30,
+            version=self._get_package_version(),
+        )
+
+        # This blocks if another thread is downloading (prevents concurrent waste)
+        bulk_path = self.bulk_cache.ensure(entry, refresh=False)
+
+        # Read from bulk parquet with filters (fast columnar read)
+        logger.info(f"Reading from bulk cache: {bulk_path}")
+        query = _filters_to_query(filters) if filters else None
+
+        df = pd.read_parquet(bulk_path)
 
         if query:
             df = df.query(query)
 
-        if not bulk:
-            self._cache_dataset(param_hash=param_hash, df=df)
+        if columns:
+            df = df[[c for c in columns if c in df.columns]]
 
         return df
+
+    @abstractmethod
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create a fetcher function for bulk download.
+
+        Must be implemented by subclasses to return a function that:
+        - Takes a Path argument (target file)
+        - Downloads data and writes it as parquet to that path
+
+        Returns:
+            Fetcher function
+        """
+        pass
 
     def read(
         self,
@@ -282,62 +345,60 @@ class DACSource(Source):
         additional_filters: Optional[list[tuple]] = None,
         columns: Optional[list] = None,
     ):
-        """Reads a dataset from a local parquet file, applying filters if needed.
+        """Reads a dataset with 3-tier cache coordination.
+
+        Cache tiers:
+        1. ThreadSafeMemoryCache (fast, in-memory, thread-safe)
+        2. QueryCacheManager (on-disk parquet of filtered results)
+        3. BulkCacheManager (on-disk parquet of full datasets)
 
         Args:
-            using_bulk_download (bool, optional): Whether to read from the bulk file. Defaults to False.
-            additional_filters (Optional[list[tuple]], optional): Additional filters to apply. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
+            using_bulk_download: Whether to read from bulk cache
+            additional_filters: Additional filters to apply
+            columns: Subset of columns to read
 
         Returns:
-            pd.DataFrame: The loaded dataset.
+            Filtered and cleaned DataFrame
         """
-        # Create filters
+        # Create filters and generate cache key
         filters = self._get_read_filters(additional_filters=additional_filters)
+        param_hash = generate_param_hash(filters if filters else [])
 
-        # Generate a query string from the filters
-        query = _filters_to_query(filters) if filters else None
-
-        # Generate a hash string with the filters and the type of file
-        param_hash = (
-            self._bulk_hash()
-            if using_bulk_download
-            else generate_param_hash(filters=filters)
-        )
-
-        self._param_hash = param_hash
-
-        # If caching is not active, clear the cache
+        # If caching is disabled, clear caches
         if not memory().store_backend:
-            self.disk_cache.cleanup(hash_str=param_hash, force=True)
+            self.query_cache.clear()
             self.memory_cache.clear()
 
-        # Check if the data is already cached in memory or on disk
-        df = self._get_cached_dataset(
-            param_hash=param_hash, filters=filters, columns=columns
+        # 1. Try memory cache (thread-safe, fastest)
+        df = self.memory_cache.get(param_hash)
+        if df is not None:
+            logger.info("Cache hit: memory")
+            return self._apply_columns_and_clean(df, columns)
+
+        # 2. Try query cache (on-disk parquet, fast)
+        df = self.query_cache.load(
+            self.__class__.__name__, param_hash, filters, columns
         )
+        if df is not None:
+            logger.info("Cache hit: query cache")
+            self._cache_in_memory(param_hash, df)
+            return self._apply_columns_and_clean(df, columns)
 
-        # If not cached, download the data
-        if df is None:
-            df = self.download(bulk=using_bulk_download)
-            if df is None:
-                df = self._get_cached_dataset(
-                    param_hash=param_hash, filters=filters, columns=columns
-                )
-            else:
-                df = self._apply_query_and_cache(
-                    df=df, query=query, param_hash=param_hash, bulk=using_bulk_download
-                )
+        # 3. Cache miss - need to fetch data
+        logger.info("Cache miss - fetching data")
 
-        if columns:
-            try:
-                df = df[columns]
-            except Exception as e:
-                df = df.pipe(clean_raw_df)[columns]
+        if using_bulk_download:
+            # Fetch from bulk cache (coordinated download)
+            df = self._fetch_from_bulk_cache(filters, columns)
+        else:
+            # Download via API
+            df = self.download(bulk=False)
 
-        df = df.pipe(clean_raw_df)
+        # 4. Cache the result
+        self.query_cache.save(self.__class__.__name__, param_hash, df)
+        self._cache_in_memory(param_hash, df)
 
-        return df
+        return self._apply_columns_and_clean(df, columns)
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
@@ -372,24 +433,38 @@ class DAC1Data(DACSource):
             )
             self.de_indicators = check_strings(indicators)
 
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create fetcher for DAC1 bulk download.
+
+        DAC1 bulk is downloaded directly as DataFrame (no zip file).
+        """
+        def fetcher(target_path: Path):
+            logger.info("Downloading DAC1 bulk data")
+            df = download_dac1()  # No filters = full dataset
+            logger.info("Writing DAC1 bulk data to cache")
+            df.to_parquet(target_path)
+
+        return fetcher
+
     def download(self, bulk: bool = False):
-        """Downloads DAC1 data, either filtered or full dataset.
+        """Downloads DAC1 data via API (filtered query).
 
         Args:
-            bulk (bool, optional): Whether to download bulk dataset. Defaults to False.
+            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
         """
-        if not bulk:
-            df = download_dac1(
-                start_year=self.start,
-                end_year=self.end,
-                filters=self._get_filtered_download_filters(),
+        if bulk:
+            raise RuntimeError(
+                "Bulk downloads are handled by cache system. "
+                "Use read(using_bulk_download=True) instead."
             )
-        else:
-            logger.info("Bulk downloading DAC1 may take a long time")
-            df = download_dac1()
 
-        logger.info(f"DAC1 data downloaded successfully.")
+        df = download_dac1(
+            start_year=self.start,
+            end_year=self.end,
+            filters=self._get_filtered_download_filters(),
+        )
 
+        logger.info("DAC1 data downloaded successfully.")
         return df
 
 
@@ -422,25 +497,38 @@ class DAC2AData(DACSource):
             )
             self.de_indicators = check_strings(indicators)
 
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create fetcher for DAC2A bulk download.
+
+        DAC2A bulk is downloaded directly as DataFrame (no zip file).
+        """
+        def fetcher(target_path: Path):
+            logger.info("Downloading DAC2A bulk data")
+            df = download_dac2a()  # No filters = full dataset
+            logger.info("Writing DAC2A bulk data to cache")
+            df.to_parquet(target_path)
+
+        return fetcher
+
     def download(self, bulk: bool = False):
-        """Downloads DAC2A data, either filtered or full dataset.
+        """Downloads DAC2A data via API (filtered query).
 
         Args:
-            bulk (bool, optional): Whether to download the bulk dataset. Defaults to False.
+            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
         """
-        if not bulk:
-            df = download_dac2a(
-                start_year=self.start,
-                end_year=self.end,
-                filters=self._get_filtered_download_filters(),
+        if bulk:
+            raise RuntimeError(
+                "Bulk downloads are handled by cache system. "
+                "Use read(using_bulk_download=True) instead."
             )
 
-        else:
-            logger.info("Bulk downloading DAC2a may take a long time")
-            df = download_dac2a()
+        df = download_dac2a(
+            start_year=self.start,
+            end_year=self.end,
+            filters=self._get_filtered_download_filters(),
+        )
 
-        logger.info(f"DAC2a data downloaded successfully.")
-
+        logger.info("DAC2A data downloaded successfully.")
         return df
 
 
@@ -465,29 +553,32 @@ class CRSData(DACSource):
         self._init_filters(years=years, providers=providers, recipients=recipients)
         self._param_hash = None
 
-    def download(self, bulk: bool = True):
-        """Downloads CRS data, either filtered or full dataset.
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create fetcher for CRS bulk download.
+
+        CRS bulk is downloaded as a zip file containing parquet.
+        """
+        return create_crs_bulk_fetcher()
+
+    def download(self, bulk: bool = False):
+        """Downloads CRS data via API (filtered query).
 
         Args:
-            bulk (bool, optional): Whether to download bulk dataset. Defaults to False.
+            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
         """
-
-        if not bulk:
-            df = download_crs(
-                start_year=self.start,
-                end_year=self.end,
-                filters=self._get_filtered_download_filters(),
+        if bulk:
+            raise RuntimeError(
+                "Bulk downloads are handled by cache system. "
+                "Use read(using_bulk_download=True) instead."
             )
-            logger.info(f"CRS data downloaded successfully.")
-            return clean_raw_df(df)
 
-        else:
-            logger.info(
-                "The full, detailed CRS is only available as a large file (>1GB). "
-                "The package will now download the data, but it may take a while."
-            )
-            bulk_download_crs(save_to_path=self._bulk_filename())
-            return None
+        df = download_crs(
+            start_year=self.start,
+            end_year=self.end,
+            filters=self._get_filtered_download_filters(),
+        )
+        logger.info("CRS data downloaded successfully.")
+        return clean_raw_df(df)
 
 
 class MultiSystemData(DACSource):
@@ -524,29 +615,32 @@ class MultiSystemData(DACSource):
             )
             self.de_indicators = indicators
 
-    def download(self, bulk: bool = True):
-        """Downloads Multisystem data, either filtered or full dataset.
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create fetcher for MultiSystem bulk download.
+
+        MultiSystem bulk is downloaded as a zip file containing parquet.
+        """
+        return create_multisystem_bulk_fetcher()
+
+    def download(self, bulk: bool = False):
+        """Downloads MultiSystem data via API (filtered query).
 
         Args:
-            bulk (bool, optional): Whether to download bulk dataset. Defaults to true.
+            bulk (bool): If True, raises error (use read(using_bulk_download=True) instead)
         """
-
-        if not bulk:
-            df = download_multisystem(
-                start_year=self.start,
-                end_year=self.end,
-                filters=self._get_filtered_download_filters(),
+        if bulk:
+            raise RuntimeError(
+                "Bulk downloads are handled by cache system. "
+                "Use read(using_bulk_download=True) instead."
             )
-            logger.info(f"Multisystem data downloaded successfully.")
-            return clean_raw_df(df)
 
-        else:
-            logger.info(
-                "The full, detailed Multisystem is a large file (>1GB). "
-                "The package will now download the data, but it may take a while."
-            )
-            bulk_download_multisystem(save_to_path=self._bulk_filename())
-            return None
+        df = download_multisystem(
+            start_year=self.start,
+            end_year=self.end,
+            filters=self._get_filtered_download_filters(),
+        )
+        logger.info("MultiSystem data downloaded successfully.")
+        return clean_raw_df(df)
 
 
 class AidDataSource(Source):
@@ -556,7 +650,8 @@ class AidDataSource(Source):
     of data in the form of a pandas DataFrame.
     """
 
-    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache (inherited from Source)
+    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
 
     def __init__(self):
         super().__init__()
@@ -598,7 +693,8 @@ class AidDataSource(Source):
 class AidDataData(AidDataSource):
     """Class to handle the AidData data."""
 
-    memory_cache = TTLCache(maxsize=20, ttl=6000)
+    # Use thread-safe memory cache (inherited from Source)
+    memory_cache = ThreadSafeMemoryCache(maxsize=20, ttl=6000)
 
     def __init__(
         self,
@@ -617,47 +713,85 @@ class AidDataData(AidDataSource):
 
         self._init_filters(years=years, recipients=recipients, sectors=sectors)
 
+    def _create_bulk_fetcher(self) -> Callable[[Path], None]:
+        """Create fetcher for AidData bulk download.
+
+        AidData bulk is downloaded as a zip file containing parquet.
+        """
+        return create_aiddata_bulk_fetcher()
+
+    def _get_package_version(self) -> str:
+        """Get package version for cache invalidation."""
+        try:
+            from importlib.metadata import version
+            return version("oda_data")
+        except Exception:
+            return "unknown"
+
     def download(self) -> None:
-        """Downloads the full AidData dataset."""
-        download_aiddata(save_to_path=self._bulk_filename())
+        """Download method - not used (bulk handled by cache system)."""
+        raise RuntimeError(
+            "Use read() to access AidData. Bulk downloads are handled by cache system."
+        )
 
     def read(
         self,
         additional_filters: Optional[list[tuple]] = None,
         columns: Optional[list] = None,
     ):
-        """Reads a dataset from a local parquet file, applying filters if needed.
+        """Reads AidData from bulk cache with filtering.
 
         Args:
-            additional_filters (Optional[list[tuple]], optional): Additional filters to apply. Defaults to None.
-            columns (Optional[list], optional): Subset of columns to read. Defaults to None.
+            additional_filters: Additional filters to apply
+            columns: Subset of columns to read
 
         Returns:
-            pd.DataFrame: The loaded dataset.
+            Filtered DataFrame
         """
-        # Create filters
+        # Create filters and generate cache key
         filters = self._get_read_filters(additional_filters=additional_filters)
+        param_hash = generate_param_hash(filters if filters else [])
 
-        # Generate a hash string with the filters and the type of file
-        param_hash = self._bulk_hash()
-
-        self._param_hash = param_hash
-
-        # If caching is not active, clear the cache
+        # If caching is disabled, clear caches
         if not memory().store_backend:
-            self.disk_cache.cleanup(hash_str=param_hash, force=True)
+            self.query_cache.clear()
             self.memory_cache.clear()
 
-        # Check if the data is already cached in memory or on disk
-        df = self._get_cached_dataset(
-            param_hash=param_hash, filters=filters, columns=columns
+        # 1. Try memory cache
+        df = self.memory_cache.get(param_hash)
+        if df is not None:
+            logger.info("Cache hit: memory")
+            return self._apply_columns_and_clean(df, columns)
+
+        # 2. Try query cache
+        df = self.query_cache.load(
+            self.__class__.__name__, param_hash, filters, columns
+        )
+        if df is not None:
+            logger.info("Cache hit: query cache")
+            self._cache_in_memory(param_hash, df)
+            return self._apply_columns_and_clean(df, columns)
+
+        # 3. Fetch from bulk cache (always bulk for AidData)
+        logger.info("Cache miss - fetching from bulk cache")
+        entry = BulkCacheEntry(
+            key=f"{self.__class__.__name__}_bulk",
+            fetcher=self._create_bulk_fetcher(),
+            ttl_days=180,  # AidData updates less frequently
+            version=self._get_package_version(),
         )
 
-        # If not cached, download the data
-        if df is None:
-            self.download()
-            df = self._get_cached_dataset(
-                param_hash=param_hash, filters=filters, columns=columns
-            )
+        bulk_path = self.bulk_cache.ensure(entry, refresh=False)
+        query = _filters_to_query(filters) if filters else None
 
-        return df
+        df = pd.read_parquet(bulk_path)
+        if query:
+            df = df.query(query)
+        if columns:
+            df = df[[c for c in columns if c in df.columns]]
+
+        # 4. Cache the result
+        self.query_cache.save(self.__class__.__name__, param_hash, df)
+        self._cache_in_memory(param_hash, df)
+
+        return self._apply_columns_and_clean(df, columns)
