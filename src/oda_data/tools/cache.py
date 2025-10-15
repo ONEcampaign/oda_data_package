@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 import pandas as pd
 from cachetools import TTLCache
@@ -204,7 +204,12 @@ class BulkCacheManager:
             record = manifest.get(entry.key)
 
             # Check if we have a fresh cached version
-            if not refresh and record and path.exists() and not self._is_stale(record, entry):
+            if (
+                not refresh
+                and record
+                and path.exists()
+                and not self._is_stale(record, entry)
+            ):
                 logger.info(f"Using cached bulk data for {entry.key}")
                 return path
 
@@ -300,21 +305,25 @@ class BulkCacheManager:
                 age = datetime.now(timezone.utc) - downloaded
                 age_days = age.total_seconds() / 86400
 
-                records.append({
-                    "key": key,
-                    "size_mb": record.get("size_mb", 0),
-                    "age_days": round(age_days, 1),
-                    "is_stale": age > timedelta(seconds=self.ttl_seconds),
-                    "version": record.get("version"),
-                })
+                records.append(
+                    {
+                        "key": key,
+                        "size_mb": record.get("size_mb", 0),
+                        "age_days": round(age_days, 1),
+                        "is_stale": age > timedelta(seconds=self.ttl_seconds),
+                        "version": record.get("version"),
+                    }
+                )
             except (KeyError, ValueError):
-                records.append({
-                    "key": key,
-                    "size_mb": record.get("size_mb", 0),
-                    "age_days": None,
-                    "is_stale": True,
-                    "version": record.get("version"),
-                })
+                records.append(
+                    {
+                        "key": key,
+                        "size_mb": record.get("size_mb", 0),
+                        "age_days": None,
+                        "is_stale": True,
+                        "version": record.get("version"),
+                    }
+                )
 
         return records
 
@@ -404,7 +413,9 @@ class QueryCacheManager:
 
         try:
             logger.debug(f"Query cache hit: {dataset_name}-{param_hash}")
-            return pd.read_parquet(path, filters=filters, engine="pyarrow", columns=columns)
+            return pd.read_parquet(
+                path, filters=filters, engine="pyarrow", columns=columns
+            )
         except Exception as e:
             logger.warning(f"Failed to load query cache: {e}")
             # Corrupted file - try to delete
@@ -497,7 +508,9 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Download from oda_reader (creates directory with parquet files)
-                logger.info("Starting CRS bulk download (this may take several minutes)")
+                logger.info(
+                    "Starting CRS bulk download (this may take several minutes)"
+                )
                 bulk_download_crs(save_to_path=download_dir)
 
                 # Find parquet files in the download directory
@@ -509,7 +522,9 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 
                 # Use the first (should be only) parquet file
                 parquet_file = parquet_files[0]
-                logger.info(f"CRS data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    f"CRS data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to download CRS bulk data: {e}")
@@ -519,14 +534,18 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Clean and write to target using batch processing
-                logger.info("Cleaning CRS data (using batch processing to minimize memory)")
-                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
-                logger.info(f"CRS bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    "Cleaning CRS data (using batch processing to minimize memory)"
+                )
+                clean_parquet_file_in_batches(
+                    parquet_file, target_path, batch_size=100_000
+                )
+                logger.info(
+                    f"CRS bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)"
+                )
             except Exception as e:
                 logger.error(f"Failed to process CRS data: {e}")
-                raise RuntimeError(
-                    f"Failed to process CRS data. Error: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to process CRS data. Error: {e}") from e
 
     return fetcher
 
@@ -556,7 +575,9 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Download from oda_reader (creates directory with parquet files)
-                logger.info("Starting MultiSystem bulk download (this may take several minutes)")
+                logger.info(
+                    "Starting MultiSystem bulk download (this may take several minutes)"
+                )
                 bulk_download_multisystem(save_to_path=download_dir)
 
                 # Find parquet files in the download directory
@@ -568,7 +589,9 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 
                 # Use the first (should be only) parquet file
                 parquet_file = parquet_files[0]
-                logger.info(f"MultiSystem data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    f"MultiSystem data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to download MultiSystem bulk data: {e}")
@@ -578,9 +601,15 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Clean and write to target using batch processing
-                logger.info("Cleaning MultiSystem data (using batch processing to minimize memory)")
-                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
-                logger.info(f"MultiSystem bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    "Cleaning MultiSystem data (using batch processing to minimize memory)"
+                )
+                clean_parquet_file_in_batches(
+                    parquet_file, target_path, batch_size=100_000
+                )
+                logger.info(
+                    f"MultiSystem bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)"
+                )
             except Exception as e:
                 logger.error(f"Failed to process MultiSystem data: {e}")
                 raise RuntimeError(
@@ -615,7 +644,9 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Download from oda_reader (creates directory with parquet files)
-                logger.info("Starting AidData bulk download (this may take several minutes)")
+                logger.info(
+                    "Starting AidData bulk download (this may take several minutes)"
+                )
                 download_aiddata(save_to_path=download_dir)
 
                 # Find parquet files in the download directory
@@ -627,7 +658,9 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
 
                 # Use the first (should be only) parquet file
                 parquet_file = parquet_files[0]
-                logger.info(f"AidData data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    f"AidData data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to download AidData bulk data: {e}")
@@ -637,13 +670,17 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
 
             try:
                 # Clean and write to target using batch processing
-                logger.info("Cleaning AidData data (using batch processing to minimize memory)")
-                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
-                logger.info(f"AidData bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
+                logger.info(
+                    "Cleaning AidData data (using batch processing to minimize memory)"
+                )
+                clean_parquet_file_in_batches(
+                    parquet_file, target_path, batch_size=100_000
+                )
+                logger.info(
+                    f"AidData bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)"
+                )
             except Exception as e:
                 logger.error(f"Failed to process AidData data: {e}")
-                raise RuntimeError(
-                    f"Failed to process AidData data. Error: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to process AidData data. Error: {e}") from e
 
     return fetcher

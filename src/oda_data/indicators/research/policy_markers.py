@@ -9,7 +9,7 @@ from oda_data.api.constants import (
     PolicyMarker,
 )
 from oda_data.api.sources import translate_cols_and_filters_to_raw
-from oda_data.clean_data.common import clean_raw_df, convert_units
+from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
 
 
@@ -117,7 +117,7 @@ def bilateral_policy_marker(
             additional_filters=filters,
             using_bulk_download=True,
         )
-    except ArrowInvalid as e:
+    except ArrowInvalid:
         c, f = translate_cols_and_filters_to_raw(cols, filters)
         data = crs.read(
             columns=c,

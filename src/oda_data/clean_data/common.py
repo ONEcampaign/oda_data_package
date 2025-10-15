@@ -131,22 +131,20 @@ def clean_parquet_file_in_batches(
 
     # Step 2: Apply schema mapping (e.g., donor_code -> donor_code, etc.)
     final_names = {
-        cleaned: CRS_MAPPING.get(cleaned, cleaned)
-        for cleaned in cleaned_names.values()
+        cleaned: CRS_MAPPING.get(cleaned, cleaned) for cleaned in cleaned_names.values()
     }
 
     # Create reverse lookup: original -> final name
-    col_mapping = {
-        orig: final_names[cleaned_names[orig]]
-        for orig in original_columns
-    }
+    col_mapping = {orig: final_names[cleaned_names[orig]] for orig in original_columns}
 
     writer = None
     processed_rows = 0
 
     try:
         # Process file in batches
-        for batch_idx, record_batch in enumerate(parquet_file.iter_batches(batch_size=batch_size)):
+        for batch_idx, record_batch in enumerate(
+            parquet_file.iter_batches(batch_size=batch_size)
+        ):
             # Convert to pandas for cleaning operations
             batch_df = record_batch.to_pandas()
 
