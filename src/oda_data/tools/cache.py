@@ -476,7 +476,8 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for CRS bulk download.
 
     The fetcher downloads parquet files from oda_reader, cleans the column
-    names, and writes to the target path.
+    names using batch processing to minimize memory usage, and writes to the
+    target path.
 
     Note: oda_reader>=1.3.0 saves parquet files directly to a directory
     instead of creating a zip file.
@@ -485,7 +486,7 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_crs
-    from oda_data.clean_data.common import clean_raw_df
+    from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
         import tempfile
@@ -517,14 +518,9 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
                 ) from e
 
             try:
-                # Read, clean, and write to target
-                logger.info("Reading and cleaning CRS data")
-                df = pd.read_parquet(parquet_file)
-                logger.info(f"CRS data loaded: {len(df):,} rows, {len(df.columns)} columns")
-
-                df = df.pipe(clean_raw_df)  # Clean column names before caching
-                logger.info("Writing cleaned CRS data to cache")
-                df.to_parquet(target_path)
+                # Clean and write to target using batch processing
+                logger.info("Cleaning CRS data (using batch processing to minimize memory)")
+                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
                 logger.info(f"CRS bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
             except Exception as e:
                 logger.error(f"Failed to process CRS data: {e}")
@@ -538,6 +534,10 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for MultiSystem bulk download.
 
+    The fetcher downloads parquet files from oda_reader, cleans the column
+    names using batch processing to minimize memory usage, and writes to the
+    target path.
+
     Note: oda_reader>=1.3.0 saves parquet files directly to a directory
     instead of creating a zip file.
 
@@ -545,7 +545,7 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_multisystem
-    from oda_data.clean_data.common import clean_raw_df
+    from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
         import tempfile
@@ -577,14 +577,9 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
                 ) from e
 
             try:
-                # Read, clean, and write to target
-                logger.info("Reading and cleaning MultiSystem data")
-                df = pd.read_parquet(parquet_file)
-                logger.info(f"MultiSystem data loaded: {len(df):,} rows, {len(df.columns)} columns")
-
-                df = df.pipe(clean_raw_df)  # Clean column names before caching
-                logger.info("Writing cleaned MultiSystem data to cache")
-                df.to_parquet(target_path)
+                # Clean and write to target using batch processing
+                logger.info("Cleaning MultiSystem data (using batch processing to minimize memory)")
+                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
                 logger.info(f"MultiSystem bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
             except Exception as e:
                 logger.error(f"Failed to process MultiSystem data: {e}")
@@ -598,6 +593,10 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for AidData bulk download.
 
+    The fetcher downloads parquet files from oda_reader, cleans the column
+    names using batch processing to minimize memory usage, and writes to the
+    target path.
+
     Note: oda_reader>=1.3.0 saves parquet files directly to a directory
     instead of creating a zip file.
 
@@ -605,7 +604,7 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import download_aiddata
-    from oda_data.clean_data.common import clean_raw_df
+    from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
         import tempfile
@@ -637,14 +636,9 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
                 ) from e
 
             try:
-                # Read, clean, and write to target
-                logger.info("Reading and cleaning AidData data")
-                df = pd.read_parquet(parquet_file)
-                logger.info(f"AidData data loaded: {len(df):,} rows, {len(df.columns)} columns")
-
-                df = df.pipe(clean_raw_df)  # Clean column names before caching
-                logger.info("Writing cleaned AidData data to cache")
-                df.to_parquet(target_path)
+                # Clean and write to target using batch processing
+                logger.info("Cleaning AidData data (using batch processing to minimize memory)")
+                clean_parquet_file_in_batches(parquet_file, target_path, batch_size=100_000)
                 logger.info(f"AidData bulk cache created successfully ({target_path.stat().st_size / (1024**2):.1f} MB)")
             except Exception as e:
                 logger.error(f"Failed to process AidData data: {e}")
