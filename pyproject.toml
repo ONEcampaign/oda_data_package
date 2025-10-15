@@ -13,7 +13,8 @@ authors = [
 
 dependencies = [
     "cachetools>=6.2.0",
-    "oda-reader>=1.2.2",
+    "filelock>=3.20.0",
+    "oda-reader>=1.3.0",
     "pandas[excel,parquet,performance]>=2.3.2",
     "pydeflate>=2.1.3",
     "reader>=3.18",

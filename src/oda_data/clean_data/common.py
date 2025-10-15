@@ -1,9 +1,12 @@
 import json
 import pathlib
 from functools import partial
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from pydeflate import oecd_dac_deflate, oecd_dac_exchange, set_pydeflate_path
 
 from oda_data.clean_data.dtypes import set_default_types
@@ -93,6 +96,89 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.pipe(map_column_schema).replace("\x1a", pd.NA).pipe(set_default_types)
 
     return df
+
+
+def clean_parquet_file_in_batches(
+    input_path: Path, output_path: Path, batch_size: int = 100_000
+) -> None:
+    """Clean a large parquet file in batches to minimize memory usage.
+
+    This function reads parquet data in batches, applies the same cleaning
+    operations as clean_raw_df (column renaming, schema mapping, type conversion),
+    and writes the result incrementally to a new parquet file.
+
+    Memory usage stays low (~200MB) regardless of input file size because only
+    one batch is in memory at a time.
+
+    Args:
+        input_path: Path to input parquet file
+        output_path: Path to output parquet file
+        batch_size: Number of rows per batch (default: 100,000)
+    """
+    logger.info(f"Processing parquet file in batches (batch_size={batch_size:,})")
+
+    # Open parquet file for batch reading
+    parquet_file = pq.ParquetFile(input_path)
+    total_rows = parquet_file.metadata.num_rows
+    logger.info(f"Total rows to process: {total_rows:,}")
+
+    # Create column name mapping at PyArrow level
+    original_schema = parquet_file.schema_arrow
+    original_columns = original_schema.names
+
+    # Step 1: Clean column names (e.g., CamelCase -> snake_case)
+    cleaned_names = {col: clean_column_name(col) for col in original_columns}
+
+    # Step 2: Apply schema mapping (e.g., donor_code -> donor_code, etc.)
+    final_names = {
+        cleaned: CRS_MAPPING.get(cleaned, cleaned) for cleaned in cleaned_names.values()
+    }
+
+    # Create reverse lookup: original -> final name
+    col_mapping = {orig: final_names[cleaned_names[orig]] for orig in original_columns}
+
+    writer = None
+    processed_rows = 0
+
+    try:
+        # Process file in batches
+        for batch_idx, record_batch in enumerate(
+            parquet_file.iter_batches(batch_size=batch_size)
+        ):
+            # Convert to pandas for cleaning operations
+            batch_df = record_batch.to_pandas()
+
+            # Apply column name transformations
+            batch_df = batch_df.rename(columns=col_mapping)
+
+            # Handle special "amount" column if present
+            if "amount" in batch_df.columns:
+                batch_df["amount"] = pd.to_numeric(
+                    batch_df["amount"], errors="coerce"
+                ).astype("float64[pyarrow]")
+
+            # Replace special character and set types
+            batch_df = batch_df.replace("\x1a", pd.NA).pipe(set_default_types)
+
+            # Convert back to PyArrow table
+            table = pa.Table.from_pandas(batch_df, preserve_index=False)
+
+            # Initialize writer with schema from first batch
+            if writer is None:
+                writer = pq.ParquetWriter(output_path, table.schema)
+
+            # Write batch
+            writer.write_table(table)
+
+            processed_rows += len(batch_df)
+            if (batch_idx + 1) % 10 == 0 or processed_rows == total_rows:
+                logger.info(f"Processed {processed_rows:,}/{total_rows:,} rows")
+
+        logger.info(f"Batch processing complete: {processed_rows:,} rows written")
+
+    finally:
+        if writer is not None:
+            writer.close()
 
 
 # Create a helper function to consistently exchange data
