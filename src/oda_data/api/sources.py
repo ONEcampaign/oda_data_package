@@ -433,14 +433,16 @@ class DACSource(Source):
             return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache (on-disk parquet, fast)
+        # Note: Load full data (all columns) since param_hash doesn't include columns
+        # Column selection happens later to avoid caching column-subset data
         df = self.query_cache.load(
-            self.__class__.__name__, param_hash, filters, columns
+            self.__class__.__name__, param_hash, None, None
         )
         if df is not None:
             logger.info("Cache hit: query cache")
             self._cache_in_memory(param_hash, df)
-            # Data is already cleaned and columns selected by parquet, just return
-            return df
+            # Data is already cleaned, apply column selection before returning
+            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 3. Cache miss - need to fetch data
         logger.info("Cache miss - fetching data")
@@ -819,14 +821,16 @@ class AidDataData(AidDataSource):
             return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache
+        # Note: Load full data (all columns) since param_hash doesn't include columns
+        # Column selection happens later to avoid caching column-subset data
         df = self.query_cache.load(
-            self.__class__.__name__, param_hash, filters, columns
+            self.__class__.__name__, param_hash, None, None
         )
         if df is not None:
             logger.info("Cache hit: query cache")
             self._cache_in_memory(param_hash, df)
-            # Data is already cleaned and columns selected by parquet, just return
-            return df
+            # Data is already cleaned, apply column selection before returning
+            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 3. Fetch from bulk cache (always bulk for AidData)
         logger.info("Cache miss - fetching from bulk cache")
