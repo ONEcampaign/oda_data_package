@@ -371,18 +371,12 @@ class DACSource(Source):
         # This blocks if another thread is downloading (prevents concurrent waste)
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
 
-        # Use PyArrow predicate pushdown and column selection for maximum efficiency
-        logger.info(f"Reading from bulk cache: {bulk_path}")
-
         pyarrow_filters = filters if filters else None
 
         # Read with both predicate pushdown (filters) AND column selection
         # This minimizes I/O and memory usage
         df = pd.read_parquet(
-            bulk_path,
-            filters=pyarrow_filters,
-            columns=columns,
-            engine="pyarrow"
+            bulk_path, filters=pyarrow_filters, columns=columns, engine="pyarrow"
         )
 
         # Note: Data is already cleaned (cleaned in bulk fetcher before caching)
@@ -434,8 +428,6 @@ class DACSource(Source):
             return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
         # 2. Try query cache (on-disk parquet, fast)
-        # Use column selection at parquet read level for efficiency
-        # If columns specified, read only those; otherwise read all for memory caching
         df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
         if df is not None:
             logger.info("Cache hit: query cache")
@@ -446,22 +438,14 @@ class DACSource(Source):
             # Data is already cleaned and column-selected at parquet read level
             return df
 
-        # 3. Cache miss - need to fetch data
-        logger.info("Cache miss - fetching data")
-
+        # 3. Cache miss (query/memory) - need to fetch data
         if using_bulk_download:
             # Fetch from bulk cache with predicate pushdown and column selection
-            # If columns specified, read directly without caching (targeted read)
-            if columns:
-                # Targeted read: use full PyArrow optimization, no caching
-                df = self._fetch_from_bulk_cache(filters, columns)
-                # Data is already cleaned and column-selected, return directly
-                return df
-            else:
-                # Full read: get all columns for caching
-                df = self._fetch_from_bulk_cache(filters, None)
+            logger.info("Query cache miss - reading from bulk cache")
+            df = self._fetch_from_bulk_cache(filters, columns)
         else:
             # Download via API (uses init-time filters only)
+            logger.info("Cache miss - downloading via API")
             df = self.download()
 
             # Clean data first (needed for filter column names to match)
@@ -838,7 +822,6 @@ class AidDataData(AidDataSource):
             return df
 
         # 3. Fetch from bulk cache (always bulk for AidData)
-        logger.info("Cache miss - fetching from bulk cache")
         entry = BulkCacheEntry(
             key=f"{self.__class__.__name__}_bulk",
             fetcher=self._create_bulk_fetcher(),
@@ -849,27 +832,23 @@ class AidDataData(AidDataSource):
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
 
         # Use PyArrow predicate pushdown and column selection for maximum efficiency
-        logger.info(f"Reading from bulk cache: {bulk_path}")
         pyarrow_filters = filters if filters else None
 
         # If columns specified, read directly without caching (targeted read)
         if columns:
+            logger.info(
+                "Query cache miss - reading from bulk cache with column selection"
+            )
             # Targeted read: use full PyArrow optimization, no caching
             df = pd.read_parquet(
-                bulk_path,
-                filters=pyarrow_filters,
-                columns=columns,
-                engine="pyarrow"
+                bulk_path, filters=pyarrow_filters, columns=columns, engine="pyarrow"
             )
             # Data is already cleaned and column-selected, return directly
             return df
         else:
+            logger.info("Query cache miss - reading from bulk cache")
             # Full read: get all columns for caching
-            df = pd.read_parquet(
-                bulk_path,
-                filters=pyarrow_filters,
-                engine="pyarrow"
-            )
+            df = pd.read_parquet(bulk_path, filters=pyarrow_filters, engine="pyarrow")
 
         # 4. Cache the result (cleaned, filtered data with all columns)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
