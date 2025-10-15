@@ -14,7 +14,6 @@ import json
 import os
 import threading
 import time
-import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -470,14 +469,17 @@ OnDiskCache = QueryCacheManager
 # ============================================================================
 # Bulk Download Fetcher Functions
 # ============================================================================
-# These functions handle the conversion from oda_reader's zip files to parquet
+# These functions handle downloading and processing parquet files from oda_reader
 
 
 def create_crs_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for CRS bulk download.
 
-    The fetcher downloads a zip file from oda_reader, extracts the parquet
-    file, cleans the column names, and writes it to the target path.
+    The fetcher downloads parquet files from oda_reader, cleans the column
+    names, and writes to the target path.
+
+    Note: oda_reader>=1.3.0 saves parquet files directly to a directory
+    instead of creating a zip file.
 
     Returns:
         Fetcher function that takes a target Path and writes parquet to it
@@ -490,47 +492,34 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            zip_path = tmpdir / "crs.zip"
+            download_dir = tmpdir / "crs_download"
 
             try:
-                # Download zip from oda_reader
+                # Download from oda_reader (creates directory with parquet files)
                 logger.info("Starting CRS bulk download (this may take several minutes)")
-                bulk_download_crs(save_to_path=zip_path)
-                logger.info(f"CRS zip downloaded successfully ({zip_path.stat().st_size / (1024**2):.1f} MB)")
+                bulk_download_crs(save_to_path=download_dir)
+
+                # Find parquet files in the download directory
+                parquet_files = list(download_dir.glob("*.parquet"))
+                if not parquet_files:
+                    raise ValueError(
+                        f"No parquet files found in download directory. Contents: {list(download_dir.iterdir())}"
+                    )
+
+                # Use the first (should be only) parquet file
+                parquet_file = parquet_files[0]
+                logger.info(f"CRS data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+
             except Exception as e:
-                logger.error(f"Failed to download CRS bulk zip: {e}")
+                logger.error(f"Failed to download CRS bulk data: {e}")
                 raise RuntimeError(
                     f"CRS bulk download failed. Please check your internet connection and try again. Error: {e}"
                 ) from e
 
             try:
-                # Extract parquet from zip
-                logger.info("Extracting parquet from CRS zip archive")
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    parquet_files = [f for f in zf.namelist() if f.endswith('.parquet')]
-                    if not parquet_files:
-                        raise ValueError(
-                            f"No parquet file found in CRS zip. Contents: {zf.namelist()}"
-                        )
-
-                    logger.info(f"Extracting {parquet_files[0]}")
-                    zf.extract(parquet_files[0], tmpdir)
-                    extracted = tmpdir / parquet_files[0]
-            except zipfile.BadZipFile as e:
-                logger.error(f"Downloaded CRS zip file is corrupted: {e}")
-                raise RuntimeError(
-                    "Downloaded CRS zip file is corrupted. Please try again."
-                ) from e
-            except Exception as e:
-                logger.error(f"Failed to extract CRS parquet from zip: {e}")
-                raise RuntimeError(
-                    f"Failed to extract CRS data from zip archive. Error: {e}"
-                ) from e
-
-            try:
                 # Read, clean, and write to target
                 logger.info("Reading and cleaning CRS data")
-                df = pd.read_parquet(extracted)
+                df = pd.read_parquet(parquet_file)
                 logger.info(f"CRS data loaded: {len(df):,} rows, {len(df.columns)} columns")
 
                 df = df.pipe(clean_raw_df)  # Clean column names before caching
@@ -549,6 +538,9 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
 def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for MultiSystem bulk download.
 
+    Note: oda_reader>=1.3.0 saves parquet files directly to a directory
+    instead of creating a zip file.
+
     Returns:
         Fetcher function that takes a target Path and writes parquet to it
     """
@@ -560,47 +552,34 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            zip_path = tmpdir / "multisystem.zip"
+            download_dir = tmpdir / "multisystem_download"
 
             try:
-                # Download zip from oda_reader
+                # Download from oda_reader (creates directory with parquet files)
                 logger.info("Starting MultiSystem bulk download (this may take several minutes)")
-                bulk_download_multisystem(save_to_path=zip_path)
-                logger.info(f"MultiSystem zip downloaded successfully ({zip_path.stat().st_size / (1024**2):.1f} MB)")
+                bulk_download_multisystem(save_to_path=download_dir)
+
+                # Find parquet files in the download directory
+                parquet_files = list(download_dir.glob("*.parquet"))
+                if not parquet_files:
+                    raise ValueError(
+                        f"No parquet files found in download directory. Contents: {list(download_dir.iterdir())}"
+                    )
+
+                # Use the first (should be only) parquet file
+                parquet_file = parquet_files[0]
+                logger.info(f"MultiSystem data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+
             except Exception as e:
-                logger.error(f"Failed to download MultiSystem bulk zip: {e}")
+                logger.error(f"Failed to download MultiSystem bulk data: {e}")
                 raise RuntimeError(
                     f"MultiSystem bulk download failed. Please check your internet connection and try again. Error: {e}"
                 ) from e
 
             try:
-                # Extract parquet from zip
-                logger.info("Extracting parquet from MultiSystem zip archive")
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    parquet_files = [f for f in zf.namelist() if f.endswith('.parquet')]
-                    if not parquet_files:
-                        raise ValueError(
-                            f"No parquet file found in MultiSystem zip. Contents: {zf.namelist()}"
-                        )
-
-                    logger.info(f"Extracting {parquet_files[0]}")
-                    zf.extract(parquet_files[0], tmpdir)
-                    extracted = tmpdir / parquet_files[0]
-            except zipfile.BadZipFile as e:
-                logger.error(f"Downloaded MultiSystem zip file is corrupted: {e}")
-                raise RuntimeError(
-                    "Downloaded MultiSystem zip file is corrupted. Please try again."
-                ) from e
-            except Exception as e:
-                logger.error(f"Failed to extract MultiSystem parquet from zip: {e}")
-                raise RuntimeError(
-                    f"Failed to extract MultiSystem data from zip archive. Error: {e}"
-                ) from e
-
-            try:
                 # Read, clean, and write to target
                 logger.info("Reading and cleaning MultiSystem data")
-                df = pd.read_parquet(extracted)
+                df = pd.read_parquet(parquet_file)
                 logger.info(f"MultiSystem data loaded: {len(df):,} rows, {len(df.columns)} columns")
 
                 df = df.pipe(clean_raw_df)  # Clean column names before caching
@@ -619,6 +598,9 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
 def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
     """Create a fetcher function for AidData bulk download.
 
+    Note: oda_reader>=1.3.0 saves parquet files directly to a directory
+    instead of creating a zip file.
+
     Returns:
         Fetcher function that takes a target Path and writes parquet to it
     """
@@ -630,47 +612,34 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            zip_path = tmpdir / "aiddata.zip"
+            download_dir = tmpdir / "aiddata_download"
 
             try:
-                # Download zip from oda_reader
+                # Download from oda_reader (creates directory with parquet files)
                 logger.info("Starting AidData bulk download (this may take several minutes)")
-                download_aiddata(save_to_path=zip_path)
-                logger.info(f"AidData zip downloaded successfully ({zip_path.stat().st_size / (1024**2):.1f} MB)")
+                download_aiddata(save_to_path=download_dir)
+
+                # Find parquet files in the download directory
+                parquet_files = list(download_dir.glob("*.parquet"))
+                if not parquet_files:
+                    raise ValueError(
+                        f"No parquet files found in download directory. Contents: {list(download_dir.iterdir())}"
+                    )
+
+                # Use the first (should be only) parquet file
+                parquet_file = parquet_files[0]
+                logger.info(f"AidData data downloaded successfully ({parquet_file.stat().st_size / (1024**2):.1f} MB)")
+
             except Exception as e:
-                logger.error(f"Failed to download AidData bulk zip: {e}")
+                logger.error(f"Failed to download AidData bulk data: {e}")
                 raise RuntimeError(
                     f"AidData bulk download failed. Please check your internet connection and try again. Error: {e}"
                 ) from e
 
             try:
-                # Extract parquet from zip
-                logger.info("Extracting parquet from AidData zip archive")
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    parquet_files = [f for f in zf.namelist() if f.endswith('.parquet')]
-                    if not parquet_files:
-                        raise ValueError(
-                            f"No parquet file found in AidData zip. Contents: {zf.namelist()}"
-                        )
-
-                    logger.info(f"Extracting {parquet_files[0]}")
-                    zf.extract(parquet_files[0], tmpdir)
-                    extracted = tmpdir / parquet_files[0]
-            except zipfile.BadZipFile as e:
-                logger.error(f"Downloaded AidData zip file is corrupted: {e}")
-                raise RuntimeError(
-                    "Downloaded AidData zip file is corrupted. Please try again."
-                ) from e
-            except Exception as e:
-                logger.error(f"Failed to extract AidData parquet from zip: {e}")
-                raise RuntimeError(
-                    f"Failed to extract AidData data from zip archive. Error: {e}"
-                ) from e
-
-            try:
                 # Read, clean, and write to target
                 logger.info("Reading and cleaning AidData data")
-                df = pd.read_parquet(extracted)
+                df = pd.read_parquet(parquet_file)
                 logger.info(f"AidData data loaded: {len(df):,} rows, {len(df.columns)} columns")
 
                 df = df.pipe(clean_raw_df)  # Clean column names before caching

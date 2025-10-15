@@ -10,7 +10,6 @@ from oda_reader import (
     download_dac2a,
     download_multisystem,
 )
-from oda_reader._cache import memory
 
 from oda_data.clean_data.common import (
     clean_raw_df,
@@ -355,9 +354,7 @@ class DACSource(Source):
         This method uses FileLock via BulkCacheManager - if another thread is
         downloading, this call blocks until download completes.
 
-        Note: Column selection is deferred until after clean_raw_df() runs,
-        because user-facing column names (e.g., "recipient_name") only exist
-        after cleaning/renaming.
+        Uses PyArrow predicate pushdown for efficient filtering at read time.
         """
         entry = BulkCacheEntry(
             key=f"{self.__class__.__name__}_bulk",
@@ -369,17 +366,23 @@ class DACSource(Source):
         # This blocks if another thread is downloading (prevents concurrent waste)
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
 
-        # Read from bulk parquet with filters (fast columnar read)
+        # Use PyArrow predicate pushdown for efficient filtering
         logger.info(f"Reading from bulk cache: {bulk_path}")
-        query = _filters_to_query(filters) if filters else None
 
-        df = pd.read_parquet(bulk_path)
+        # Convert filters to PyArrow format
+        # Our format: [('column', 'in', [values])] or [('column', '==', value)]
+        # PyArrow format: same!
+        pyarrow_filters = filters if filters else None
 
-        if query:
-            df = df.query(query)
+        # Read with predicate pushdown (filters) - much faster than loading all data
+        # Note: Column selection deferred to caller (query cache needs all columns)
+        df = pd.read_parquet(
+            bulk_path,
+            filters=pyarrow_filters,
+            engine="pyarrow"
+        )
 
         # Note: Data is already cleaned (cleaned in bulk fetcher before caching)
-        # Column selection deferred to caller's _apply_columns_and_clean()
         return df
 
     @abstractmethod
@@ -419,11 +422,6 @@ class DACSource(Source):
         # Create filters and generate cache key
         filters = self._get_read_filters(additional_filters=additional_filters)
         param_hash = generate_param_hash(filters if filters else [])
-
-        # If caching is disabled, clear caches
-        if not memory().store_backend:
-            self.query_cache.clear()
-            self.memory_cache.clear()
 
         # 1. Try memory cache (thread-safe, fastest)
         df = self.memory_cache.get(param_hash)
@@ -808,11 +806,6 @@ class AidDataData(AidDataSource):
         filters = self._get_read_filters(additional_filters=additional_filters)
         param_hash = generate_param_hash(filters if filters else [])
 
-        # If caching is disabled, clear caches
-        if not memory().store_backend:
-            self.query_cache.clear()
-            self.memory_cache.clear()
-
         # 1. Try memory cache
         df = self.memory_cache.get(param_hash)
         if df is not None:
@@ -842,12 +835,18 @@ class AidDataData(AidDataSource):
         )
 
         bulk_path = self.bulk_cache.ensure(entry, refresh=False)
-        query = _filters_to_query(filters) if filters else None
+
+        # Use PyArrow predicate pushdown for efficient filtering
+        logger.info(f"Reading from bulk cache: {bulk_path}")
+        pyarrow_filters = filters if filters else None
 
         # Bulk parquet already contains cleaned data (cleaned in fetcher)
-        df = pd.read_parquet(bulk_path)
-        if query:
-            df = df.query(query)
+        # Use predicate pushdown for efficiency
+        df = pd.read_parquet(
+            bulk_path,
+            filters=pyarrow_filters,
+            engine="pyarrow"
+        )
 
         # 4. Cache the result (cleaned, filtered data; columns NOT yet selected)
         self.query_cache.save(self.__class__.__name__, param_hash, df)
