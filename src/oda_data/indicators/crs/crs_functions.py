@@ -35,7 +35,7 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
     data = pd.DataFrame()
     cols = [c for c in df.columns if c not in [ODASchema.YEAR] + values]
 
-    for y in range(df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + 1, -1):
+    for y in range(df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() - 1, -1):
         years = [y - i for i in range(period_length)]
         _ = (
             df.copy(deep=True)
