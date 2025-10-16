@@ -5,6 +5,8 @@
 # The ODA Data Package
 This is a Python package designed for accessing, processing, and analyzing Official Development Assistance (ODA) data from OECD DAC. With an intuitive API, it simplifies common tasks like retrieving ODA indicators, converting currencies, filtering data, and handling bulk downloads.
 
+**Current Version: 2.3.0**
+
 **Note: This is the new version of the package (V2). This release includes many breaking changes and previous workflows
 will not work. The previous 1.5.x version remains available on PyPI and we will continue to support it at least until
 August 2025.**
@@ -28,7 +30,7 @@ The latest version of the package can be installed using pip:
 pip install oda-data --upgrade
 ```
 
-The package is compatible with Python 3.10 and above.
+The package is compatible with Python 3.11 and above.
 
 ## Basic usage
 
@@ -105,7 +107,7 @@ data = client.get_indicators(research_indicators)
 
 ### OECDClient
 
-Over three thousand indicators are currently supported. They are mostly produced by filtering (and sometimes aggregating) data from the different DAC Tables and databases.
+Thousands of indicators are currently supported across DAC1, DAC2A, and CRS databases. These indicators are produced by filtering and sometimes aggregating data from the different DAC Tables and databases.
 
 You can get a dictionary with all supported indicators, with their code, name, description and source by using the `.available_indicators()` method:
 
@@ -149,6 +151,38 @@ from oda_data import OECDClient
 
 currencies = OECDClient.available_currencies()
 ```
+
+### Measures
+
+Different measures are available depending on the data source. Here's what each source supports:
+
+**DAC1 Measures:**
+- `commitment` - Total commitments
+- `commitment_grant` - Grant commitments only
+- `commitment_non_grant` - Non-grant commitments
+- `grant_equivalent` - Grant equivalent values
+- `net_disbursement` - Net disbursements (default)
+- `net_disbursement_grant` - Net grant disbursements
+- `gross_disbursement` - Gross disbursements
+- `gross_disbursement_non_grant` - Gross non-grant disbursements
+- `received` - Amounts received
+
+**DAC2A Measures:**
+- `net_disbursement` - Net disbursements (default)
+- `gross_disbursement` - Gross disbursements
+
+**CRS Measures:**
+- `commitment` - Commitment amounts
+- `grant_equivalent` - Grant equivalent values
+- `gross_disbursement` - Gross disbursement amounts
+- `received` - Amounts received
+- `expert_commitment` - Expert commitments
+- `expert_extended` - Expert extended
+- `export_credit` - Export credits
+
+**MultiSystem Measures:**
+- `commitment` - Commitments
+- `gross_disbursement` - Gross disbursements
 
 ## Accessing the data
 For more advanced users, you can use this package to get and work with different tables and databases from the OECD DAC.
@@ -309,9 +343,164 @@ You can refer to the examples above for DAC1 and DAC2a to understand the usage o
 unless you're looking for something very specific.
 
 
+## Utility Functions
+
+The package provides several utility functions to enhance and enrich your ODA data analysis:
+
+### Adding Human-Readable Names
+
+Convert code columns to human-readable names:
+
+```python
+from oda_data import OECDClient, add_names_columns
+
+# Get indicator data
+client = OECDClient(years=range(2020, 2023))
+data = client.get_indicators("DAC2A.10.1010")
+
+# Add human-readable names for code columns
+data = add_names_columns(data, ["recipient_code", "provider_code"])
+```
+
+### Adding GNI Share
+
+Calculate ODA as a percentage of Gross National Income:
+
+```python
+from oda_data import OECDClient, add_gni_share_column
+
+# Create client with specific configuration
+client = OECDClient(
+    years=range(2018, 2023),
+    providers=[4, 302],  # France and USA
+    currency="USD",
+    base_year=2021
+)
+
+# Get data with GNI share column
+data = add_gni_share_column(client, "DAC1.10.1010")
+# Returns dataframe with 'gni_share_pct' column
+```
+
+### Sector Classification
+
+Add sector classifications to your data:
+
+```python
+from oda_data import add_sectors, add_broad_sectors
+
+# Add detailed sector information
+data = add_sectors(data)
+
+# Or add broad sector categories
+data = add_broad_sectors(data)
+```
+
+### Provider and Recipient Groupings
+
+Access predefined groupings of providers and recipients:
+
+```python
+from oda_data import provider_groupings, recipient_groupings
+
+# Get all provider groupings (DAC members, EU27, etc.)
+providers = provider_groupings()
+
+# Get all recipient groupings (LDCs, regions, income groups, etc.)
+recipients = recipient_groupings()
+
+# Example: Get all DAC members
+dac_members = providers["dac_members"]
+```
+
+### Cache Management
+
+Control the package's caching behavior:
+
+```python
+from oda_data import clear_cache, disable_cache, enable_cache
+
+# Clear all cached data
+clear_cache()
+
+# Temporarily disable caching (for development/testing)
+disable_cache()
+
+# Re-enable caching
+enable_cache()
+```
+
+### Compatibility with Version 1.x
+
+For users migrating from v1.x, a compatibility layer is available:
+
+```python
+from oda_data import ODAData
+
+# Use the v1.x style interface
+oda = ODAData(years=range(2018, 2022), donors=[4, 302])
+data = oda.load_indicator("total_oda_flow_net")
+```
+
+## Advanced Features
+
+### Policy Marker Analysis
+
+Extract bilateral ODA by policy marker (gender, climate, etc.):
+
+```python
+from oda_data import bilateral_policy_marker
+
+# Get gender-focused ODA (principal objective)
+gender_data = bilateral_policy_marker(
+    years=range(2015, 2023),
+    providers=[4, 302],
+    marker="gender",
+    marker_score="principal",
+    measure="gross_disbursement",
+    currency="USD",
+    base_year=2021
+)
+
+# Available markers: "gender", "environment", "nutrition", "disability", "biodiversity"
+# Available scores: "significant", "principal", "not_targeted", "not_screened",
+#                   "total_targeted", "total_allocable"
+```
+
+### Sector Imputations
+
+Access sector imputation functions for multilateral aid analysis:
+
+```python
+from oda_data.indicators.research import sector_imputations
+
+# Use specialized sector imputation functions
+# (See module documentation for available functions)
+```
+
+### AidData Integration
+
+Access project-level data from AidData's dataset:
+
+```python
+from oda_data import AidDataData, set_data_path
+
+set_data_path("path/to/data/folder")
+
+# Initialize AidData source
+aiddata = AidDataData(
+    years=range(2010, 2020),
+    recipients=["Kenya", "Tanzania"],
+    sectors=[110, 120]  # Sector codes
+)
+
+# Read the data (automatically uses bulk download)
+data = aiddata.read()
+```
+
 ## Key features
 
-- **Speed up analysis** - The package handles downloading, cleaning and loading all the data, so you can focus on the 
+- **Speed up analysis** - The package handles downloading, cleaning and loading all the data, so you can focus on the
 analysis.
 - **Get data in the currency and prices you need** - ODA data is only available in US dollars (current or constant 
 prices) and local currency units (current prices). The package allows you to view the data in US dollars, Euros,
