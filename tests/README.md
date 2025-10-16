@@ -319,4 +319,3 @@ pytest -m "not slow"
 ---
 
 **Last Updated**: 2025-10-16
-**Maintained By**: ODA Data Package Team
