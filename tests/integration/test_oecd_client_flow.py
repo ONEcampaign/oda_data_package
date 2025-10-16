@@ -6,13 +6,12 @@ from initialization through indicator retrieval with all processing steps,
 using mocked external dependencies.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from oda_data.api.oecd import OECDClient
-
 
 # ============================================================================
 # Integration Tests - Complete Workflows
@@ -27,11 +26,7 @@ class TestOECDClientFullWorkflow:
     @patch("oda_data.api.oecd.READERS")
     @patch("oda_data.clean_data.common.dac_exchange")
     def test_full_workflow_single_dac1_indicator(
-        self,
-        mock_exchange,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac1_df
+        self, mock_exchange, mock_readers, mock_load_indicators, sample_dac1_df
     ):
         """Test complete workflow for retrieving a single DAC1 indicator.
 
@@ -47,10 +42,8 @@ class TestOECDClientFullWorkflow:
         mock_load_indicators.return_value = {
             "DAC1.TEST": {
                 "sources": ["DAC1"],
-                "filters": {
-                    "DAC1": {"flowtype_code": ["in", [10]]}
-                },
-                "custom_function": ""
+                "filters": {"DAC1": {"flowtype_code": ["in", [10]]}},
+                "custom_function": "",
             }
         }
 
@@ -73,10 +66,7 @@ class TestOECDClientFullWorkflow:
 
         # Create client and get indicator
         client = OECDClient(
-            years=[2020, 2021],
-            providers=[1, 2],
-            currency="EUR",
-            base_year=None
+            years=[2020, 2021], providers=[1, 2], currency="EUR", base_year=None
         )
 
         result = client.get_indicators("DAC1.TEST")
@@ -101,11 +91,7 @@ class TestOECDClientFullWorkflow:
     @patch("oda_data.api.oecd.READERS")
     @patch("oda_data.clean_data.common.dac_deflate")
     def test_full_workflow_with_base_year_deflation(
-        self,
-        mock_deflate,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac2a_df
+        self, mock_deflate, mock_readers, mock_load_indicators, sample_dac2a_df
     ):
         """Test complete workflow with constant price conversion.
 
@@ -115,7 +101,7 @@ class TestOECDClientFullWorkflow:
             "DAC2A.TEST": {
                 "sources": ["DAC2A"],
                 "filters": {"DAC2A": {}},
-                "custom_function": ""
+                "custom_function": "",
             }
         }
 
@@ -143,7 +129,7 @@ class TestOECDClientFullWorkflow:
             providers=[1],
             recipients=[100],
             currency="USD",
-            base_year=2020
+            base_year=2020,
         )
 
         result = client.get_indicators("DAC2A.TEST")
@@ -156,11 +142,7 @@ class TestOECDClientFullWorkflow:
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
     def test_full_workflow_multiple_indicators_from_different_sources(
-        self,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac1_df,
-        sample_dac2a_df
+        self, mock_readers, mock_load_indicators, sample_dac1_df, sample_dac2a_df
     ):
         """Test workflow with multiple indicators from different data sources.
 
@@ -171,13 +153,13 @@ class TestOECDClientFullWorkflow:
             "DAC1.IND": {
                 "sources": ["DAC1"],
                 "filters": {"DAC1": {}},
-                "custom_function": ""
+                "custom_function": "",
             },
             "DAC2A.IND": {
                 "sources": ["DAC2A"],
                 "filters": {"DAC2A": {}},
-                "custom_function": ""
-            }
+                "custom_function": "",
+            },
         }
 
         # Mock both readers - need to return reader class that when instantiated gives instance
@@ -214,11 +196,7 @@ class TestOECDClientFullWorkflow:
     @patch("oda_data.api.oecd.READERS")
     @patch("oda_data.indicators.dac1.dac1_functions.official_oda")
     def test_full_workflow_with_custom_function(
-        self,
-        mock_custom_function,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac1_df
+        self, mock_custom_function, mock_readers, mock_load_indicators, sample_dac1_df
     ):
         """Test workflow that includes custom processing function.
 
@@ -229,7 +207,7 @@ class TestOECDClientFullWorkflow:
             "DAC1.ODA": {
                 "sources": ["DAC1"],
                 "filters": {"DAC1": {}},
-                "custom_function": "official_oda"
+                "custom_function": "official_oda",
             }
         }
 
@@ -270,10 +248,7 @@ class TestOECDClientErrorHandling:
     def test_invalid_indicator_code_raises_error(self, mock_load_indicators):
         """Test that requesting non-existent indicator raises appropriate error."""
         mock_load_indicators.return_value = {
-            "VALID.INDICATOR": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "VALID.INDICATOR": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         client = OECDClient()
@@ -284,17 +259,10 @@ class TestOECDClientErrorHandling:
 
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
-    def test_reader_failure_propagates_error(
-        self,
-        mock_readers,
-        mock_load_indicators
-    ):
+    def test_reader_failure_propagates_error(self, mock_readers, mock_load_indicators):
         """Test that errors from data readers propagate correctly."""
         mock_load_indicators.return_value = {
-            "TEST.IND": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.IND": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         # Mock reader that raises an error
@@ -324,17 +292,14 @@ class TestOECDClientDataFiltering:
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
     def test_year_filtering_applied_to_reader(
-        self,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac1_df
+        self, mock_readers, mock_load_indicators, sample_dac1_df
     ):
         """Test that year filters are correctly passed to data readers."""
         mock_load_indicators.return_value = {
             "TEST": {
                 "sources": ["DAC1"],
                 "filters": {"DAC1": {}},
-                "custom_function": ""
+                "custom_function": "",
             }
         }
 
@@ -361,17 +326,14 @@ class TestOECDClientDataFiltering:
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
     def test_provider_filtering_applied_to_reader(
-        self,
-        mock_readers,
-        mock_load_indicators,
-        sample_dac1_df
+        self, mock_readers, mock_load_indicators, sample_dac1_df
     ):
         """Test that provider filters are correctly passed to data readers."""
         mock_load_indicators.return_value = {
             "TEST": {
                 "sources": ["DAC1"],
                 "filters": {"DAC1": {}},
-                "custom_function": ""
+                "custom_function": "",
             }
         }
 

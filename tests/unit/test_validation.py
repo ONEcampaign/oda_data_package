@@ -19,7 +19,6 @@ from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
 )
 
-
 # ============================================================================
 # Tests for check_integers
 # ============================================================================
@@ -142,7 +141,9 @@ class TestValidateCurrency:
         self, invalid_currency: str
     ):
         """Test that invalid currencies raise a ValueError."""
-        with pytest.raises(ValueError, match=f"Currency {invalid_currency} is not supported"):
+        with pytest.raises(
+            ValueError, match=f"Currency {invalid_currency} is not supported"
+        ):
             validate_currency(invalid_currency)
 
     def test_validate_currency_case_sensitive(self):
@@ -252,9 +253,7 @@ class TestValidateYearsProvidersRecipients:
     def test_validate_years_providers_recipients_with_valid_inputs(self):
         """Test that all parameters are validated and converted correctly."""
         years, providers, recipients = validate_years_providers_recipients(
-            years=[2020, 2021],
-            providers=[1, 2],
-            recipients=[100, 200]
+            years=[2020, 2021], providers=[1, 2], recipients=[100, 200]
         )
 
         assert years == [2020, 2021]
@@ -267,9 +266,7 @@ class TestValidateYearsProvidersRecipients:
     def test_validate_years_providers_recipients_with_range(self):
         """Test that range objects are converted correctly."""
         years, providers, recipients = validate_years_providers_recipients(
-            years=range(2020, 2023),
-            providers=range(1, 3),
-            recipients=[100]
+            years=range(2020, 2023), providers=range(1, 3), recipients=[100]
         )
 
         assert years == [2020, 2021, 2022]
@@ -279,9 +276,7 @@ class TestValidateYearsProvidersRecipients:
     def test_validate_years_providers_recipients_with_single_values(self):
         """Test that single values are converted to lists."""
         years, providers, recipients = validate_years_providers_recipients(
-            years=2020,
-            providers=1,
-            recipients=100
+            years=2020, providers=1, recipients=100
         )
 
         assert years == [2020]
@@ -291,9 +286,7 @@ class TestValidateYearsProvidersRecipients:
     def test_validate_years_providers_recipients_with_none_recipients(self):
         """Test that None recipients is handled correctly."""
         years, providers, recipients = validate_years_providers_recipients(
-            years=2020,
-            providers=1,
-            recipients=None
+            years=2020, providers=1, recipients=None
         )
 
         assert years == [2020]
@@ -317,7 +310,7 @@ class TestValidateInputParameters:
             currency="USD",
             measure="net_disbursement",
             prices="current",
-            base_year=None
+            base_year=None,
         )
 
         assert providers == ["1", "2"]  # Converted to strings
@@ -332,7 +325,7 @@ class TestValidateInputParameters:
             currency="EUR",
             measure=["net_disbursement", "commitment"],
             prices="constant",
-            base_year=2020
+            base_year=2020,
         )
 
         assert providers == ["1"]
@@ -348,7 +341,7 @@ class TestValidateInputParameters:
                 currency="JPY",
                 measure="net_disbursement",
                 prices="current",
-                base_year=None
+                base_year=None,
             )
 
     def test_validate_input_parameters_with_none_providers(self):
@@ -359,7 +352,7 @@ class TestValidateInputParameters:
             currency="USD",
             measure="commitment",
             prices="current",
-            base_year=None
+            base_year=None,
         )
 
         assert providers is None
@@ -395,7 +388,7 @@ class TestValidationEdgeCases:
         # Based on the function logic, a None will be put in a list
         # However, looking at the code, it just returns [None]
         # This tests current behavior - may need adjustment
-        result = validate_measure(None)
+        validate_measure(None)
         # The function doesn't handle None explicitly, so this will fail
         # Documenting expected behavior for discussion
         pass

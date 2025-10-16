@@ -12,7 +12,7 @@ def load_json_file(file_path: Path) -> dict:
     Returns:
         dict: Parsed content of the JSON file.
     """
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         return json.load(file)
 
 
@@ -25,10 +25,7 @@ def update_mapping_file(new_data: dict, file_path: Path) -> None:
         file_path (Path): Path to the JSON file.
     """
 
-    if file_path.exists():
-        existing_file = load_json_file(file_path)
-    else:
-        existing_file = {}
+    existing_file = load_json_file(file_path) if file_path.exists() else {}
 
     data = existing_file | new_data
 

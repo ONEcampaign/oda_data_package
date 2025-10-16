@@ -5,13 +5,11 @@ This module provides reusable fixtures for testing the oda-data package,
 including sample DataFrames, mock objects, and test utilities.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock
-
 
 # ============================================================================
 # Sample DataFrame Fixtures
@@ -31,17 +29,33 @@ def sample_dac1_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Sample DAC1 data
     """
-    return pd.DataFrame({
-        "year": [2019, 2019, 2020, 2020, 2021, 2021],
-        "donor_code": [1, 2, 1, 2, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
-        "provider_name": ["Donor A", "Donor B", "Donor A", "Donor B", "Donor A", "Donor B"],
-        "aidtype_code": [1010, 1010, 1010, 1010, 11010, 11010],
-        "aidtype_name": ["ODA", "ODA", "ODA", "ODA", "ODA GE", "ODA GE"],
-        "flow_type_code": [10, 10, 10, 10, 10, 10],
-        "value": [1000.0, 2000.0, 1500.0, 2500.0, 1800.0, 2800.0],
-        "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
-        "prices": ["current", "current", "current", "current", "current", "current"],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2019, 2019, 2020, 2020, 2021, 2021],
+            "donor_code": [1, 2, 1, 2, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
+            "provider_name": [
+                "Donor A",
+                "Donor B",
+                "Donor A",
+                "Donor B",
+                "Donor A",
+                "Donor B",
+            ],
+            "aidtype_code": [1010, 1010, 1010, 1010, 11010, 11010],
+            "aidtype_name": ["ODA", "ODA", "ODA", "ODA", "ODA GE", "ODA GE"],
+            "flow_type_code": [10, 10, 10, 10, 10, 10],
+            "value": [1000.0, 2000.0, 1500.0, 2500.0, 1800.0, 2800.0],
+            "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
+            "prices": [
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+            ],
+        }
+    )
 
 
 @pytest.fixture
@@ -57,18 +71,41 @@ def sample_dac2a_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Sample DAC2A data
     """
-    return pd.DataFrame({
-        "year": [2020, 2020, 2020, 2021, 2021, 2021],
-        "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
-        "provider_name": ["Donor A", "Donor A", "Donor B", "Donor A", "Donor A", "Donor B"],
-        "recipient_code": [100, 200, 100, 100, 200, 100],
-        "recipient_name": ["Country X", "Country Y", "Country X", "Country X", "Country Y", "Country X"],
-        "aidtype_code": [1010, 1010, 1010, 11010, 11010, 11010],
-        "aidtype_name": ["ODA", "ODA", "ODA", "ODA GE", "ODA GE", "ODA GE"],
-        "value": [500.0, 750.0, 600.0, 550.0, 800.0, 650.0],
-        "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
-        "prices": ["current", "current", "current", "current", "current", "current"],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2020, 2020, 2020, 2021, 2021, 2021],
+            "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
+            "provider_name": [
+                "Donor A",
+                "Donor A",
+                "Donor B",
+                "Donor A",
+                "Donor A",
+                "Donor B",
+            ],
+            "recipient_code": [100, 200, 100, 100, 200, 100],
+            "recipient_name": [
+                "Country X",
+                "Country Y",
+                "Country X",
+                "Country X",
+                "Country Y",
+                "Country X",
+            ],
+            "aidtype_code": [1010, 1010, 1010, 11010, 11010, 11010],
+            "aidtype_name": ["ODA", "ODA", "ODA", "ODA GE", "ODA GE", "ODA GE"],
+            "value": [500.0, 750.0, 600.0, 550.0, 800.0, 650.0],
+            "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
+            "prices": [
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+            ],
+        }
+    )
 
 
 @pytest.fixture
@@ -84,23 +121,60 @@ def sample_crs_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Sample CRS data
     """
-    return pd.DataFrame({
-        "year": [2020, 2020, 2020, 2021, 2021, 2021],
-        "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
-        "provider_name": ["Donor A", "Donor A", "Donor B", "Donor A", "Donor A", "Donor B"],
-        "recipient_code": [100, 100, 200, 100, 100, 200],
-        "recipient_name": ["Country X", "Country X", "Country Y", "Country X", "Country X", "Country Y"],
-        "sector_code": [110, 120, 110, 110, 130, 120],
-        "sector_name": ["Education", "Health", "Education", "Education", "Population", "Health"],
-        "purpose_code": [11220, 12110, 11220, 11220, 13010, 12110],
-        "purpose_name": ["Primary education", "Health policy", "Primary education", "Primary education", "Population policy", "Health policy"],
-        "flow_type_code": [10, 10, 10, 10, 10, 10],
-        "commitment_current": [100.0, 150.0, 120.0, 110.0, 160.0, 130.0],
-        "disbursement_current": [80.0, 120.0, 100.0, 90.0, 140.0, 110.0],
-        "grant_equivalent": [75.0, 115.0, 95.0, 85.0, 135.0, 105.0],
-        "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
-        "prices": ["current", "current", "current", "current", "current", "current"],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2020, 2020, 2020, 2021, 2021, 2021],
+            "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
+            "provider_name": [
+                "Donor A",
+                "Donor A",
+                "Donor B",
+                "Donor A",
+                "Donor A",
+                "Donor B",
+            ],
+            "recipient_code": [100, 100, 200, 100, 100, 200],
+            "recipient_name": [
+                "Country X",
+                "Country X",
+                "Country Y",
+                "Country X",
+                "Country X",
+                "Country Y",
+            ],
+            "sector_code": [110, 120, 110, 110, 130, 120],
+            "sector_name": [
+                "Education",
+                "Health",
+                "Education",
+                "Education",
+                "Population",
+                "Health",
+            ],
+            "purpose_code": [11220, 12110, 11220, 11220, 13010, 12110],
+            "purpose_name": [
+                "Primary education",
+                "Health policy",
+                "Primary education",
+                "Primary education",
+                "Population policy",
+                "Health policy",
+            ],
+            "flow_type_code": [10, 10, 10, 10, 10, 10],
+            "commitment_current": [100.0, 150.0, 120.0, 110.0, 160.0, 130.0],
+            "disbursement_current": [80.0, 120.0, 100.0, 90.0, 140.0, 110.0],
+            "grant_equivalent": [75.0, 115.0, 95.0, 85.0, 135.0, 105.0],
+            "currency": ["USD", "USD", "USD", "USD", "USD", "USD"],
+            "prices": [
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+                "current",
+            ],
+        }
+    )
 
 
 @pytest.fixture
@@ -115,14 +189,16 @@ def sample_multisystem_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Sample MultiSystem data
     """
-    return pd.DataFrame({
-        "Year": [2020, 2020, 2021, 2021],  # Note: PascalCase for MultiSystem
-        "ProviderCode": [1, 2, 1, 2],
-        "ProviderName": ["Donor A", "Donor B", "Donor A", "Donor B"],
-        "ChannelCode": [1000, 1000, 1000, 1000],
-        "ChannelName": ["World Bank", "World Bank", "World Bank", "World Bank"],
-        "Amount": [5000.0, 7000.0, 5500.0, 7500.0],
-    })
+    return pd.DataFrame(
+        {
+            "Year": [2020, 2020, 2021, 2021],  # Note: PascalCase for MultiSystem
+            "ProviderCode": [1, 2, 1, 2],
+            "ProviderName": ["Donor A", "Donor B", "Donor A", "Donor B"],
+            "ChannelCode": [1000, 1000, 1000, 1000],
+            "ChannelName": ["World Bank", "World Bank", "World Bank", "World Bank"],
+            "Amount": [5000.0, 7000.0, 5500.0, 7500.0],
+        }
+    )
 
 
 @pytest.fixture
@@ -132,12 +208,14 @@ def sample_gni_df() -> pd.DataFrame:
     Returns:
         pd.DataFrame: Sample GNI data
     """
-    return pd.DataFrame({
-        "year": [2019, 2020, 2021],
-        "provider_code": [1, 1, 1],
-        "aidtype_code": [1, 1, 1],  # GNI code
-        "value": [1_000_000.0, 1_100_000.0, 1_200_000.0],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2019, 2020, 2021],
+            "provider_code": [1, 1, 1],
+            "aidtype_code": [1, 1, 1],  # GNI code
+            "value": [1_000_000.0, 1_100_000.0, 1_200_000.0],
+        }
+    )
 
 
 # ============================================================================
@@ -194,7 +272,9 @@ def mock_oda_reader(mocker):
     """
     return {
         "bulk_download_crs": mocker.patch("oda_reader.bulk_download_crs"),
-        "bulk_download_multisystem": mocker.patch("oda_reader.bulk_download_multisystem"),
+        "bulk_download_multisystem": mocker.patch(
+            "oda_reader.bulk_download_multisystem"
+        ),
         "download_aiddata": mocker.patch("oda_reader.download_aiddata"),
     }
 
@@ -211,6 +291,7 @@ def mock_pydeflate(mocker):
     Returns:
         dict: Dictionary of mocked functions
     """
+
     # Mock exchange - returns data with currency column added
     def mock_exchange(data, **kwargs):
         df = data.copy()
@@ -226,16 +307,12 @@ def mock_pydeflate(mocker):
 
     return {
         "exchange": mocker.patch(
-            "oda_data.clean_data.common.dac_exchange",
-            side_effect=mock_exchange
+            "oda_data.clean_data.common.dac_exchange", side_effect=mock_exchange
         ),
         "deflate": mocker.patch(
-            "oda_data.clean_data.common.dac_deflate",
-            side_effect=mock_deflate
+            "oda_data.clean_data.common.dac_deflate", side_effect=mock_deflate
         ),
-        "set_path": mocker.patch(
-            "oda_data.clean_data.common.set_pydeflate_path"
-        ),
+        "set_path": mocker.patch("oda_data.clean_data.common.set_pydeflate_path"),
     }
 
 
@@ -256,13 +333,16 @@ def mock_bulk_fetcher(tmp_path: Path) -> Callable[[Path], None]:
     Returns:
         Callable: Mock fetcher function
     """
+
     def fetcher(target_path: Path):
         """Mock fetcher that creates a simple parquet file."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "provider_code": [1, 2],
-            "value": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "provider_code": [1, 2],
+                "value": [1000.0, 2000.0],
+            }
+        )
         df.to_parquet(target_path, engine="pyarrow")
 
     return fetcher
@@ -345,9 +425,5 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")

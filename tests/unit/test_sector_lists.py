@@ -18,7 +18,6 @@ from oda_data.tools.sector_lists import (
     get_sector_groups,
 )
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -27,21 +26,23 @@ from oda_data.tools.sector_lists import (
 @pytest.fixture
 def sample_sector_data():
     """Sample data with purpose codes for testing sector assignment."""
-    return pd.DataFrame({
-        "year": [2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020],
-        "donor_code": [1, 1, 1, 1, 1, 1, 1, 1],
-        "purpose_code": [
-            11220,  # Education - basic education (11200-11299)
-            12220,  # Health - basic health (12200-12299)
-            14010,  # Water supply
-            23210,  # Energy - renewable (232xx)
-            31110,  # Agriculture
-            72010,  # Emergency response
-            99810,  # Unspecified
-            15110,  # Public sector policy
-        ],
-        ODASchema.VALUE: [100.0, 200.0, 150.0, 300.0, 250.0, 400.0, 50.0, 180.0],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2020, 2020, 2020, 2020, 2020, 2020, 2020, 2020],
+            "donor_code": [1, 1, 1, 1, 1, 1, 1, 1],
+            "purpose_code": [
+                11220,  # Education - basic education (11200-11299)
+                12220,  # Health - basic health (12200-12299)
+                14010,  # Water supply
+                23210,  # Energy - renewable (232xx)
+                31110,  # Agriculture
+                72010,  # Emergency response
+                99810,  # Unspecified
+                15110,  # Public sector policy
+            ],
+            ODASchema.VALUE: [100.0, 200.0, 150.0, 300.0, 250.0, 400.0, 50.0, 180.0],
+        }
+    )
 
 
 # ============================================================================
@@ -193,15 +194,11 @@ class TestAddSectors:
 
         # Check specific mappings
         # 11220 should be in Basic Education
-        basic_edu_row = result[
-            result[ODASchema.PURPOSE_NAME] == "Basic Education"
-        ]
+        basic_edu_row = result[result[ODASchema.PURPOSE_NAME] == "Basic Education"]
         assert len(basic_edu_row) > 0
 
         # 12220 should be in Basic Health
-        basic_health_row = result[
-            result[ODASchema.PURPOSE_NAME] == "Basic Health"
-        ]
+        basic_health_row = result[result[ODASchema.PURPOSE_NAME] == "Basic Health"]
         assert len(basic_health_row) > 0
 
     def test_add_sectors_removes_purpose_code_column(self, sample_sector_data):
@@ -215,12 +212,14 @@ class TestAddSectors:
         # Add duplicate sector to test summing
         data = sample_sector_data.copy()
         # Add another basic education entry
-        new_row = pd.DataFrame({
-            "year": [2020],
-            "donor_code": [1],
-            "purpose_code": [11230],  # Another basic education code
-            ODASchema.VALUE: [50.0],
-        })
+        new_row = pd.DataFrame(
+            {
+                "year": [2020],
+                "donor_code": [1],
+                "purpose_code": [11230],  # Another basic education code
+                ODASchema.VALUE: [50.0],
+            }
+        )
         data = pd.concat([data, new_row], ignore_index=True)
 
         result = add_sectors(data)
@@ -240,12 +239,14 @@ class TestAddSectors:
 
     def test_add_sectors_filters_zero_values(self):
         """Test that rows with zero values are filtered out."""
-        data = pd.DataFrame({
-            "year": [2020],
-            "donor_code": [1],
-            "purpose_code": [11220],
-            ODASchema.VALUE: [0.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020],
+                "donor_code": [1],
+                "purpose_code": [11220],
+                ODASchema.VALUE: [0.0],
+            }
+        )
 
         result = add_sectors(data)
 
@@ -254,13 +255,20 @@ class TestAddSectors:
 
     def test_add_sectors_groups_by_all_dimensions(self):
         """Test that grouping preserves all non-value dimensions."""
-        data = pd.DataFrame({
-            "year": [2020, 2020, 2021, 2021],
-            "donor_code": [1, 1, 1, 1],
-            "recipient_code": [100, 100, 100, 100],
-            "purpose_code": [11220, 11230, 11220, 11230],  # Same sector (Basic Education)
-            ODASchema.VALUE: [100.0, 50.0, 200.0, 75.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020, 2020, 2021, 2021],
+                "donor_code": [1, 1, 1, 1],
+                "recipient_code": [100, 100, 100, 100],
+                "purpose_code": [
+                    11220,
+                    11230,
+                    11220,
+                    11230,
+                ],  # Same sector (Basic Education)
+                ODASchema.VALUE: [100.0, 50.0, 200.0, 75.0],
+            }
+        )
 
         result = add_sectors(data)
 
@@ -297,12 +305,14 @@ class TestAddBroadSectors:
     def test_add_broad_sectors_aggregates_education(self, sample_sector_data):
         """Test that all education sub-sectors are aggregated to 'Education'."""
         # Create data with multiple education codes
-        data = pd.DataFrame({
-            "year": [2020, 2020, 2020],
-            "donor_code": [1, 1, 1],
-            "purpose_code": [11110, 11220, 11320],  # Basic, secondary, post-sec
-            ODASchema.VALUE: [100.0, 150.0, 200.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020, 2020, 2020],
+                "donor_code": [1, 1, 1],
+                "purpose_code": [11110, 11220, 11320],  # Basic, secondary, post-sec
+                ODASchema.VALUE: [100.0, 150.0, 200.0],
+            }
+        )
 
         result = add_broad_sectors(data)
 
@@ -314,12 +324,14 @@ class TestAddBroadSectors:
 
     def test_add_broad_sectors_aggregates_health(self):
         """Test that all health sub-sectors are aggregated to 'Health'."""
-        data = pd.DataFrame({
-            "year": [2020, 2020, 2020],
-            "donor_code": [1, 1, 1],
-            "purpose_code": [12110, 12220, 12261],  # Basic health, general, NCDs
-            ODASchema.VALUE: [100.0, 150.0, 200.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020, 2020, 2020],
+                "donor_code": [1, 1, 1],
+                "purpose_code": [12110, 12220, 12261],  # Basic health, general, NCDs
+                ODASchema.VALUE: [100.0, 150.0, 200.0],
+            }
+        )
 
         result = add_broad_sectors(data)
 
@@ -356,12 +368,14 @@ class TestSectorEdgeCases:
 
     def test_add_sectors_with_unmapped_purpose_code(self):
         """Test handling of purpose codes not in any sector list."""
-        data = pd.DataFrame({
-            "year": [2020],
-            "donor_code": [1],
-            "purpose_code": [99999],  # Non-existent code
-            ODASchema.VALUE: [100.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020],
+                "donor_code": [1],
+                "purpose_code": [99999],  # Non-existent code
+                ODASchema.VALUE: [100.0],
+            }
+        )
 
         result = add_sectors(data)
 
@@ -371,13 +385,15 @@ class TestSectorEdgeCases:
 
     def test_add_sectors_with_multiple_years_donors_recipients(self):
         """Test complex grouping with multiple dimensions."""
-        data = pd.DataFrame({
-            "year": [2020, 2020, 2021, 2021],
-            "donor_code": [1, 2, 1, 2],
-            "recipient_code": [100, 100, 200, 200],
-            "purpose_code": [11220, 11220, 11220, 11220],  # All basic education
-            ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020, 2020, 2021, 2021],
+                "donor_code": [1, 2, 1, 2],
+                "recipient_code": [100, 100, 200, 200],
+                "purpose_code": [11220, 11220, 11220, 11220],  # All basic education
+                ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0],
+            }
+        )
 
         result = add_sectors(data)
 
@@ -390,23 +406,25 @@ class TestSectorEdgeCases:
     def test_add_broad_sectors_comprehensive_aggregation(self):
         """Test that broad sector aggregation works across many sector types."""
         # Create data spanning multiple broad categories
-        data = pd.DataFrame({
-            "year": [2020] * 10,
-            "donor_code": [1] * 10,
-            "purpose_code": [
-                11220,  # Education - basic
-                11320,  # Education - secondary
-                12220,  # Health - basic
-                13010,  # Health (population)
-                14010,  # Water
-                23210,  # Energy - renewable
-                23310,  # Energy - non-renewable
-                31110,  # Agriculture
-                72010,  # Humanitarian
-                99810,  # Unspecified
-            ],
-            ODASchema.VALUE: [100.0] * 10,
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020] * 10,
+                "donor_code": [1] * 10,
+                "purpose_code": [
+                    11220,  # Education - basic
+                    11320,  # Education - secondary
+                    12220,  # Health - basic
+                    13010,  # Health (population)
+                    14010,  # Water
+                    23210,  # Energy - renewable
+                    23310,  # Energy - non-renewable
+                    31110,  # Agriculture
+                    72010,  # Humanitarian
+                    99810,  # Unspecified
+                ],
+                ODASchema.VALUE: [100.0] * 10,
+            }
+        )
 
         result = add_broad_sectors(data)
 

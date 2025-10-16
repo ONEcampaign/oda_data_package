@@ -220,12 +220,16 @@ def _apply_fuzzy_match(
 
     # Apply the fuzzy match for each dictionary and tolerance
     for dictionary, tolerance in mapping_dictionaries:
-        df["fuzzy_mapping"] = df[names_column].apply(
-            _fuzzy_match_name, channels_dict=dictionary, tolerance=tolerance
-        ).astype("Int32")
+        df["fuzzy_mapping"] = (
+            df[names_column]
+            .apply(_fuzzy_match_name, channels_dict=dictionary, tolerance=tolerance)
+            .astype("Int32")
+        )
 
         # Fill in the channel codes where there is a match (using where to avoid downcasting warning)
-        df["channel_code"] = df["channel_code"].where(df["channel_code"].notna(), df["fuzzy_mapping"])
+        df["channel_code"] = df["channel_code"].where(
+            df["channel_code"].notna(), df["fuzzy_mapping"]
+        )
 
     # Drop the fuzzy mapping column and return dataframe
     return df.drop(columns=["fuzzy_mapping"])
@@ -392,13 +396,12 @@ def _regex_map_names_to_codes(
     d_["regex"] = d_["channel_words"].apply(regex_func)
 
     # Return the dictionary. It is sorted by length of the regex
-    return {
-        k: v
-        for k, v in sorted(
+    return dict(
+        sorted(
             d_.set_index("regex")["channel_code"].to_dict().items(),
             key=lambda item: -len(item[0]),
         )
-    }
+    )
 
 
 def regex_to_code_dictionary(
@@ -447,13 +450,12 @@ def regex_to_code_dictionary(
         | ADDITIONAL_PATTERNS
     )
 
-    return {
-        k: v
-        for k, v in sorted(
+    return dict(
+        sorted(
             to_match.items(),
             key=lambda item: -len(item[0]),
         )
-    }
+    )
 
 
 def _regex_match_channel_name_to_code(channel: str, regex_dict: dict):

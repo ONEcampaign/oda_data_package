@@ -12,7 +12,6 @@ import pytest
 
 from oda_data.api.oecd import load_indicators
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -88,9 +87,9 @@ class TestLoadIndicators:
         sample_crs_indicators,
     ):
         """Test that all indicator codes are strings."""
-        mock_config.ODAPaths = type('obj', (object,), {
-            'indicators': Path("/mock/indicators")
-        })()
+        mock_config.ODAPaths = type(
+            "obj", (object,), {"indicators": Path("/mock/indicators")}
+        )()
 
         mock_json_load.side_effect = [
             sample_dac1_indicators,
@@ -101,7 +100,7 @@ class TestLoadIndicators:
         result = load_indicators()
 
         # All keys should be strings
-        assert all(isinstance(key, str) for key in result.keys())
+        assert all(isinstance(key, str) for key in result)
 
 
 # ============================================================================
@@ -123,9 +122,9 @@ class TestIndicatorStructureValidation:
         sample_dac1_indicators,
     ):
         """Test that custom_function field is always a string."""
-        mock_config.ODAPaths = type('obj', (object,), {
-            'indicators': Path("/mock/indicators")
-        })()
+        mock_config.ODAPaths = type(
+            "obj", (object,), {"indicators": Path("/mock/indicators")}
+        )()
 
         mock_json_load.side_effect = [
             sample_dac1_indicators,
@@ -137,6 +136,6 @@ class TestIndicatorStructureValidation:
 
         for indicator_code, indicator_data in result.items():
             if "custom_function" in indicator_data:
-                assert isinstance(indicator_data["custom_function"], str), (
-                    f"Indicator {indicator_code} has non-string custom_function"
-                )
+                assert isinstance(
+                    indicator_data["custom_function"], str
+                ), f"Indicator {indicator_code} has non-string custom_function"

@@ -32,7 +32,7 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
 def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
     """Calculate a rolling total of Y period length"""
     values = list(crs_value_cols().values())
-    cols = [c for c in df.columns if c not in [ODASchema.YEAR] + values]
+    cols = [c for c in df.columns if c not in [ODASchema.YEAR, *values]]
 
     min_year = int(df[ODASchema.YEAR].min())
     max_year = int(df[ODASchema.YEAR].max())
@@ -50,7 +50,7 @@ def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
             df.copy(deep=True)
             .loc[lambda d: d[ODASchema.YEAR].isin(years)]
             .groupby(cols, observed=True, dropna=False)
-            .agg({v: "sum" for v in values} | {ODASchema.YEAR: "max"})
+            .agg(dict.fromkeys(values, "sum") | {ODASchema.YEAR: "max"})
             .assign(**{ODASchema.YEAR: y})
             .reset_index()
         )

@@ -8,16 +8,12 @@ This module tests the 3-tier caching system in oda_data.tools.cache, including:
 - Hash generation utilities
 """
 
-import json
 import threading
 import time
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from freezegun import freeze_time
 
 from oda_data.tools.cache import (
     BulkCacheEntry,
@@ -26,7 +22,6 @@ from oda_data.tools.cache import (
     ThreadSafeMemoryCache,
     generate_param_hash,
 )
-
 
 # ============================================================================
 # Tests for generate_param_hash
@@ -231,10 +226,7 @@ class TestBulkCacheManager:
         manager = BulkCacheManager(base_dir=temp_cache_dir)
 
         entry = BulkCacheEntry(
-            key="test_data",
-            fetcher=mock_bulk_fetcher,
-            ttl_days=30,
-            version="1.0.0"
+            key="test_data", fetcher=mock_bulk_fetcher, ttl_days=30, version="1.0.0"
         )
 
         path = manager.ensure(entry)
@@ -254,10 +246,7 @@ class TestBulkCacheManager:
         manager = BulkCacheManager(base_dir=temp_cache_dir)
 
         entry = BulkCacheEntry(
-            key="test_data",
-            fetcher=mock_bulk_fetcher,
-            ttl_days=30,
-            version="1.0.0"
+            key="test_data", fetcher=mock_bulk_fetcher, ttl_days=30, version="1.0.0"
         )
 
         # First call - downloads
@@ -278,10 +267,7 @@ class TestBulkCacheManager:
         manager = BulkCacheManager(base_dir=temp_cache_dir)
 
         entry_v1 = BulkCacheEntry(
-            key="test_data",
-            fetcher=mock_bulk_fetcher,
-            ttl_days=30,
-            version="1.0.0"
+            key="test_data", fetcher=mock_bulk_fetcher, ttl_days=30, version="1.0.0"
         )
 
         # First call with v1.0.0
@@ -293,10 +279,7 @@ class TestBulkCacheManager:
 
         # Second call with v2.0.0
         entry_v2 = BulkCacheEntry(
-            key="test_data",
-            fetcher=mock_bulk_fetcher,
-            ttl_days=30,
-            version="2.0.0"
+            key="test_data", fetcher=mock_bulk_fetcher, ttl_days=30, version="2.0.0"
         )
 
         path2 = manager.ensure(entry_v2)
@@ -380,9 +363,7 @@ class TestBulkCacheManager:
         manager = BulkCacheManager(base_dir=temp_cache_dir)
 
         entry = BulkCacheEntry(
-            key="test_data",
-            fetcher=mock_bulk_fetcher,
-            version="1.0.0"
+            key="test_data", fetcher=mock_bulk_fetcher, version="1.0.0"
         )
         path = manager.ensure(entry)
 
@@ -419,10 +400,12 @@ class TestQueryCacheManager:
         """Test saving and loading DataFrames from query cache."""
         manager = QueryCacheManager(base_dir=temp_cache_dir)
 
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+            }
+        )
 
         dataset_name = "TestData"
         param_hash = "abc123"
@@ -450,20 +433,19 @@ class TestQueryCacheManager:
         """Test that load() can filter columns when reading."""
         manager = QueryCacheManager(base_dir=temp_cache_dir)
 
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-            "provider_code": [1, 2],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+                "provider_code": [1, 2],
+            }
+        )
 
         manager.save("TestData", "abc123", df)
 
         # Load only specific columns
         result = manager.load(
-            "TestData",
-            "abc123",
-            filters=None,
-            columns=["year", "value"]
+            "TestData", "abc123", filters=None, columns=["year", "value"]
         )
 
         assert list(result.columns) == ["year", "value"]
@@ -501,8 +483,8 @@ class TestCacheCoordination:
 
     def test_cache_managers_use_same_base_directory(self, temp_cache_dir: Path):
         """Test that different cache managers can coexist in same base directory."""
-        bulk_manager = BulkCacheManager(base_dir=temp_cache_dir)
-        query_manager = QueryCacheManager(base_dir=temp_cache_dir)
+        BulkCacheManager(base_dir=temp_cache_dir)
+        QueryCacheManager(base_dir=temp_cache_dir)
 
         # Both should create their subdirectories
         assert (temp_cache_dir / "bulk_cache").exists()

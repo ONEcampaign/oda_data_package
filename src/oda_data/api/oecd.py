@@ -1,7 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -64,7 +63,7 @@ def load_indicators() -> dict[str, dict]:
 
     # Merge each inner dictionary into the combined dictionary
     for indicators in (dac1_indicators, dac2a_indicators, crs_indicators):
-        for k, v in indicators.items():
+        for _k, v in indicators.items():
             combined |= v
 
     return combined
@@ -72,7 +71,7 @@ def load_indicators() -> dict[str, dict]:
 
 @dataclass
 class OECDClient:
-    years: Optional[list | int | range] = None
+    years: list | int | range | None = None
     providers: list | int | None = None
     recipients: list | int | None = None
     measure: list[Measure] | Measure = "net_disbursement"
@@ -117,9 +116,7 @@ class OECDClient:
                     filters[source].append((currency_column, "==", "A"))
 
             # Apply measure filter
-            columns = set(
-                [MEASURES[source][measure]["column"] for measure in self.measure]
-            )
+            columns = {MEASURES[source][measure]["column"] for measure in self.measure}
             for col in columns:
                 if source == "CRS":
                     continue
@@ -146,19 +143,19 @@ class OECDClient:
 
         data = []
         for source in sources:
-            source = source.upper()
-            if source not in READERS:
-                raise ValueError(f"{source} is invalid")
+            source_upper = source.upper()
+            if source_upper not in READERS:
+                raise ValueError(f"{source_upper} is invalid")
 
             # Define reader kwargs
             reader_kwargs = {"years": self.years, "providers": self.providers}
-            if source in ["DAC2A", "CRS"]:
+            if source_upper in ["DAC2A", "CRS"]:
                 reader_kwargs["recipients"] = self.recipients
-            if source in ["DAC1", "DAC2A", "MULTISYSTEM"]:
+            if source_upper in ["DAC1", "DAC2A", "MULTISYSTEM"]:
                 reader_kwargs["indicators"] = self.indicators_filter
 
             # Initialize reader
-            reader = READERS[source](**reader_kwargs)
+            reader = READERS[source_upper](**reader_kwargs)
 
             file = reader.read(
                 additional_filters=filters[source],
@@ -179,12 +176,16 @@ class OECDClient:
         try:
             module = source_to_module[main_source]
         except KeyError:
-            raise NotImplementedError(f"No module found for source {main_source}")
+            raise NotImplementedError(
+                f"No module found for source {main_source}"
+            ) from None
 
         try:
             function_callable = getattr(module, custom_function)
         except AttributeError:
-            raise NotImplementedError(f"No custom function available for {indicator}")
+            raise NotImplementedError(
+                f"No custom function available for {indicator}"
+            ) from None
 
         self.indicators_data[indicator] = function_callable(
             self.indicators_data[indicator]

@@ -6,8 +6,7 @@ the base Source class, DACSource, and concrete implementations like DAC1Data,
 DAC2AData, CRSData, MultiSystemData, and AidDataData.
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -23,7 +22,6 @@ from oda_data.api.sources import (
     _filters_to_query,
 )
 from oda_data.clean_data.schema import ODASchema
-
 
 # ============================================================================
 # Tests for _filters_to_query helper function
@@ -59,10 +57,7 @@ class TestFiltersToQuery:
 
     def test_filters_to_query_with_multiple_filters(self):
         """Test that multiple filters are combined with 'and'."""
-        filters = [
-            ("year", "in", [2020, 2021]),
-            ("provider_code", "==", 1)
-        ]
+        filters = [("year", "in", [2020, 2021]), ("provider_code", "==", 1)]
 
         result = _filters_to_query(filters)
 
@@ -146,10 +141,7 @@ class TestSourceBaseClass:
         source = Source()
 
         # Small DataFrame (under 50MB)
-        df = pd.DataFrame({
-            "year": [2020] * 100,
-            "value": range(100)
-        })
+        df = pd.DataFrame({"year": [2020] * 100, "value": range(100)})
 
         param_hash = "test_hash"
         source._cache_in_memory(param_hash, df)
@@ -167,14 +159,12 @@ class TestSourceBaseClass:
 
         # Create a DataFrame that's close to but under the limit
         # (Test is checking the logic, not creating a truly massive DF)
-        df = pd.DataFrame({
-            f"col_{i}": range(10000) for i in range(10)
-        })
+        df = pd.DataFrame({f"col_{i}": range(10000) for i in range(10)})
 
         param_hash = "large_hash"
 
         # Mock the size calculation to simulate a large DF
-        with patch.object(pd.DataFrame, 'memory_usage') as mock_memory:
+        with patch.object(pd.DataFrame, "memory_usage") as mock_memory:
             # Return a size larger than 50MB threshold
             mock_series = pd.Series([100 * 1024 * 1024])  # 100MB
             mock_memory.return_value = mock_series
@@ -189,21 +179,17 @@ class TestSourceBaseClass:
         source = Source()
 
         # Create DataFrame with raw column names
-        df = pd.DataFrame({
-            "DonorCode": [1, 2],
-            "Year": [2020, 2021],
-            "Value": [1000.0, 2000.0]
-        })
+        df = pd.DataFrame(
+            {"DonorCode": [1, 2], "Year": [2020, 2021], "Value": [1000.0, 2000.0]}
+        )
 
         # Should clean column names
         with patch("oda_data.api.sources.clean_raw_df") as mock_clean:
-            mock_clean.return_value = df.rename(columns={
-                "DonorCode": "donor_code",
-                "Year": "year",
-                "Value": "value"
-            })
+            mock_clean.return_value = df.rename(
+                columns={"DonorCode": "donor_code", "Year": "year", "Value": "value"}
+            )
 
-            result = source._apply_columns_and_clean(df, columns=None, already_cleaned=False)
+            source._apply_columns_and_clean(df, columns=None, already_cleaned=False)
 
             # clean_raw_df should have been called
             mock_clean.assert_called_once()
@@ -212,13 +198,10 @@ class TestSourceBaseClass:
         """Test _apply_columns_and_clean skips cleaning when already_cleaned=True."""
         source = Source()
 
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0]
-        })
+        df = pd.DataFrame({"year": [2020, 2021], "value": [1000.0, 2000.0]})
 
         with patch("oda_data.api.sources.clean_raw_df") as mock_clean:
-            result = source._apply_columns_and_clean(df, columns=None, already_cleaned=True)
+            source._apply_columns_and_clean(df, columns=None, already_cleaned=True)
 
             # clean_raw_df should NOT be called
             mock_clean.assert_not_called()
@@ -227,16 +210,12 @@ class TestSourceBaseClass:
         """Test _apply_columns_and_clean selects specific columns."""
         source = Source()
 
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-            "extra_col": ["a", "b"]
-        })
+        df = pd.DataFrame(
+            {"year": [2020, 2021], "value": [1000.0, 2000.0], "extra_col": ["a", "b"]}
+        )
 
         result = source._apply_columns_and_clean(
-            df,
-            columns=["year", "value"],
-            already_cleaned=True
+            df, columns=["year", "value"], already_cleaned=True
         )
 
         # Should only have requested columns
@@ -383,11 +362,7 @@ class TestDACSourceClass:
         source._init_filters(years=2020, providers=1, recipients=100)
 
         # Validation should have been called
-        mock_validate.assert_called_once_with(
-            years=2020,
-            providers=1,
-            recipients=100
-        )
+        mock_validate.assert_called_once_with(years=2020, providers=1, recipients=100)
 
 
 # ============================================================================
@@ -398,13 +373,10 @@ class TestDACSourceClass:
 class TestDACSourceReadCacheCoordination:
     """Tests for DACSource read() method and cache tier fallback."""
 
-    @patch.object(DACSource, 'download')
-    @patch.object(DACSource, '_create_bulk_fetcher')
+    @patch.object(DACSource, "download")
+    @patch.object(DACSource, "_create_bulk_fetcher")
     def test_read_checks_memory_cache_first(
-        self,
-        mock_create_fetcher,
-        mock_download,
-        sample_dac1_df
+        self, mock_create_fetcher, mock_download, sample_dac1_df
     ):
         """Test that read() checks memory cache before other tiers."""
         source = DACSource()
@@ -412,6 +384,7 @@ class TestDACSourceReadCacheCoordination:
 
         # Pre-populate memory cache
         from oda_data.tools.cache import generate_param_hash
+
         param_hash = generate_param_hash(source.filters)
         source.memory_cache[param_hash] = sample_dac1_df.copy()
 
@@ -421,7 +394,7 @@ class TestDACSourceReadCacheCoordination:
         mock_download.assert_not_called()
         assert len(result) > 0
 
-    @patch.object(DACSource, '_create_bulk_fetcher')
+    @patch.object(DACSource, "_create_bulk_fetcher")
     @patch("oda_data.api.sources.pd.read_parquet")
     def test_read_with_bulk_download_reads_from_bulk_cache(
         self,
@@ -429,7 +402,7 @@ class TestDACSourceReadCacheCoordination:
         mock_create_fetcher,
         sample_dac1_df,
         temp_cache_dir,
-        mock_bulk_fetcher
+        mock_bulk_fetcher,
     ):
         """Test that read() with using_bulk_download=True uses bulk cache."""
         with patch("oda_data.api.sources.ODAPaths") as mock_paths:
@@ -445,7 +418,7 @@ class TestDACSourceReadCacheCoordination:
             # Clear caches to ensure bulk fetch
             source.memory_cache.clear()
 
-            result = source.read(using_bulk_download=True)
+            source.read(using_bulk_download=True)
 
             # Bulk fetcher should have been created
             mock_create_fetcher.assert_called_once()
@@ -465,9 +438,7 @@ class TestDAC1DataInitialization:
     def test_dac1_data_initialization_with_all_parameters(self):
         """Test DAC1Data initializes with all parameters."""
         source = DAC1Data(
-            years=[2020, 2021],
-            providers=[1, 2],
-            indicators=[1010, 11010]
+            years=[2020, 2021], providers=[1, 2], indicators=[1010, 11010]
         )
 
         assert source.years == [2020, 2021]
@@ -483,7 +454,7 @@ class TestDAC1DataInitialization:
         source = DAC1Data(years=[2020], providers=[1])
 
         # Should not have recipients
-        assert not hasattr(source, 'recipients') or source.recipients is None
+        assert not hasattr(source, "recipients") or source.recipients is None
 
     def test_dac1_data_creates_indicator_filter(self):
         """Test that DAC1Data creates filter for indicators."""
@@ -522,10 +493,7 @@ class TestDAC2ADataInitialization:
     def test_dac2a_data_initialization_with_recipients(self):
         """Test DAC2AData initializes with recipients parameter."""
         source = DAC2AData(
-            years=[2020],
-            providers=[1],
-            recipients=[100, 200],
-            indicators=[1010]
+            years=[2020], providers=[1], recipients=[100, 200], indicators=[1010]
         )
 
         assert source.years == [2020]
@@ -561,11 +529,7 @@ class TestCRSDataInitialization:
 
     def test_crs_data_initialization_with_parameters(self):
         """Test CRSData initializes with years, providers, recipients."""
-        source = CRSData(
-            years=[2020, 2021],
-            providers=[1, 2],
-            recipients=[100]
-        )
+        source = CRSData(years=[2020, 2021], providers=[1, 2], recipients=[100])
 
         assert source.years == [2020, 2021]
         assert source.providers == [1, 2]
@@ -578,7 +542,7 @@ class TestCRSDataInitialization:
         with patch("oda_data.api.sources.create_crs_bulk_fetcher") as mock_create:
             mock_create.return_value = MagicMock()
 
-            fetcher = source._create_bulk_fetcher()
+            source._create_bulk_fetcher()
 
             # CRS bulk fetcher should have been created
             mock_create.assert_called_once()
@@ -586,20 +550,16 @@ class TestCRSDataInitialization:
     @patch("oda_data.api.sources.download_crs")
     def test_crs_data_download_calls_api_and_cleans(self, mock_download_crs):
         """Test that download() calls CRS API and cleans data."""
-        mock_download_crs.return_value = pd.DataFrame({
-            "Year": [2020],
-            "DonorCode": [1]
-        })
+        mock_download_crs.return_value = pd.DataFrame(
+            {"Year": [2020], "DonorCode": [1]}
+        )
 
         source = CRSData(years=[2020])
 
         with patch("oda_data.api.sources.clean_raw_df") as mock_clean:
-            mock_clean.return_value = pd.DataFrame({
-                "year": [2020],
-                "donor_code": [1]
-            })
+            mock_clean.return_value = pd.DataFrame({"year": [2020], "donor_code": [1]})
 
-            result = source.download()
+            source.download()
 
             # API and cleaning should have been called
             mock_download_crs.assert_called_once()
@@ -616,7 +576,7 @@ class TestMultiSystemDataInitialization:
             providers=[1],
             recipients=[100],
             indicators=["to"],
-            sectors=[110]
+            sectors=[110],
         )
 
         assert source.years == [2020]
@@ -653,11 +613,7 @@ class TestAidDataDataInitialization:
 
     def test_aiddata_data_initialization_with_parameters(self):
         """Test AidDataData initializes with years, recipients, sectors."""
-        source = AidDataData(
-            years=[2020],
-            recipients=["China", "India"],
-            sectors=[110]
-        )
+        source = AidDataData(years=[2020], recipients=["China", "India"], sectors=[110])
 
         assert source.years == [2020]
         assert source.recipients == ["China", "India"]
@@ -680,7 +636,7 @@ class TestAidDataDataInitialization:
         with patch("oda_data.api.sources.create_aiddata_bulk_fetcher") as mock_create:
             mock_create.return_value = MagicMock()
 
-            fetcher = source._create_bulk_fetcher()
+            source._create_bulk_fetcher()
 
             # AidData bulk fetcher should have been created
             mock_create.assert_called_once()
@@ -757,11 +713,7 @@ class TestDataSourceBusinessRules:
         DAC2A reports provider-to-recipient bilateral ODA flows.
         Recipients are a core dimension of DAC2A data.
         """
-        source = DAC2AData(
-            years=[2020],
-            providers=[1],
-            recipients=[100, 200]
-        )
+        source = DAC2AData(years=[2020], providers=[1], recipients=[100, 200])
 
         # Recipients should be properly stored and filtered
         assert source.recipients == [100, 200]
@@ -875,11 +827,13 @@ class TestDataCompletenessBusinessLogic:
         If user requests provider 999 but data only has 1-10,
         they should be warned that 999 is missing.
         """
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3],
-            ODASchema.YEAR: [2020, 2020, 2020],
-            "value": [100, 200, 300]
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3],
+                ODASchema.YEAR: [2020, 2020, 2020],
+                "value": [100, 200, 300],
+            }
+        )
 
         # Request providers including one that doesn't exist
         filters = [(ODASchema.PROVIDER_CODE, "in", [1, 2, 999])]
@@ -901,11 +855,13 @@ class TestDataCompletenessBusinessLogic:
         If user requests year 2050 but data only goes to 2023,
         they should be warned that 2050 is missing.
         """
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2022],
-            ODASchema.PROVIDER_CODE: [1, 1, 1],
-            "value": [100, 200, 300]
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2022],
+                ODASchema.PROVIDER_CODE: [1, 1, 1],
+                "value": [100, 200, 300],
+            }
+        )
 
         # Request years including one that doesn't exist
         filters = [(ODASchema.YEAR, "in", [2020, 2021, 2050])]
@@ -926,11 +882,13 @@ class TestDataCompletenessBusinessLogic:
         Users should only see warnings for actually missing data,
         not false positives.
         """
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3],
-            ODASchema.YEAR: [2020, 2020, 2020],
-            "value": [100, 200, 300]
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3],
+                ODASchema.YEAR: [2020, 2020, 2020],
+                "value": [100, 200, 300],
+            }
+        )
 
         # Request only providers that exist
         filters = [(ODASchema.PROVIDER_CODE, "in", [1, 2])]
@@ -948,10 +906,7 @@ class TestDataCompletenessBusinessLogic:
 
         If multiple requested values are missing, user should know about all of them.
         """
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2],
-            "value": [100, 200]
-        })
+        df = pd.DataFrame({ODASchema.PROVIDER_CODE: [1, 2], "value": [100, 200]})
 
         # Request multiple providers that don't exist
         filters = [(ODASchema.PROVIDER_CODE, "in", [1, 99, 100, 999])]
@@ -999,18 +954,16 @@ class TestFilterBusinessLogic:
 
         # Should have both filters
         assert any(f[0] == ODASchema.YEAR and f[2] == [2020] for f in source.filters)
-        assert any(f[0] == ODASchema.PROVIDER_CODE and f[2] == [1, 2] for f in source.filters)
+        assert any(
+            f[0] == ODASchema.PROVIDER_CODE and f[2] == [1, 2] for f in source.filters
+        )
 
     def test_filter_combination_with_recipients_business_scenario(self):
         """Business Scenario: Provider + recipient + year filters for bilateral queries.
 
         Users tracking specific bilateral relationships need all three filters.
         """
-        source = DAC2AData(
-            years=[2020, 2021],
-            providers=[1],
-            recipients=[100, 200]
-        )
+        source = DAC2AData(years=[2020, 2021], providers=[1], recipients=[100, 200])
 
         # All three filters should exist
         assert any(f[0] == ODASchema.YEAR for f in source.filters)
@@ -1025,7 +978,7 @@ class TestFilterBusinessLogic:
         source = MultiSystemData(
             years=[2020],
             providers=[1],
-            sectors=[110, 120]  # Education, Health
+            sectors=[110, 120],  # Education, Health
         )
 
         # Should have year, provider, AND sector filters
@@ -1041,7 +994,7 @@ class TestFilterBusinessLogic:
         source = DAC1Data(
             years=[2020],
             providers=[1],
-            indicators=[1010, 11010]  # ODA grants, ODA GE
+            indicators=[1010, 11010],  # ODA grants, ODA GE
         )
 
         # Should have year, provider, AND indicator filters
@@ -1068,9 +1021,7 @@ class TestFilterBusinessLogic:
         assert source.filters[0] == ("year", "in", [2021, 2022])
 
     @patch("oda_data.api.sources.convert_dot_stat_to_data_explorer_codes")
-    def test_filter_translation_for_api_calls_business_mapping(
-        self, mock_convert
-    ):
+    def test_filter_translation_for_api_calls_business_mapping(self, mock_convert):
         """Business Mapping: Provider codes translated from Dot.Stat to Data Explorer format.
 
         OECD has two code systems - internal Dot.Stat and public Data Explorer.
@@ -1109,11 +1060,12 @@ class TestCacheTTLBusinessLogic:
 
             # Create bulk cache entry
             from oda_data.tools.cache import BulkCacheEntry
+
             entry = BulkCacheEntry(
                 key="test_dac",
                 fetcher=fetcher,
                 ttl_days=30,  # Business rule: 30 days for DAC data
-                version="1.0.0"
+                version="1.0.0",
             )
 
             # TTL should be 30 days
@@ -1175,18 +1127,14 @@ class TestDataCleaningBusinessLogic:
         Cleaning must happen first or filters fail.
         """
         # Mock cleaning to transform column names
-        mock_clean.side_effect = lambda df: df.rename(columns={
-            "DonorCode": "donor_code",
-            "Year": "year"
-        })
+        mock_clean.side_effect = lambda df: df.rename(
+            columns={"DonorCode": "donor_code", "Year": "year"}
+        )
 
         source = Source()
 
         # Raw DataFrame from API
-        raw_df = pd.DataFrame({
-            "DonorCode": [1, 2, 3],
-            "Year": [2020, 2020, 2020]
-        })
+        raw_df = pd.DataFrame({"DonorCode": [1, 2, 3], "Year": [2020, 2020, 2020]})
 
         # Clean should be called
         result = source._apply_columns_and_clean(raw_df, already_cleaned=False)
@@ -1209,7 +1157,9 @@ class TestDataCleaningBusinessLogic:
         # This is implicit in the data structure
         assert source.recipients is None
 
-    def test_crs_has_commitment_disbursement_columns_business_domain(self, sample_crs_df):
+    def test_crs_has_commitment_disbursement_columns_business_domain(
+        self, sample_crs_df
+    ):
         """Business Domain: CRS has commitment and disbursement columns.
 
         CRS tracks both commitments (promises) and disbursements (actual payments).
@@ -1219,9 +1169,7 @@ class TestDataCleaningBusinessLogic:
         assert "commitment_current" in sample_crs_df.columns
         assert "disbursement_current" in sample_crs_df.columns
 
-    def test_cleaned_data_returned_to_users_business_requirement(
-        self, sample_dac1_df
-    ):
+    def test_cleaned_data_returned_to_users_business_requirement(self, sample_dac1_df):
         """Business Requirement: Users only see cleaned column names.
 
         Users should never see raw API names like "DonorCode".
@@ -1242,13 +1190,10 @@ class TestDataCleaningBusinessLogic:
         """
         source = Source()
 
-        df = pd.DataFrame({
-            "donor_code": [1, 2],
-            "year": [2020, 2021]
-        })
+        df = pd.DataFrame({"donor_code": [1, 2], "year": [2020, 2021]})
 
         # With already_cleaned=True, should skip cleaning
-        result = source._apply_columns_and_clean(df, already_cleaned=True)
+        source._apply_columns_and_clean(df, already_cleaned=True)
 
         # Cleaning should NOT have been called
         mock_clean.assert_not_called()
@@ -1261,17 +1206,13 @@ class TestDataCleaningBusinessLogic:
         """
         source = Source()
 
-        df = pd.DataFrame({
-            "donor_code": [1, 2],
-            "year": [2020, 2021],
-            "extra_col": ["a", "b"]
-        })
+        df = pd.DataFrame(
+            {"donor_code": [1, 2], "year": [2020, 2021], "extra_col": ["a", "b"]}
+        )
 
         # Select columns (already cleaned data)
         result = source._apply_columns_and_clean(
-            df,
-            columns=["donor_code", "year"],
-            already_cleaned=True
+            df, columns=["donor_code", "year"], already_cleaned=True
         )
 
         # Should only have requested columns
@@ -1287,13 +1228,10 @@ class TestDataCleaningBusinessLogic:
 class TestReadMethodBusinessScenarios:
     """Tests for read() method business scenarios and user workflows."""
 
-    @patch.object(DAC1Data, 'download')
-    @patch.object(DAC1Data, '_create_bulk_fetcher')
+    @patch.object(DAC1Data, "download")
+    @patch.object(DAC1Data, "_create_bulk_fetcher")
     def test_typical_workflow_init_read_cache_hit_business_scenario(
-        self,
-        mock_create_fetcher,
-        mock_download,
-        sample_dac1_df
+        self, mock_create_fetcher, mock_download, sample_dac1_df
     ):
         """Business Scenario: Typical user workflow with cache benefits.
 
@@ -1318,14 +1256,14 @@ class TestReadMethodBusinessScenarios:
         assert mock_download.call_count == 1
 
     @patch("oda_data.api.sources.pd.read_parquet")
-    @patch.object(CRSData, '_create_bulk_fetcher')
+    @patch.object(CRSData, "_create_bulk_fetcher")
     def test_crs_bulk_download_workflow_business_best_practice(
         self,
         mock_create_fetcher,
         mock_read_parquet,
         sample_crs_df,
         temp_cache_dir,
-        mock_bulk_fetcher
+        mock_bulk_fetcher,
     ):
         """Business Best Practice: CRS should use bulk download for large queries.
 
@@ -1342,7 +1280,7 @@ class TestReadMethodBusinessScenarios:
             source.memory_cache.clear()
 
             # Use bulk download (best practice for CRS)
-            result = source.read(using_bulk_download=True)
+            source.read(using_bulk_download=True)
 
             # Should have called bulk fetcher creation
             mock_create_fetcher.assert_called_once()
@@ -1350,11 +1288,9 @@ class TestReadMethodBusinessScenarios:
             # Should have read from parquet
             mock_read_parquet.assert_called()
 
-    @patch.object(DAC1Data, 'download')
+    @patch.object(DAC1Data, "download")
     def test_column_selection_optimizes_memory_business_requirement(
-        self,
-        mock_download,
-        sample_dac1_df
+        self, mock_download, sample_dac1_df
     ):
         """Business Requirement: Column selection reduces memory usage.
 
@@ -1372,11 +1308,9 @@ class TestReadMethodBusinessScenarios:
         assert set(result.columns).issubset({"year", "donor_code", "value"})
         assert len(result.columns) <= 3
 
-    @patch.object(DAC1Data, 'download')
+    @patch.object(DAC1Data, "download")
     def test_changed_filters_create_new_cache_entry_business_logic(
-        self,
-        mock_download,
-        sample_dac1_df
+        self, mock_download, sample_dac1_df
     ):
         """Business Logic: Different filters create separate cache entries.
 
@@ -1388,11 +1322,11 @@ class TestReadMethodBusinessScenarios:
         source1 = DAC1Data(years=[2020])
         source1.memory_cache.clear()
         source1.query_cache.clear()  # Also clear query cache
-        result1 = source1.read()
+        source1.read()
 
         # Different query - should miss cache because filters are different
         source2 = DAC1Data(years=[2021])
-        result2 = source2.read()
+        source2.read()
 
         # Both should have triggered download (different filters)
         assert mock_download.call_count == 2
@@ -1464,7 +1398,7 @@ class TestMultiSourceBusinessLogic:
         source = MultiSystemData(
             years=[2020],
             providers=[1],  # Bilateral donor
-            indicators=["to"]  # Aid TO multilaterals
+            indicators=["to"],  # Aid TO multilaterals
         )
 
         # Should track multilateral usage

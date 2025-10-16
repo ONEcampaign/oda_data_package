@@ -30,7 +30,9 @@ def rolling_period_total(
     if grouper is None:
         grouper = [c for c in df.columns if c not in [ODASchema.YEAR, ODASchema.VALUE]]
 
-    for y in range(df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + period_length - 2, -1):
+    for y in range(
+        df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + period_length - 2, -1
+    ):
         years = [y - i for i in range(period_length)]
         _ = (
             df.copy(deep=True)
@@ -137,7 +139,7 @@ def add_multi_channels_and_group(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def spending_by_purpose(
-    years: list | int | range = None,
+    years: list | int | range | None = None,
     providers: list | int | None = None,
     measure: Measure | str = "gross_disbursement",
     oda_only: bool = False,
@@ -170,10 +172,7 @@ def spending_by_purpose(
     ]
 
     # Set up filters
-    if oda_only:
-        filters = [("category", "in", [10, 60])]
-    else:
-        filters = []
+    filters = [("category", "in", [10, 60])] if oda_only else []
 
     # Set up the CRS data object
     crs = CRSData(providers=providers, years=years)
@@ -181,7 +180,7 @@ def spending_by_purpose(
     # Read the data and group by provider and purpose
     data = (
         crs.read(
-            columns=grouper + [measure],
+            columns=[*grouper, measure],
             additional_filters=filters,
             using_bulk_download=True,
         )
@@ -198,7 +197,7 @@ def spending_by_purpose(
 
 
 def multilateral_spending_shares_by_channel_and_purpose_smoothed(
-    years: list | int | range = None,
+    years: list | int | range | None = None,
     oda_only: bool = False,
     period_length: int = 3,
 ) -> pd.DataFrame:
@@ -234,7 +233,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
 
 
 def core_multilateral_contributions_by_provider(
-    years: list | int | range = None,
+    years: list | int | range | None = None,
     providers: list | int | None = None,
     channels: list | int | None = None,
     measure: Measure | str = "gross_disbursement",
@@ -281,7 +280,7 @@ def core_multilateral_contributions_by_provider(
     # Read the data and group by provider and channel
     data = (
         ms.read(
-            columns=cols + [ODASchema.AMOUNT],
+            columns=[*cols, ODASchema.AMOUNT],
             additional_filters=filters,
             using_bulk_download=True,
         )
@@ -331,7 +330,7 @@ def _compute_imputations(
 
 
 def imputed_multilateral_by_purpose(
-    years: list | int | range = None,
+    years: list | int | range | None = None,
     providers: list | int | None = None,
     channels: list | int | None = None,
     measure: Measure | str = "gross_disbursement",

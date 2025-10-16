@@ -17,7 +17,7 @@ of ODA, but also of how the DAC databases and tools are organised.
 
 This package aims to simplify this process and make it easier for users to get the data they need.
 
-Please submit questions, feedback or requests via 
+Please submit questions, feedback or requests via
 the [issues page](https://github.com/ONEcampaign/oda_data_package/issues).
 
 ## Getting started
@@ -41,7 +41,7 @@ An object of this class can handle:
 - filtering the data for specific donors, recipients(if relevant), years.
 - returning the data in a variety of currency/prices combinations.
 
-At a minimum, the class expects users to specify years. By default it would then get 
+At a minimum, the class expects users to specify years. By default it would then get
 data for all providers, for all recipients (if applicable), as net disbursements in USD, in current prices,
 using the OECD data-explorer API.
 
@@ -309,7 +309,7 @@ You can optionally specify:
 Not specifying any or all of these parameters will return all the available data.
 
 You can refer to the examples above for DAC1 and DAC2a to understand the usage of these classes.
-**Note**: given the speed and rate-limiting of the dac-explorer APIs, it's recommended to always use the 
+**Note**: given the speed and rate-limiting of the dac-explorer APIs, it's recommended to always use the
 bulk option when using the CRS class.
 
 ```python
@@ -502,7 +502,7 @@ data = aiddata.read()
 
 - **Speed up analysis** - The package handles downloading, cleaning and loading all the data, so you can focus on the
 analysis.
-- **Get data in the currency and prices you need** - ODA data is only available in US dollars (current or constant 
+- **Get data in the currency and prices you need** - ODA data is only available in US dollars (current or constant
 prices) and local currency units (current prices). The package allows you to view the data in US dollars, Euros,
 British Pounds and Canadian dollars, in both current and constant prices. We can add any other DAC currency if you
 request it via the [issues page](https://github.com/ONEcampaign/oda_data_package/issues)

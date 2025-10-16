@@ -6,13 +6,12 @@ including initialization, filtering, data loading, processing, and the complete
 indicator retrieval workflow.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from oda_data.api.oecd import OECDClient, get_measure_filter, load_indicators
-
 
 # ============================================================================
 # Tests for load_indicators helper function
@@ -95,7 +94,7 @@ class TestOECDClientInitialization:
             measure="commitment",
             currency="EUR",
             base_year=2020,
-            use_bulk_download=True
+            use_bulk_download=True,
         )
 
         assert client.years == [2020, 2021]
@@ -152,7 +151,7 @@ class TestOECDClientApplyFilters:
                     "DAC1": {
                         "flowtype_code": ["in", [10, 20]],
                     }
-                }
+                },
             }
         }
 
@@ -168,10 +167,7 @@ class TestOECDClientApplyFilters:
     def test_apply_filters_applies_currency_filter(self, mock_load_indicators):
         """Test that currency filter is applied correctly."""
         mock_load_indicators.return_value = {
-            "TEST.INDICATOR": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.INDICATOR": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         client = OECDClient(currency="LCU")
@@ -185,10 +181,7 @@ class TestOECDClientApplyFilters:
     def test_apply_filters_applies_measure_filter(self, mock_load_indicators):
         """Test that measure filter is applied correctly."""
         mock_load_indicators.return_value = {
-            "TEST.INDICATOR": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.INDICATOR": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         client = OECDClient(measure="net_disbursement")
@@ -205,8 +198,8 @@ class TestOECDClientApplyFilters:
                 "sources": ["DAC1", "DAC2A"],
                 "filters": {
                     "DAC1": {"flowtype_code": ["in", [10]]},
-                    "DAC2A": {"aidtype_code": ["in", [1010]]}
-                }
+                    "DAC2A": {"aidtype_code": ["in", [1010]]},
+                },
             }
         }
 
@@ -233,10 +226,7 @@ class TestOECDClientLoadData:
         """Test that _load_data calls the correct data source reader."""
         # Mock indicator
         mock_load_indicators.return_value = {
-            "TEST.DAC1": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.DAC1": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         # Mock DAC1Data reader
@@ -262,10 +252,7 @@ class TestOECDClientLoadData:
     ):
         """Test that _load_data passes correct parameters to readers."""
         mock_load_indicators.return_value = {
-            "TEST.DAC1": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.DAC1": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         mock_reader_instance = MagicMock()
@@ -291,10 +278,7 @@ class TestOECDClientLoadData:
     ):
         """Test that _load_data stores result in indicators_data dict."""
         mock_load_indicators.return_value = {
-            "TEST.DAC1": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.DAC1": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         mock_reader_instance = MagicMock()
@@ -328,7 +312,7 @@ class TestOECDClientProcessData:
         mock_load_indicators.return_value = {
             "TEST.DAC1": {
                 "sources": ["DAC1"],
-                "custom_function": ""  # No custom function
+                "custom_function": "",  # No custom function
             }
         }
 
@@ -340,8 +324,7 @@ class TestOECDClientProcessData:
 
         # Data should be unchanged
         pd.testing.assert_frame_equal(
-            client.indicators_data["TEST.DAC1"],
-            original_data
+            client.indicators_data["TEST.DAC1"], original_data
         )
 
     @patch("oda_data.api.oecd.load_indicators")
@@ -352,10 +335,7 @@ class TestOECDClientProcessData:
         """Test that _process_data applies custom function when specified."""
         # Mock indicator with custom function
         mock_load_indicators.return_value = {
-            "TEST.DAC1": {
-                "sources": ["DAC1"],
-                "custom_function": "test_function"
-            }
+            "TEST.DAC1": {"sources": ["DAC1"], "custom_function": "test_function"}
         }
 
         # Mock the custom function module
@@ -386,11 +366,7 @@ class TestOECDClientGroupData:
         self, mock_load_indicators, sample_dac1_df
     ):
         """Test that _group_data skips non-CRS indicators."""
-        mock_load_indicators.return_value = {
-            "TEST.DAC1": {
-                "sources": ["DAC1"]
-            }
-        }
+        mock_load_indicators.return_value = {"TEST.DAC1": {"sources": ["DAC1"]}}
 
         client = OECDClient()
         client.indicators_data["TEST.DAC1"] = sample_dac1_df.copy()
@@ -400,8 +376,7 @@ class TestOECDClientGroupData:
 
         # Data should be unchanged for non-CRS
         pd.testing.assert_frame_equal(
-            client.indicators_data["TEST.DAC1"],
-            original_data
+            client.indicators_data["TEST.DAC1"], original_data
         )
 
     @patch("oda_data.api.oecd.load_indicators")
@@ -410,11 +385,7 @@ class TestOECDClientGroupData:
         self, mock_group_function, mock_load_indicators, sample_crs_df
     ):
         """Test that _group_data processes CRS indicators."""
-        mock_load_indicators.return_value = {
-            "TEST.CRS": {
-                "sources": ["CRS"]
-            }
-        }
+        mock_load_indicators.return_value = {"TEST.CRS": {"sources": ["CRS"]}}
 
         mock_group_function.return_value = sample_crs_df
 
@@ -436,9 +407,7 @@ class TestOECDClientConvertUnits:
     """Tests for the _convert_units method."""
 
     @patch("oda_data.api.oecd.clean.convert_units")
-    def test_convert_units_calls_convert_utility(
-        self, mock_convert, sample_dac1_df
-    ):
+    def test_convert_units_calls_convert_utility(self, mock_convert, sample_dac1_df):
         """Test that _convert_units calls the convert_units utility."""
         mock_convert.return_value = sample_dac1_df
 
@@ -474,14 +443,11 @@ class TestOECDClientGetIndicators:
         mock_group,
         mock_process,
         mock_load,
-        sample_dac1_df
+        sample_dac1_df,
     ):
         """Test the complete workflow for a single indicator."""
         mock_load_indicators.return_value = {
-            "TEST.INDICATOR": {
-                "sources": ["DAC1"],
-                "filters": {"DAC1": {}}
-            }
+            "TEST.INDICATOR": {"sources": ["DAC1"], "filters": {"DAC1": {}}}
         }
 
         # Setup mock to populate indicators_data
@@ -515,12 +481,12 @@ class TestOECDClientGetIndicators:
         mock_process,
         mock_load,
         sample_dac1_df,
-        sample_dac2a_df
+        sample_dac2a_df,
     ):
         """Test get_indicators with multiple indicators."""
         mock_load_indicators.return_value = {
             "IND1": {"sources": ["DAC1"], "filters": {"DAC1": {}}},
-            "IND2": {"sources": ["DAC2A"], "filters": {"DAC2A": {}}}
+            "IND2": {"sources": ["DAC2A"], "filters": {"DAC2A": {}}},
         }
 
         def load_side_effect(indicator):
@@ -577,16 +543,13 @@ class TestOECDClientClassMethods:
 
         assert isinstance(indicators, dict)
         # Each indicator should have name, description, sources
-        for code, info in indicators.items():
+        for _code, info in indicators.items():
             assert "name" in info or "description" in info or "sources" in info
 
     def test_arguments_property_returns_dict(self):
         """Test that arguments property returns client parameters."""
         client = OECDClient(
-            years=[2020, 2021],
-            providers=[1, 2],
-            currency="EUR",
-            base_year=2020
+            years=[2020, 2021], providers=[1, 2], currency="EUR", base_year=2020
         )
 
         args = client.arguments

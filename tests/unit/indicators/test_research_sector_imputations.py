@@ -18,7 +18,6 @@ from oda_data.indicators.research.sector_imputations import (
     share_by_purpose,
 )
 
-
 # ============================================================================
 # Tests for rolling_period_total
 # ============================================================================
@@ -29,11 +28,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_default_3_years(self):
         """Test 3-year rolling total (default)."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2018, 2019, 2020, 2021],
-            "category": ["A", "A", "A", "A"],
-            ODASchema.VALUE: [100.0, 150.0, 200.0, 250.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2018, 2019, 2020, 2021],
+                "category": ["A", "A", "A", "A"],
+                ODASchema.VALUE: [100.0, 150.0, 200.0, 250.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=3, grouper=["category"])
 
@@ -47,11 +48,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_custom_period_length(self):
         """Test custom period length (e.g., 5 years)."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2017, 2018, 2019, 2020, 2021],
-            "category": ["A", "A", "A", "A", "A"],
-            ODASchema.VALUE: [50.0, 100.0, 150.0, 200.0, 250.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2017, 2018, 2019, 2020, 2021],
+                "category": ["A", "A", "A", "A", "A"],
+                ODASchema.VALUE: [50.0, 100.0, 150.0, 200.0, 250.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=5, grouper=["category"])
 
@@ -61,11 +64,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_iterates_backwards(self):
         """Test that function iterates backwards through years."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2019, 2020, 2021],
-            "category": ["A", "A", "A"],
-            ODASchema.VALUE: [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2019, 2020, 2021],
+                "category": ["A", "A", "A"],
+                ODASchema.VALUE: [100.0, 200.0, 300.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=2, grouper=["category"])
 
@@ -75,11 +80,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_groups_correctly(self):
         """Test that grouping preserves separate categories."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            "category": ["A", "B", "A", "B"],
-            ODASchema.VALUE: [100.0, 200.0, 150.0, 250.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                "category": ["A", "B", "A", "B"],
+                ODASchema.VALUE: [100.0, 200.0, 150.0, 250.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=2, grouper=["category"])
 
@@ -97,11 +104,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_handles_missing_years(self):
         """Test that function handles years with missing data."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2018, 2020, 2021],  # Missing 2019
-            "category": ["A", "A", "A"],
-            ODASchema.VALUE: [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2018, 2020, 2021],  # Missing 2019
+                "category": ["A", "A", "A"],
+                ODASchema.VALUE: [100.0, 200.0, 300.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=3, grouper=["category"])
 
@@ -111,11 +120,13 @@ class TestRollingPeriodTotal:
 
     def test_rolling_period_total_assigns_max_year_correctly(self):
         """Test that year is assigned as the maximum year in the period."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2019, 2020, 2021],
-            "category": ["A", "A", "A"],
-            ODASchema.VALUE: [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2019, 2020, 2021],
+                "category": ["A", "A", "A"],
+                ODASchema.VALUE: [100.0, 200.0, 300.0],
+            }
+        )
 
         result = rolling_period_total(df, period_length=3, grouper=["category"])
 
@@ -136,26 +147,36 @@ class TestShareByPurpose:
 
     def test_share_by_purpose_formula(self):
         """Test share formula: value / sum(values_in_group)."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            "purpose": ["Education", "Health", "Water"],
-            ODASchema.VALUE: [100.0, 200.0, 700.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                "purpose": ["Education", "Health", "Water"],
+                ODASchema.VALUE: [100.0, 200.0, 700.0],
+            }
+        )
 
         result = share_by_purpose(df, grouper=[ODASchema.YEAR])
 
         # Total is 1000, so shares should be 0.1, 0.2, 0.7
-        assert result[result["purpose"] == "Education"][ODASchema.SHARE].iloc[0] == pytest.approx(0.1)
-        assert result[result["purpose"] == "Health"][ODASchema.SHARE].iloc[0] == pytest.approx(0.2)
-        assert result[result["purpose"] == "Water"][ODASchema.SHARE].iloc[0] == pytest.approx(0.7)
+        assert result[result["purpose"] == "Education"][ODASchema.SHARE].iloc[
+            0
+        ] == pytest.approx(0.1)
+        assert result[result["purpose"] == "Health"][ODASchema.SHARE].iloc[
+            0
+        ] == pytest.approx(0.2)
+        assert result[result["purpose"] == "Water"][ODASchema.SHARE].iloc[
+            0
+        ] == pytest.approx(0.7)
 
     def test_share_by_purpose_groups_correctly(self):
         """Test that shares are calculated within specified groups."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            "purpose": ["Education", "Health", "Education", "Health"],
-            ODASchema.VALUE: [100.0, 400.0, 300.0, 700.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                "purpose": ["Education", "Health", "Education", "Health"],
+                ODASchema.VALUE: [100.0, 400.0, 300.0, 700.0],
+            }
+        )
 
         result = share_by_purpose(df, grouper=[ODASchema.YEAR])
 
@@ -173,11 +194,13 @@ class TestShareByPurpose:
 
     def test_share_by_purpose_sums_to_one(self):
         """Test that shares sum to 1.0 within each group."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            "purpose": ["A", "B", "C"],
-            ODASchema.VALUE: [100.0, 200.0, 700.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                "purpose": ["A", "B", "C"],
+                ODASchema.VALUE: [100.0, 200.0, 700.0],
+            }
+        )
 
         result = share_by_purpose(df, grouper=[ODASchema.YEAR])
 
@@ -187,11 +210,13 @@ class TestShareByPurpose:
 
     def test_share_by_purpose_filters_na_shares(self):
         """Test that NA shares are filtered out."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021],
-            "purpose": ["A", "B", "C"],
-            ODASchema.VALUE: [100.0, 200.0, 0.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021],
+                "purpose": ["A", "B", "C"],
+                ODASchema.VALUE: [100.0, 200.0, 0.0],
+            }
+        )
 
         result = share_by_purpose(df, grouper=[ODASchema.YEAR, "purpose"])
 
@@ -209,19 +234,23 @@ class TestComputeImputations:
 
     def test_compute_imputations_formula(self):
         """Test imputation formula: value = core_value × share."""
-        core = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100, 200],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1],
-            ODASchema.VALUE: [1000.0, 2000.0],
-        })
+        core = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100, 200],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.VALUE: [1000.0, 2000.0],
+            }
+        )
 
-        shares = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100, 100, 200],
-            ODASchema.YEAR: [2020, 2020, 2020],
-            "purpose": ["Education", "Health", "Education"],
-            ODASchema.SHARE: [0.3, 0.7, 0.4],
-        })
+        shares = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100, 100, 200],
+                ODASchema.YEAR: [2020, 2020, 2020],
+                "purpose": ["Education", "Health", "Education"],
+                ODASchema.SHARE: [0.3, 0.7, 0.4],
+            }
+        )
 
         result = _compute_imputations(core, shares)
 
@@ -244,18 +273,22 @@ class TestComputeImputations:
 
     def test_compute_imputations_merges_on_channel_and_year(self):
         """Test that merge happens on channel_code and year."""
-        core = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100],
-            ODASchema.YEAR: [2020],
-            ODASchema.VALUE: [1000.0],
-        })
+        core = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100],
+                ODASchema.YEAR: [2020],
+                ODASchema.VALUE: [1000.0],
+            }
+        )
 
-        shares = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100, 200],  # 200 should not match
-            ODASchema.YEAR: [2020, 2020],
-            "purpose": ["Education", "Education"],
-            ODASchema.SHARE: [0.5, 0.5],
-        })
+        shares = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100, 200],  # 200 should not match
+                ODASchema.YEAR: [2020, 2020],
+                "purpose": ["Education", "Education"],
+                ODASchema.SHARE: [0.5, 0.5],
+            }
+        )
 
         result = _compute_imputations(core, shares)
 
@@ -265,18 +298,22 @@ class TestComputeImputations:
 
     def test_compute_imputations_drops_share_column(self):
         """Test that share column is dropped from output."""
-        core = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100],
-            ODASchema.YEAR: [2020],
-            ODASchema.VALUE: [1000.0],
-        })
+        core = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100],
+                ODASchema.YEAR: [2020],
+                ODASchema.VALUE: [1000.0],
+            }
+        )
 
-        shares = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100],
-            ODASchema.YEAR: [2020],
-            "purpose": ["Education"],
-            ODASchema.SHARE: [0.5],
-        })
+        shares = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100],
+                ODASchema.YEAR: [2020],
+                "purpose": ["Education"],
+                ODASchema.SHARE: [0.5],
+            }
+        )
 
         result = _compute_imputations(core, shares)
 
@@ -285,18 +322,22 @@ class TestComputeImputations:
 
     def test_compute_imputations_filters_zero_values(self):
         """Test that zero-value rows are filtered out."""
-        core = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100, 200],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.VALUE: [1000.0, 0.0],  # 200 has 0
-        })
+        core = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100, 200],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.VALUE: [1000.0, 0.0],  # 200 has 0
+            }
+        )
 
-        shares = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [100, 200],
-            ODASchema.YEAR: [2020, 2020],
-            "purpose": ["Education", "Education"],
-            ODASchema.SHARE: [0.5, 0.5],
-        })
+        shares = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [100, 200],
+                ODASchema.YEAR: [2020, 2020],
+                "purpose": ["Education", "Education"],
+                ODASchema.SHARE: [0.5, 0.5],
+            }
+        )
 
         result = _compute_imputations(core, shares)
 
@@ -314,11 +355,13 @@ class TestPeriodPurposeShares:
 
     def test_period_purpose_shares_combines_rolling_and_share(self):
         """Test that function combines rolling_period_total and share_by_purpose."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2019, 2020, 2021, 2019, 2020, 2021],
-            "purpose": ["Edu", "Edu", "Edu", "Health", "Health", "Health"],
-            ODASchema.VALUE: [100.0, 150.0, 200.0, 200.0, 250.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2019, 2020, 2021, 2019, 2020, 2021],
+                "purpose": ["Edu", "Edu", "Edu", "Health", "Health", "Health"],
+                ODASchema.VALUE: [100.0, 150.0, 200.0, 200.0, 250.0, 300.0],
+            }
+        )
 
         result = period_purpose_shares(
             df, period_length=2, grouper=["purpose"], share_by_grouper=[ODASchema.YEAR]
@@ -334,14 +377,19 @@ class TestPeriodPurposeShares:
 
     def test_period_purpose_shares_with_custom_period_length(self):
         """Test with custom period length."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2018, 2019, 2020, 2021],
-            "purpose": ["Edu", "Edu", "Edu", "Edu"],
-            ODASchema.VALUE: [100.0, 150.0, 200.0, 250.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2018, 2019, 2020, 2021],
+                "purpose": ["Edu", "Edu", "Edu", "Edu"],
+                ODASchema.VALUE: [100.0, 150.0, 200.0, 250.0],
+            }
+        )
 
         result = period_purpose_shares(
-            df, period_length=3, grouper=["purpose"], share_by_grouper=[ODASchema.YEAR, "purpose"]
+            df,
+            period_length=3,
+            grouper=["purpose"],
+            share_by_grouper=[ODASchema.YEAR, "purpose"],
         )
 
         # Should have computed rolling totals over 3 years

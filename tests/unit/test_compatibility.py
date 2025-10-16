@@ -12,7 +12,6 @@ import pytest
 
 from oda_data.tools.compatibility import ODAData
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -101,17 +100,19 @@ class TestODADataLoadIndicator:
 
         # Mock OECDClient
         mock_client_instance = MagicMock()
-        mock_client_instance.get_indicators.return_value = pd.DataFrame({
-            "year": [2020],
-            "value": [1000.0],
-        })
+        mock_client_instance.get_indicators.return_value = pd.DataFrame(
+            {
+                "year": [2020],
+                "value": [1000.0],
+            }
+        )
         mock_oecd_client.return_value = mock_client_instance
 
         with pytest.warns(DeprecationWarning):
             oda_data = ODAData(years=[2020])
 
         # Load a v1 indicator
-        result = oda_data.load_indicator("total_oda_official_definition")
+        oda_data.load_indicator("total_oda_official_definition")
 
         # Should have called OECDClient with correct v2 indicator
         mock_oecd_client.assert_called_once()

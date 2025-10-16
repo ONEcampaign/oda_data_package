@@ -24,7 +24,6 @@ from oda_data.indicators.crs.crs_functions import (
     multilateral_purpose_spending_shares,
 )
 
-
 # ============================================================================
 # Tests for _multi_donors_only
 # ============================================================================
@@ -42,12 +41,20 @@ class TestMultiDonorsOnly:
         mock_groupings.return_value = {"multilateral": [2, 3, 4]}
 
         # Create DataFrame with mix of bilateral and multilateral
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3, 4, 5],
-            ODASchema.PROVIDER_NAME: ["Bilateral", "Multi1", "Multi2", "Multi3", "Bilateral2"],
-            ODASchema.YEAR: [2020] * 5,
-            ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0, 500.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3, 4, 5],
+                ODASchema.PROVIDER_NAME: [
+                    "Bilateral",
+                    "Multi1",
+                    "Multi2",
+                    "Multi3",
+                    "Bilateral2",
+                ],
+                ODASchema.YEAR: [2020] * 5,
+                ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0, 500.0],
+            }
+        )
 
         result = _multi_donors_only(df)
 
@@ -60,10 +67,12 @@ class TestMultiDonorsOnly:
         """Test that empty DataFrame is returned when no multilaterals present."""
         mock_groupings.return_value = {"multilateral": [10, 20]}
 
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3],
-            ODASchema.VALUE: [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3],
+                ODASchema.VALUE: [100.0, 200.0, 300.0],
+            }
+        )
 
         result = _multi_donors_only(df)
 
@@ -86,16 +95,18 @@ class TestGroupByMappedChannel:
             "disbursement": "disbursement_current",
         }
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020, 2021],
-            ODASchema.CHANNEL_CODE: [1000, 1000, 2000, 1000],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
-            ODASchema.RECIPIENT_NAME: ["Country X"] * 4,
-            ODASchema.PURPOSE_CODE: [110, 110, 110, 110],
-            ODASchema.PURPOSE_NAME: ["Education"] * 4,
-            "commitment_current": [100.0, 200.0, 300.0, 400.0],
-            "disbursement_current": [80.0, 160.0, 240.0, 320.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020, 2021],
+                ODASchema.CHANNEL_CODE: [1000, 1000, 2000, 1000],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
+                ODASchema.RECIPIENT_NAME: ["Country X"] * 4,
+                ODASchema.PURPOSE_CODE: [110, 110, 110, 110],
+                ODASchema.PURPOSE_NAME: ["Education"] * 4,
+                "commitment_current": [100.0, 200.0, 300.0, 400.0],
+                "disbursement_current": [80.0, 160.0, 240.0, 320.0],
+            }
+        )
 
         result = _group_by_mapped_channel(df)
 
@@ -104,8 +115,7 @@ class TestGroupByMappedChannel:
 
         # Check aggregation for 2020 + channel 1000
         row_2020_1000 = result[
-            (result[ODASchema.YEAR] == 2020) &
-            (result[ODASchema.CHANNEL_CODE] == 1000)
+            (result[ODASchema.YEAR] == 2020) & (result[ODASchema.CHANNEL_CODE] == 1000)
         ]
         assert row_2020_1000["commitment_current"].iloc[0] == 300.0  # 100 + 200
         assert row_2020_1000["disbursement_current"].iloc[0] == 240.0  # 80 + 160
@@ -115,15 +125,17 @@ class TestGroupByMappedChannel:
         """Test that all grouping columns are preserved."""
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.CHANNEL_CODE: [1000],
-            ODASchema.RECIPIENT_CODE: [100],
-            ODASchema.RECIPIENT_NAME: ["Country X"],
-            ODASchema.PURPOSE_CODE: [110],
-            ODASchema.PURPOSE_NAME: ["Education"],
-            "commitment_current": [100.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.CHANNEL_CODE: [1000],
+                ODASchema.RECIPIENT_CODE: [100],
+                ODASchema.RECIPIENT_NAME: ["Country X"],
+                ODASchema.PURPOSE_CODE: [110],
+                ODASchema.PURPOSE_NAME: ["Education"],
+                "commitment_current": [100.0],
+            }
+        )
 
         result = _group_by_mapped_channel(df)
 
@@ -135,7 +147,7 @@ class TestGroupByMappedChannel:
             ODASchema.RECIPIENT_NAME,
             ODASchema.PURPOSE_CODE,
             ODASchema.PURPOSE_NAME,
-            "commitment_current"
+            "commitment_current",
         ]
         assert all(col in result.columns for col in expected_cols)
 
@@ -153,11 +165,13 @@ class TestRollingPeriodTotal:
         """Test 3-year rolling total (default period length)."""
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2022, 2023],
-            ODASchema.RECIPIENT_CODE: [100] * 4,
-            "commitment_current": [100.0, 200.0, 300.0, 400.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2022, 2023],
+                ODASchema.RECIPIENT_CODE: [100] * 4,
+                "commitment_current": [100.0, 200.0, 300.0, 400.0],
+            }
+        )
 
         result = _rolling_period_total(df)
 
@@ -175,11 +189,13 @@ class TestRollingPeriodTotal:
         """Test rolling total with custom period length."""
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2022],
-            ODASchema.RECIPIENT_CODE: [100] * 3,
-            "commitment_current": [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2022],
+                ODASchema.RECIPIENT_CODE: [100] * 3,
+                "commitment_current": [100.0, 200.0, 300.0],
+            }
+        )
 
         result = _rolling_period_total(df, period_length=2)
 
@@ -197,24 +213,24 @@ class TestRollingPeriodTotal:
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
         # Use ODASchema constants for column names
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2020, 2021],
-            ODASchema.RECIPIENT_CODE: [100, 100, 200, 200],
-            "commitment_current": [100.0, 200.0, 50.0, 75.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2020, 2021],
+                ODASchema.RECIPIENT_CODE: [100, 100, 200, 200],
+                "commitment_current": [100.0, 200.0, 50.0, 75.0],
+            }
+        )
 
         result = _rolling_period_total(df, period_length=2)
 
         # Should calculate separately for each recipient
         recipient_100_2021 = result[
-            (result[ODASchema.RECIPIENT_CODE] == 100) &
-            (result[ODASchema.YEAR] == 2021)
+            (result[ODASchema.RECIPIENT_CODE] == 100) & (result[ODASchema.YEAR] == 2021)
         ]
         assert recipient_100_2021["commitment_current"].iloc[0] == 300.0  # 100 + 200
 
         recipient_200_2021 = result[
-            (result[ODASchema.RECIPIENT_CODE] == 200) &
-            (result[ODASchema.YEAR] == 2021)
+            (result[ODASchema.RECIPIENT_CODE] == 200) & (result[ODASchema.YEAR] == 2021)
         ]
         assert recipient_200_2021["commitment_current"].iloc[0] == 125.0  # 50 + 75
 
@@ -229,33 +245,37 @@ class TestPurposeShare:
 
     def test_purpose_share_calculates_share_correctly(self):
         """Test that purpose share is calculated as percentage of total."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            ODASchema.CHANNEL_CODE: [1000, 1000, 1000],
-            ODASchema.PURPOSE_CODE: [110, 120, 130],
-            "commitment_current": [100.0, 200.0, 300.0],  # Total = 600
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.CHANNEL_CODE: [1000, 1000, 1000],
+                ODASchema.PURPOSE_CODE: [110, 120, 130],
+                "commitment_current": [100.0, 200.0, 300.0],  # Total = 600
+            }
+        )
 
         result = _purpose_share(df, "commitment_current")
 
         # Shares should be: 100/600 = 0.1667, 200/600 = 0.3333, 300/600 = 0.5
-        expected = pd.Series([100.0/600, 200.0/600, 300.0/600])
+        expected = pd.Series([100.0 / 600, 200.0 / 600, 300.0 / 600])
         pd.testing.assert_series_equal(result, expected, check_names=False, atol=1e-4)
 
     def test_purpose_share_groups_by_year_and_channel(self):
         """Test that shares are calculated separately per year/channel group."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            ODASchema.CHANNEL_CODE: [1000, 1000, 1000, 1000],
-            ODASchema.PURPOSE_CODE: [110, 120, 110, 120],
-            "commitment_current": [100.0, 200.0, 50.0, 150.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                ODASchema.CHANNEL_CODE: [1000, 1000, 1000, 1000],
+                ODASchema.PURPOSE_CODE: [110, 120, 110, 120],
+                "commitment_current": [100.0, 200.0, 50.0, 150.0],
+            }
+        )
 
         result = _purpose_share(df, "commitment_current")
 
         # 2020: total = 300, shares = 100/300, 200/300
         # 2021: total = 200, shares = 50/200, 150/200
-        expected = pd.Series([100.0/300, 200.0/300, 50.0/200, 150.0/200])
+        expected = pd.Series([100.0 / 300, 200.0 / 300, 50.0 / 200, 150.0 / 200])
         pd.testing.assert_series_equal(result, expected, check_names=False, atol=1e-4)
 
 
@@ -275,23 +295,33 @@ class TestYearlyShare:
             "disbursement": "disbursement_current",
         }
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.CHANNEL_CODE: [1000, 1000],
-            ODASchema.PURPOSE_CODE: [110, 120],
-            "commitment_current": [100.0, 200.0],  # Total = 300
-            "disbursement_current": [80.0, 120.0],  # Total = 200
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.CHANNEL_CODE: [1000, 1000],
+                ODASchema.PURPOSE_CODE: [110, 120],
+                "commitment_current": [100.0, 200.0],  # Total = 300
+                "disbursement_current": [80.0, 120.0],  # Total = 200
+            }
+        )
 
         result = _yearly_share(df)
 
         # Commitment shares: 100/300 = 0.3333, 200/300 = 0.6667
-        assert result["commitment_current"].iloc[0] == pytest.approx(100.0/300, rel=1e-4)
-        assert result["commitment_current"].iloc[1] == pytest.approx(200.0/300, rel=1e-4)
+        assert result["commitment_current"].iloc[0] == pytest.approx(
+            100.0 / 300, rel=1e-4
+        )
+        assert result["commitment_current"].iloc[1] == pytest.approx(
+            200.0 / 300, rel=1e-4
+        )
 
         # Disbursement shares: 80/200 = 0.4, 120/200 = 0.6
-        assert result["disbursement_current"].iloc[0] == pytest.approx(80.0/200, rel=1e-4)
-        assert result["disbursement_current"].iloc[1] == pytest.approx(120.0/200, rel=1e-4)
+        assert result["disbursement_current"].iloc[0] == pytest.approx(
+            80.0 / 200, rel=1e-4
+        )
+        assert result["disbursement_current"].iloc[1] == pytest.approx(
+            120.0 / 200, rel=1e-4
+        )
 
 
 # ============================================================================
@@ -305,13 +335,17 @@ class TestRenameChannelColumnAddNames:
     @patch("oda_data.indicators.crs.crs_functions.add_channel_names")
     def test_rename_channel_column_add_names_renames_correctly(self, mock_add_names):
         """Test that channel_code is renamed to provider_code."""
-        df = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [1000, 2000],
-            ODASchema.YEAR: [2020, 2021],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [1000, 2000],
+                ODASchema.YEAR: [2020, 2021],
+            }
+        )
 
         # Mock add_channel_names to return DataFrame with provider_name added
-        mock_add_names.return_value = df.assign(**{ODASchema.PROVIDER_NAME: ["Org1", "Org2"]})
+        mock_add_names.return_value = df.assign(
+            **{ODASchema.PROVIDER_NAME: ["Org1", "Org2"]}
+        )
 
         result = _rename_channel_column_add_names(df)
 
@@ -325,10 +359,12 @@ class TestRenameChannelColumnAddNames:
     @patch("oda_data.indicators.crs.crs_functions.add_channel_names")
     def test_rename_channel_column_calls_add_channel_names(self, mock_add_names):
         """Test that add_channel_names is called with correct parameters."""
-        df = pd.DataFrame({
-            ODASchema.CHANNEL_CODE: [1000],
-            ODASchema.YEAR: [2020],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.CHANNEL_CODE: [1000],
+                ODASchema.YEAR: [2020],
+            }
+        )
 
         mock_add_names.return_value = df.assign(**{ODASchema.PROVIDER_NAME: ["Org1"]})
 
@@ -357,11 +393,13 @@ class TestDropIfAllValuesAreMissing:
             "disbursement": "disbursement_current",
         }
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2022],
-            "commitment_current": [100.0, None, 300.0],
-            "disbursement_current": [80.0, None, 240.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2022],
+                "commitment_current": [100.0, None, 300.0],
+                "disbursement_current": [80.0, None, 240.0],
+            }
+        )
 
         result = drop_if_all_values_are_missing(df)
 
@@ -377,11 +415,13 @@ class TestDropIfAllValuesAreMissing:
             "disbursement": "disbursement_current",
         }
 
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021],
-            "commitment_current": [100.0, None],
-            "disbursement_current": [None, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021],
+                "commitment_current": [100.0, None],
+                "disbursement_current": [None, 200.0],
+            }
+        )
 
         result = drop_if_all_values_are_missing(df)
 
@@ -399,11 +439,13 @@ class TestDropMissingDonors:
 
     def test_drop_missing_donors_removes_na_providers(self):
         """Test that rows with NA provider_code are removed."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, None, 3, None, 5],
-            ODASchema.YEAR: [2020, 2020, 2021, 2021, 2022],
-            ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0, 500.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, None, 3, None, 5],
+                ODASchema.YEAR: [2020, 2020, 2021, 2021, 2022],
+                ODASchema.VALUE: [100.0, 200.0, 300.0, 400.0, 500.0],
+            }
+        )
 
         result = drop_missing_donors(df)
 
@@ -413,10 +455,12 @@ class TestDropMissingDonors:
 
     def test_drop_missing_donors_keeps_all_when_none_missing(self):
         """Test that all rows are kept when no providers are missing."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3],
-            ODASchema.YEAR: [2020, 2021, 2022],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3],
+                ODASchema.YEAR: [2020, 2021, 2022],
+            }
+        )
 
         result = drop_missing_donors(df)
 
@@ -445,24 +489,30 @@ class TestMultilateralPurposeSpendingShares:
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
         # Create sample input data with proper ODASchema column names
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021],
-            ODASchema.CHANNEL_CODE: [1000, 1000],
-            ODASchema.RECIPIENT_CODE: [100, 100],
-            ODASchema.RECIPIENT_NAME: ["Country X", "Country X"],
-            ODASchema.PURPOSE_CODE: [110, 110],
-            ODASchema.PURPOSE_NAME: ["Education", "Education"],
-            "commitment_current": [100.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021],
+                ODASchema.CHANNEL_CODE: [1000, 1000],
+                ODASchema.RECIPIENT_CODE: [100, 100],
+                ODASchema.RECIPIENT_NAME: ["Country X", "Country X"],
+                ODASchema.PURPOSE_CODE: [110, 110],
+                ODASchema.PURPOSE_NAME: ["Education", "Education"],
+                "commitment_current": [100.0, 200.0],
+            }
+        )
 
         # Mock the intermediate functions
         # add_multi_channel_codes just passes through data
         mock_add_codes.return_value = df.copy()
+
         # add_channel_names should add the PROVIDER_NAME column
         def mock_add_names_func(df, codes_column, target_column):
             result = df.copy()
-            result[target_column] = ["Channel " + str(code) for code in df[codes_column]]
+            result[target_column] = [
+                "Channel " + str(code) for code in df[codes_column]
+            ]
             return result
+
         mock_add_names.side_effect = mock_add_names_func
 
         result = multilateral_purpose_spending_shares(df)
@@ -484,25 +534,41 @@ class TestMultilateralPurposeSpendingShares:
         mock_value_cols.return_value = {"commitment": "commitment_current"}
 
         # Create data with some invalid rows using proper ODASchema names
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021, 2022, 2023],
-            ODASchema.CHANNEL_CODE: [1, 2, None, 4],  # Row 3 has missing channel (will become provider_code)
-            ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
-            ODASchema.RECIPIENT_NAME: ["X", "X", "X", "X"],
-            ODASchema.PURPOSE_CODE: [110, 110, 110, 110],
-            ODASchema.PURPOSE_NAME: ["Education"] * 4,
-            "commitment_current": [100.0, 200.0, None, 400.0],  # Row 3 has missing value
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021, 2022, 2023],
+                ODASchema.CHANNEL_CODE: [
+                    1,
+                    2,
+                    None,
+                    4,
+                ],  # Row 3 has missing channel (will become provider_code)
+                ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
+                ODASchema.RECIPIENT_NAME: ["X", "X", "X", "X"],
+                ODASchema.PURPOSE_CODE: [110, 110, 110, 110],
+                ODASchema.PURPOSE_NAME: ["Education"] * 4,
+                "commitment_current": [
+                    100.0,
+                    200.0,
+                    None,
+                    400.0,
+                ],  # Row 3 has missing value
+            }
+        )
 
         # Mock the intermediate functions
         mock_add_codes.return_value = df.copy()
+
         # add_channel_names should add the PROVIDER_NAME column
         def mock_add_names_func(df, codes_column, target_column):
             result = df.copy()
             # Handle None values in channel_code
-            result[target_column] = ["Channel " + str(code) if pd.notna(code) else None
-                                      for code in df[codes_column]]
+            result[target_column] = [
+                "Channel " + str(code) if pd.notna(code) else None
+                for code in df[codes_column]
+            ]
             return result
+
         mock_add_names.side_effect = mock_add_names_func
 
         result = multilateral_purpose_spending_shares(df)

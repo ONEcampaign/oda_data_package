@@ -9,7 +9,7 @@ This module tests the complex multi-step channel mapping logic that:
 5. Handles unmapped channels gracefully
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -32,12 +32,9 @@ from oda_data.clean_data.channels import (
     clean_string,
     generate_channel_mapping_dictionary,
     match_names_direct_and_fuzzy,
-    match_names_regex,
     raw_data_to_unique_channels,
-    regex_to_code_dictionary,
 )
 from oda_data.clean_data.schema import ODASchema
-
 
 # ============================================================================
 # Fixtures
@@ -47,31 +44,39 @@ from oda_data.clean_data.schema import ODASchema
 @pytest.fixture
 def sample_channel_mapping():
     """Sample CRS official channel mapping data."""
-    return pd.DataFrame({
-        "channel_code": [44000, 41301, 21039, 47078],
-        "channel_name": ["World Bank", "Food and Agriculture Organization",
-                        "IISD IIDD Institut", "Montreal Protocol"],
-        "en_acronym": ["WB", "FAO", "IISD", "MP"],
-        "fr_acronym": ["BM", "FAO", "IISD", "PM"],
-    })
+    return pd.DataFrame(
+        {
+            "channel_code": [44000, 41301, 21039, 47078],
+            "channel_name": [
+                "World Bank",
+                "Food and Agriculture Organization",
+                "IISD IIDD Institut",
+                "Montreal Protocol",
+            ],
+            "en_acronym": ["WB", "FAO", "IISD", "MP"],
+            "fr_acronym": ["BM", "FAO", "IISD", "PM"],
+        }
+    )
 
 
 @pytest.fixture
 def sample_raw_data():
     """Sample raw data with channel names."""
-    return pd.DataFrame({
-        "channel_name": [
-            "World Bank",
-            "WORLD BANK",
-            "world bank - ida",
-            "Food & Agriculture Organization",
-            "FAO",
-            "Unknown Channel",
-            "EU Institutions European Commission",
-        ],
-        "year": [2020, 2020, 2021, 2021, 2022, 2022, 2023],
-        "value": [100, 200, 300, 400, 500, 600, 700],
-    })
+    return pd.DataFrame(
+        {
+            "channel_name": [
+                "World Bank",
+                "WORLD BANK",
+                "world bank - ida",
+                "Food & Agriculture Organization",
+                "FAO",
+                "Unknown Channel",
+                "EU Institutions European Commission",
+            ],
+            "year": [2020, 2020, 2021, 2021, 2022, 2022, 2023],
+            "value": [100, 200, 300, 400, 500, 600, 700],
+        }
+    )
 
 
 # ============================================================================
@@ -128,12 +133,14 @@ class TestChannelToCode:
     @patch("oda_data.clean_data.channels.get_crs_official_mapping")
     def test_channel_to_code_default_channel_name(self, mock_get_mapping):
         """Test mapping by channel_name (default)."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000, 41301],
-            "channel_name": ["World Bank", "Food and Agriculture Organization"],
-            "en_acronym": ["WB", "FAO"],
-            "fr_acronym": ["BM", "FAO"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000, 41301],
+                "channel_name": ["World Bank", "Food and Agriculture Organization"],
+                "en_acronym": ["WB", "FAO"],
+                "fr_acronym": ["BM", "FAO"],
+            }
+        )
 
         result = channel_to_code(map_to="channel_name")
 
@@ -144,12 +151,14 @@ class TestChannelToCode:
     @patch("oda_data.clean_data.channels.get_crs_official_mapping")
     def test_channel_to_code_by_en_acronym(self, mock_get_mapping):
         """Test mapping by English acronym."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000, 41301],
-            "channel_name": ["World Bank", "Food and Agriculture Organization"],
-            "en_acronym": ["WB", "FAO"],
-            "fr_acronym": ["BM", "FAO"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000, 41301],
+                "channel_name": ["World Bank", "Food and Agriculture Organization"],
+                "en_acronym": ["WB", "FAO"],
+                "fr_acronym": ["BM", "FAO"],
+            }
+        )
 
         result = channel_to_code(map_to="en_acronym")
 
@@ -161,12 +170,14 @@ class TestChannelToCode:
     @patch("oda_data.clean_data.channels.get_crs_official_mapping")
     def test_channel_to_code_by_fr_acronym(self, mock_get_mapping):
         """Test mapping by French acronym."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000, 41301],
-            "channel_name": ["World Bank", "Food and Agriculture Organization"],
-            "en_acronym": ["WB", "FAO"],
-            "fr_acronym": ["BM", "FAO"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000, 41301],
+                "channel_name": ["World Bank", "Food and Agriculture Organization"],
+                "en_acronym": ["WB", "FAO"],
+                "fr_acronym": ["BM", "FAO"],
+            }
+        )
 
         result = channel_to_code(map_to="fr_acronym")
 
@@ -184,9 +195,7 @@ class TestDirectMatchName:
 
     def test_direct_match_name_maps_correctly(self):
         """Test that direct matching assigns correct channel codes."""
-        df = pd.DataFrame({
-            "clean_channel": ["world bank", "fao", "unknown"]
-        })
+        df = pd.DataFrame({"clean_channel": ["world bank", "fao", "unknown"]})
         channels_dict = {
             "world bank": 44000,
             "fao": 41301,
@@ -244,7 +253,9 @@ class TestFuzzyMatchName:
         """Test that small typos are handled with appropriate tolerance."""
         channels_dict = {"food and agriculture organization": 41301}
 
-        result = _fuzzy_match_name("food and agriclture organization", channels_dict, tolerance=90)
+        result = _fuzzy_match_name(
+            "food and agriclture organization", channels_dict, tolerance=90
+        )
 
         # Should match despite typo
         assert result == 41301
@@ -255,10 +266,12 @@ class TestApplyFuzzyMatch:
 
     def test_apply_fuzzy_match_fills_missing_codes(self):
         """Test that fuzzy matching fills in missing channel codes."""
-        df = pd.DataFrame({
-            "clean_channel": ["world bank group", "fao"],
-            "channel_code": [pd.NA, pd.NA]
-        })
+        df = pd.DataFrame(
+            {
+                "clean_channel": ["world bank group", "fao"],
+                "channel_code": [pd.NA, pd.NA],
+            }
+        )
 
         mapping_dicts = [
             ({"world bank": 44000, "food and agriculture organization": 41301}, 80),
@@ -271,10 +284,9 @@ class TestApplyFuzzyMatch:
 
     def test_apply_fuzzy_match_preserves_existing_codes(self):
         """Test that existing codes are not overwritten."""
-        df = pd.DataFrame({
-            "clean_channel": ["world bank", "fao"],
-            "channel_code": [44000, pd.NA]
-        })
+        df = pd.DataFrame(
+            {"clean_channel": ["world bank", "fao"], "channel_code": [44000, pd.NA]}
+        )
 
         mapping_dicts = [
             ({"world bank": 99999, "fao": 41301}, 90),  # Different code for world bank
@@ -303,7 +315,9 @@ class TestCleanNamesForRegex:
 
     def test_clean_names_for_regex_removes_common_words(self):
         """Test that common words like 'the', 'of', 'and' are removed when surrounded by spaces."""
-        result = _clean_names_for_regex("Food and Agriculture Organization of the United Nations")
+        result = _clean_names_for_regex(
+            "Food and Agriculture Organization of the United Nations"
+        )
         # Common words surrounded by spaces should be removed
         assert " and " not in result
         assert " of " not in result
@@ -363,13 +377,13 @@ class TestRegexMapNamesToCodes:
 
     def test_regex_map_names_to_codes_partial_lookahead(self):
         """Test regex generation with partial lookahead."""
-        df = pd.DataFrame({
-            "mapped_name": ["world bank group"],
-            "channel_code": [44000]
-        })
+        df = pd.DataFrame(
+            {"mapped_name": ["world bank group"], "channel_code": [44000]}
+        )
 
-        result = _regex_map_names_to_codes(df, names_column="mapped_name",
-                                           regex_type="partial_look_ahead")
+        result = _regex_map_names_to_codes(
+            df, names_column="mapped_name", regex_type="partial_look_ahead"
+        )
 
         assert isinstance(result, dict)
         # Should create a regex pattern
@@ -377,14 +391,12 @@ class TestRegexMapNamesToCodes:
 
     def test_regex_map_names_to_codes_invalid_type_raises_error(self):
         """Test that invalid regex_type raises ValueError."""
-        df = pd.DataFrame({
-            "mapped_name": ["world bank"],
-            "channel_code": [44000]
-        })
+        df = pd.DataFrame({"mapped_name": ["world bank"], "channel_code": [44000]})
 
         with pytest.raises(ValueError, match="regex_type must be one of"):
-            _regex_map_names_to_codes(df, names_column="mapped_name",
-                                     regex_type="invalid")
+            _regex_map_names_to_codes(
+                df, names_column="mapped_name", regex_type="invalid"
+            )
 
 
 # ============================================================================
@@ -478,17 +490,18 @@ class TestMatchNamesDirectAndFuzzy:
 
     def test_match_names_direct_and_fuzzy_adds_channel_code(self, mock_get_mapping):
         """Test that channel codes are added."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000],
-            "channel_name": ["World Bank"],
-            "en_acronym": ["WB"],
-            "fr_acronym": ["BM"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000],
+                "channel_name": ["World Bank"],
+                "en_acronym": ["WB"],
+                "fr_acronym": ["BM"],
+            }
+        )
 
-        channels = pd.DataFrame({
-            "channel_name": ["World Bank"],
-            "clean_channel": ["world bank"]
-        })
+        channels = pd.DataFrame(
+            {"channel_name": ["World Bank"], "clean_channel": ["world bank"]}
+        )
 
         result = match_names_direct_and_fuzzy(channels)
 
@@ -497,17 +510,21 @@ class TestMatchNamesDirectAndFuzzy:
 
     def test_match_names_direct_and_fuzzy_uses_fuzzy_fallback(self, mock_get_mapping):
         """Test that fuzzy matching is used when direct match fails."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000],
-            "channel_name": ["World Bank"],
-            "en_acronym": ["WB"],
-            "fr_acronym": ["BM"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000],
+                "channel_name": ["World Bank"],
+                "en_acronym": ["WB"],
+                "fr_acronym": ["BM"],
+            }
+        )
 
-        channels = pd.DataFrame({
-            "channel_name": ["World Bank"],  # Exact match for testing
-            "clean_channel": ["world bank"]
-        })
+        channels = pd.DataFrame(
+            {
+                "channel_name": ["World Bank"],  # Exact match for testing
+                "clean_channel": ["world bank"],
+            }
+        )
 
         result = match_names_direct_and_fuzzy(channels)
 
@@ -527,12 +544,11 @@ class TestAddChannelNames:
             "fao": 41301,
         }
 
-        df = pd.DataFrame({
-            "channel_code": [44000, 41301]
-        })
+        df = pd.DataFrame({"channel_code": [44000, 41301]})
 
-        result = add_channel_names(df, codes_column="channel_code",
-                                   target_column="channel_name")
+        result = add_channel_names(
+            df, codes_column="channel_code", target_column="channel_name"
+        )
 
         assert "channel_name" in result.columns
         assert result["channel_name"].iloc[0] == "world bank"
@@ -543,35 +559,41 @@ class TestAddChannelNames:
 class TestGenerateChannelMappingDictionary:
     """Tests for the generate_channel_mapping_dictionary function."""
 
-    def test_generate_channel_mapping_dictionary_returns_dict(self, mock_get_mapping,
-                                                               sample_raw_data):
+    def test_generate_channel_mapping_dictionary_returns_dict(
+        self, mock_get_mapping, sample_raw_data
+    ):
         """Test that a dictionary is returned."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000, 41301],
-            "channel_name": ["World Bank", "Food and Agriculture Organization"],
-            "en_acronym": ["WB", "FAO"],
-            "fr_acronym": ["BM", "FAO"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000, 41301],
+                "channel_name": ["World Bank", "Food and Agriculture Organization"],
+                "en_acronym": ["WB", "FAO"],
+                "fr_acronym": ["BM", "FAO"],
+            }
+        )
 
         result = generate_channel_mapping_dictionary(sample_raw_data, "channel_name")
 
         assert isinstance(result, dict)
         assert len(result) > 0
 
-    def test_generate_channel_mapping_dictionary_handles_unmapped(self, mock_get_mapping,
-                                                                   sample_raw_data):
+    def test_generate_channel_mapping_dictionary_handles_unmapped(
+        self, mock_get_mapping, sample_raw_data
+    ):
         """Test that unmapped channels are excluded from dictionary."""
-        mock_get_mapping.return_value = pd.DataFrame({
-            "channel_code": [44000],
-            "channel_name": ["World Bank"],
-            "en_acronym": ["WB"],
-            "fr_acronym": ["BM"],
-        })
+        mock_get_mapping.return_value = pd.DataFrame(
+            {
+                "channel_code": [44000],
+                "channel_name": ["World Bank"],
+                "en_acronym": ["WB"],
+                "fr_acronym": ["BM"],
+            }
+        )
 
         result = generate_channel_mapping_dictionary(sample_raw_data, "channel_name")
 
         # Should only include channels that were successfully mapped
-        assert all(isinstance(v, (int, float)) for v in result.values())
+        assert all(isinstance(v, int | float) for v in result.values())
 
 
 @patch("oda_data.clean_data.channels.generate_channel_mapping_dictionary")
@@ -585,9 +607,7 @@ class TestAddChannelCodes:
             "FAO": 41301,
         }
 
-        df = pd.DataFrame({
-            ODASchema.CHANNEL_NAME: ["World Bank", "FAO"]
-        })
+        df = pd.DataFrame({ODASchema.CHANNEL_NAME: ["World Bank", "FAO"]})
 
         result = add_channel_codes(df)
 
@@ -595,13 +615,15 @@ class TestAddChannelCodes:
         assert result[ODASchema.CHANNEL_CODE].iloc[0] == 44000
         assert result[ODASchema.CHANNEL_CODE].iloc[1] == 41301
 
-    def test_add_channel_codes_handles_eu_institutions_special_case(self, mock_generate_mapping):
+    def test_add_channel_codes_handles_eu_institutions_special_case(
+        self, mock_generate_mapping
+    ):
         """Test that EU Institutions are mapped to code 42001."""
         mock_generate_mapping.return_value = {}
 
-        df = pd.DataFrame({
-            ODASchema.CHANNEL_NAME: ["EU Institutions European Commission"]
-        })
+        df = pd.DataFrame(
+            {ODASchema.CHANNEL_NAME: ["EU Institutions European Commission"]}
+        )
 
         result = add_channel_codes(df)
 
@@ -619,10 +641,12 @@ class TestAddMultiChannelCodes:
             **{ODASchema.CHANNEL_CODE: 44000}
         )
 
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_NAME: ["United States"],
-            ODASchema.AGENCY_NAME: ["USAID"]
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_NAME: ["United States"],
+                ODASchema.AGENCY_NAME: ["USAID"],
+            }
+        )
 
         result = add_multi_channel_codes(df)
 
@@ -636,10 +660,12 @@ class TestAddMultiChannelCodes:
             **{ODASchema.CHANNEL_CODE: 44000}
         )
 
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_NAME: ["World Bank"],
-            ODASchema.AGENCY_NAME: ["World Bank"]
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_NAME: ["World Bank"],
+                ODASchema.AGENCY_NAME: ["World Bank"],
+            }
+        )
 
         result = add_multi_channel_codes(df)
 

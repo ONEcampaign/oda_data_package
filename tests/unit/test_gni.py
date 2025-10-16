@@ -5,8 +5,7 @@ This module tests the functions in oda_data.tools.gni that compute ODA as a shar
 of GNI, including special handling for EU Institutions.
 """
 
-from copy import copy
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -17,7 +16,6 @@ from oda_data.tools.gni import (
     _get_gni_data,
     add_gni_share_column,
 )
-
 
 # ============================================================================
 # Tests for _get_eu27_gni_as_eu_institutions
@@ -35,18 +33,20 @@ class TestGetEU27GNIAsEUInstitutions:
 
         # Create mock OECDClient
         mock_client = MagicMock()
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            ODASchema.PROVIDER_CODE: [4, 5, 7],
-            ODASchema.VALUE: [1000.0, 2000.0, 1500.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [4, 5, 7],
+                ODASchema.VALUE: [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         # Create a mock copy that will be modified
         mock_copy_client = MagicMock()
         mock_copy_client.get_indicators.return_value = mock_gni_df
         mock_copy.return_value = mock_copy_client
 
-        result = _get_eu27_gni_as_eu_institutions(mock_client)
+        _get_eu27_gni_as_eu_institutions(mock_client)
 
         # Should create a copy and set providers to EU27 countries on the copy
         mock_copy.assert_called_once_with(mock_client)
@@ -61,12 +61,14 @@ class TestGetEU27GNIAsEUInstitutions:
         mock_groupings.return_value = {"eu27_countries": [4, 5]}
 
         mock_client = MagicMock()
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [4, 5],
-            ODASchema.PROVIDER_NAME: ["France", "Germany"],
-            ODASchema.VALUE: [1000.0, 2000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [4, 5],
+                ODASchema.PROVIDER_NAME: ["France", "Germany"],
+                ODASchema.VALUE: [1000.0, 2000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         result = _get_eu27_gni_as_eu_institutions(mock_client)
@@ -81,11 +83,13 @@ class TestGetEU27GNIAsEUInstitutions:
         mock_groupings.return_value = {"eu27_countries": [4, 5]}
 
         mock_client = MagicMock()
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            ODASchema.PROVIDER_CODE: [4, 5, 4, 5],
-            ODASchema.VALUE: [1000.0, 2000.0, 1100.0, 2200.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                ODASchema.PROVIDER_CODE: [4, 5, 4, 5],
+                ODASchema.VALUE: [1000.0, 2000.0, 1100.0, 2200.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         result = _get_eu27_gni_as_eu_institutions(mock_client)
@@ -107,12 +111,14 @@ class TestGetEU27GNIAsEUInstitutions:
         mock_groupings.return_value = {"eu27_countries": [4]}
 
         mock_client = MagicMock()
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [4],
-            ODASchema.VALUE: [1000.0],
-            "extra_column": ["test"],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [4],
+                ODASchema.VALUE: [1000.0],
+                "extra_column": ["test"],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         result = _get_eu27_gni_as_eu_institutions(mock_client)
@@ -136,17 +142,21 @@ class TestGetGNIData:
         """Test that GNI data is fetched with DAC1.40.1 indicator."""
         mock_client = MagicMock()
         mock_client.providers = None
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         with patch("oda_data.tools.gni._get_eu27_gni_as_eu_institutions") as mock_eu27:
-            mock_eu27.return_value = pd.DataFrame(columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
+            mock_eu27.return_value = pd.DataFrame(
+                columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE]
+            )
 
-            result = _get_gni_data(mock_client)
+            _get_gni_data(mock_client)
 
             # Should call get_indicators with GNI code
             # Note: the function creates a copy and modifies it
@@ -157,50 +167,62 @@ class TestGetGNIData:
         mock_client = MagicMock()
         mock_client.measure = ["commitment"]  # Start with different measure
         mock_client.providers = None
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
-        with patch("oda_data.tools.gni._get_eu27_gni_as_eu_institutions") as mock_eu27:
-            with patch("oda_data.tools.gni.copy") as mock_copy:
-                # Mock copy to return a modifiable client
-                copied_client = MagicMock()
-                copied_client.providers = None
-                copied_client.get_indicators.return_value = mock_gni_df
-                mock_copy.return_value = copied_client
-                mock_eu27.return_value = pd.DataFrame(columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
+        with (
+            patch("oda_data.tools.gni._get_eu27_gni_as_eu_institutions") as mock_eu27,
+            patch("oda_data.tools.gni.copy") as mock_copy,
+        ):
+            # Mock copy to return a modifiable client
+            copied_client = MagicMock()
+            copied_client.providers = None
+            copied_client.get_indicators.return_value = mock_gni_df
+            mock_copy.return_value = copied_client
+            mock_eu27.return_value = pd.DataFrame(
+                columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE]
+            )
 
-                result = _get_gni_data(mock_client)
+            _get_gni_data(mock_client)
 
-                # The copied client should have measure set to net_disbursement
-                assert copied_client.measure == ["net_disbursement"]
+            # The copied client should have measure set to net_disbursement
+            assert copied_client.measure == ["net_disbursement"]
 
     @patch("oda_data.tools.gni._get_eu27_gni_as_eu_institutions")
-    def test_get_gni_data_includes_eu_institutions_when_918_in_providers(self, mock_eu27):
+    def test_get_gni_data_includes_eu_institutions_when_918_in_providers(
+        self, mock_eu27
+    ):
         """Test that EU27 GNI is included when provider 918 is requested."""
         mock_client = MagicMock()
         mock_client.providers = [1, 918, 2]  # Includes EU Institutions
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
-        eu27_gni = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [918],
-            ODASchema.VALUE: [500000.0],
-        })
+        eu27_gni = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [918],
+                ODASchema.VALUE: [500000.0],
+            }
+        )
         mock_eu27.return_value = eu27_gni
 
         with patch("oda_data.tools.gni.copy") as mock_copy:
             mock_copy.return_value = mock_client
 
-            result = _get_gni_data(mock_client)
+            _get_gni_data(mock_client)
 
             # EU27 GNI function should have been called
             mock_eu27.assert_called_once()
@@ -210,24 +232,28 @@ class TestGetGNIData:
         """Test that EU27 GNI is included when providers is None (all providers)."""
         mock_client = MagicMock()
         mock_client.providers = None  # All providers
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
-        eu27_gni = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [918],
-            ODASchema.VALUE: [500000.0],
-        })
+        eu27_gni = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [918],
+                ODASchema.VALUE: [500000.0],
+            }
+        )
         mock_eu27.return_value = eu27_gni
 
         with patch("oda_data.tools.gni.copy") as mock_copy:
             mock_copy.return_value = mock_client
 
-            result = _get_gni_data(mock_client)
+            _get_gni_data(mock_client)
 
             # EU27 GNI function should have been called
             mock_eu27.assert_called_once()
@@ -237,17 +263,19 @@ class TestGetGNIData:
         """Test that EU27 GNI is not included when provider 918 is not requested."""
         mock_client = MagicMock()
         mock_client.providers = [1, 2, 3]  # Does not include 918
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         with patch("oda_data.tools.gni.copy") as mock_copy:
             mock_copy.return_value = mock_client
 
-            result = _get_gni_data(mock_client)
+            _get_gni_data(mock_client)
 
             # EU27 GNI function should not have been called
             mock_eu27.assert_not_called()
@@ -256,24 +284,32 @@ class TestGetGNIData:
         """Test that only year, provider_code, and value columns are returned."""
         mock_client = MagicMock()
         mock_client.providers = [1]
-        mock_gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-            "extra_column_1": ["test"],
-            "extra_column_2": [123],
-        })
+        mock_gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+                "extra_column_1": ["test"],
+                "extra_column_2": [123],
+            }
+        )
         mock_client.get_indicators.return_value = mock_gni_df
 
         with patch("oda_data.tools.gni._get_eu27_gni_as_eu_institutions") as mock_eu27:
-            mock_eu27.return_value = pd.DataFrame(columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
+            mock_eu27.return_value = pd.DataFrame(
+                columns=[ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE]
+            )
             with patch("oda_data.tools.gni.copy") as mock_copy:
                 mock_copy.return_value = mock_client
 
                 result = _get_gni_data(mock_client)
 
                 # Should only have year, provider_code, and value
-                assert set(result.columns) == {ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE}
+                assert set(result.columns) == {
+                    ODASchema.YEAR,
+                    ODASchema.PROVIDER_CODE,
+                    ODASchema.VALUE,
+                }
 
 
 # ============================================================================
@@ -290,19 +326,23 @@ class TestAddGNIShareColumn:
         mock_client = MagicMock()
 
         # Mock indicator data (ODA values)
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021],
-            ODASchema.PROVIDER_CODE: [1, 1],
-            ODASchema.VALUE: [1000.0, 1500.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021],
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.VALUE: [1000.0, 1500.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
         # Mock GNI data
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2021],
-            ODASchema.PROVIDER_CODE: [1, 1],
-            ODASchema.VALUE: [100000.0, 150000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2021],
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.VALUE: [100000.0, 150000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")
@@ -321,18 +361,22 @@ class TestAddGNIShareColumn:
         """Test that GNI share is rounded to 2 decimal places."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [12345.67],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [12345.67],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")
@@ -345,30 +389,40 @@ class TestAddGNIShareColumn:
         """Test that data is merged on year and provider_code."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021],
-            ODASchema.PROVIDER_CODE: [1, 2, 1],
-            ODASchema.VALUE: [1000.0, 2000.0, 1500.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021],
+                ODASchema.PROVIDER_CODE: [1, 2, 1],
+                ODASchema.VALUE: [1000.0, 2000.0, 1500.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021],
-            ODASchema.PROVIDER_CODE: [1, 2, 1],
-            ODASchema.VALUE: [100000.0, 200000.0, 150000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021],
+                ODASchema.PROVIDER_CODE: [1, 2, 1],
+                ODASchema.VALUE: [100000.0, 200000.0, 150000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")
 
         # Each row should have correct GNI share for its provider-year
-        p1_2020 = result[(result[ODASchema.YEAR] == 2020) & (result[ODASchema.PROVIDER_CODE] == 1)]
+        p1_2020 = result[
+            (result[ODASchema.YEAR] == 2020) & (result[ODASchema.PROVIDER_CODE] == 1)
+        ]
         assert p1_2020["gni_share_pct"].iloc[0] == 1.0  # 1000 / 100000 * 100
 
-        p2_2020 = result[(result[ODASchema.YEAR] == 2020) & (result[ODASchema.PROVIDER_CODE] == 2)]
+        p2_2020 = result[
+            (result[ODASchema.YEAR] == 2020) & (result[ODASchema.PROVIDER_CODE] == 2)
+        ]
         assert p2_2020["gni_share_pct"].iloc[0] == 1.0  # 2000 / 200000 * 100
 
-        p1_2021 = result[(result[ODASchema.YEAR] == 2021) & (result[ODASchema.PROVIDER_CODE] == 1)]
+        p1_2021 = result[
+            (result[ODASchema.YEAR] == 2021) & (result[ODASchema.PROVIDER_CODE] == 1)
+        ]
         assert p1_2021["gni_share_pct"].iloc[0] == 1.0  # 1500 / 150000 * 100
 
     @patch("oda_data.tools.gni._get_gni_data")
@@ -376,20 +430,24 @@ class TestAddGNIShareColumn:
         """Test that original indicator columns are preserved."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.PROVIDER_NAME: ["Donor A"],
-            ODASchema.VALUE: [1000.0],
-            "flow_type": ["ODA"],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.PROVIDER_NAME: ["Donor A"],
+                ODASchema.VALUE: [1000.0],
+                "flow_type": ["ODA"],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [100000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [100000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")
@@ -407,19 +465,23 @@ class TestAddGNIShareColumn:
         """Test with multiple indicators provided as list."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1],
-            "one_indicator": ["IND1", "IND2"],
-            ODASchema.VALUE: [1000.0, 2000.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1],
+                "one_indicator": ["IND1", "IND2"],
+                ODASchema.VALUE: [1000.0, 2000.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [100000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [100000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, ["IND1", "IND2"])
@@ -448,20 +510,24 @@ class TestGNIIntegration:
         mock_client.providers = [1, 918]  # Regular provider + EU Institutions
 
         # Mock indicator data
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 918],
-            ODASchema.VALUE: [1000.0, 3000.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 918],
+                ODASchema.VALUE: [1000.0, 3000.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
         with patch("oda_data.tools.gni._get_gni_data") as mock_get_gni:
             # Mock GNI data (including EU27 aggregate)
-            gni_df = pd.DataFrame({
-                ODASchema.YEAR: [2020, 2020],
-                ODASchema.PROVIDER_CODE: [1, 918],
-                ODASchema.VALUE: [100000.0, 500000.0],
-            })
+            gni_df = pd.DataFrame(
+                {
+                    ODASchema.YEAR: [2020, 2020],
+                    ODASchema.PROVIDER_CODE: [1, 918],
+                    ODASchema.VALUE: [100000.0, 500000.0],
+                }
+            )
             mock_get_gni.return_value = gni_df
 
             result = add_gni_share_column(mock_client, "TEST.INDICATOR")
@@ -471,11 +537,15 @@ class TestGNIIntegration:
             assert "gni_share_pct" in result.columns
 
             # Provider 1: 1000 / 100000 * 100 = 1.0%
-            p1_share = result[result[ODASchema.PROVIDER_CODE] == 1]["gni_share_pct"].iloc[0]
+            p1_share = result[result[ODASchema.PROVIDER_CODE] == 1][
+                "gni_share_pct"
+            ].iloc[0]
             assert p1_share == 1.0
 
             # Provider 918: 3000 / 500000 * 100 = 0.6%
-            p918_share = result[result[ODASchema.PROVIDER_CODE] == 918]["gni_share_pct"].iloc[0]
+            p918_share = result[result[ODASchema.PROVIDER_CODE] == 918][
+                "gni_share_pct"
+            ].iloc[0]
             assert p918_share == 0.6
 
 
@@ -492,18 +562,22 @@ class TestGNIEdgeCases:
         """Test handling of zero GNI values (division by zero)."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [1000.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [1000.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.VALUE: [0.0],  # Zero GNI
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.VALUE: [0.0],  # Zero GNI
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")
@@ -516,18 +590,22 @@ class TestGNIEdgeCases:
         """Test handling when GNI data is missing for some providers."""
         mock_client = MagicMock()
 
-        indicator_df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 2],
-            ODASchema.VALUE: [1000.0, 2000.0],
-        })
+        indicator_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 2],
+                ODASchema.VALUE: [1000.0, 2000.0],
+            }
+        )
         mock_client.get_indicators.return_value = indicator_df
 
-        gni_df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],  # Only provider 1 has GNI
-            ODASchema.VALUE: [100000.0],
-        })
+        gni_df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],  # Only provider 1 has GNI
+                ODASchema.VALUE: [100000.0],
+            }
+        )
         mock_get_gni.return_value = gni_df
 
         result = add_gni_share_column(mock_client, "TEST.INDICATOR")

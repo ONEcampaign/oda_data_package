@@ -7,12 +7,15 @@ and process provider and recipient grouping definitions from JSON files.
 
 import json
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import patch
 
 import pytest
 
-from oda_data.tools.groupings import _read_grouping, provider_groupings, recipient_groupings
-
+from oda_data.tools.groupings import (
+    _read_grouping,
+    provider_groupings,
+    recipient_groupings,
+)
 
 # ============================================================================
 # Tests for _read_grouping (internal helper)
@@ -90,7 +93,7 @@ class TestReadGrouping:
         result = _read_grouping(test_file)
 
         # All keys should be integers
-        assert isinstance(list(result["codes"].keys())[0], int)
+        assert isinstance(next(iter(result["codes"].keys())), int)
         assert result["codes"][1] == "One"
         assert result["codes"][100] == "Hundred"
 
@@ -133,7 +136,7 @@ class TestProviderGroupings:
         mock_paths.settings = Path("/test/settings")
         mock_read.return_value = {"test": {1: "Test"}}
 
-        result = provider_groupings()
+        provider_groupings()
 
         # Should call _read_grouping with provider_groupings.json path
         expected_path = Path("/test/settings") / "provider_groupings.json"
@@ -180,7 +183,12 @@ class TestProviderGroupings:
         assert "all_providers" in result
 
         # Check that list reference was expanded
-        expected_all = {1: "United States", 2: "United Kingdom", 901: "World Bank", 918: "EU Institutions"}
+        expected_all = {
+            1: "United States",
+            2: "United Kingdom",
+            901: "World Bank",
+            918: "EU Institutions",
+        }
         assert result["all_providers"] == expected_all
 
 
@@ -199,7 +207,7 @@ class TestRecipientGroupings:
         mock_paths.settings = Path("/test/settings")
         mock_read.return_value = {"test": {100: "Test"}}
 
-        result = recipient_groupings()
+        recipient_groupings()
 
         # Should call _read_grouping with recipient_groupings.json path
         expected_path = Path("/test/settings") / "recipient_groupings.json"
@@ -247,9 +255,12 @@ class TestRecipientGroupings:
 
         # Check that list reference was expanded
         expected_all = {
-            100: "Afghanistan", 200: "Bangladesh",
-            300: "Kenya", 400: "Nigeria",
-            500: "India", 600: "Pakistan"
+            100: "Afghanistan",
+            200: "Bangladesh",
+            300: "Kenya",
+            400: "Nigeria",
+            500: "India",
+            600: "Pakistan",
         }
         assert result["developing_countries"] == expected_all
 
@@ -331,7 +342,9 @@ class TestGroupingsErrorHandling:
             _read_grouping(nonexistent_file)
 
     @patch("oda_data.tools.groupings.config.ODAPaths")
-    def test_read_grouping_with_invalid_json_raises_error(self, mock_paths, tmp_path: Path):
+    def test_read_grouping_with_invalid_json_raises_error(
+        self, mock_paths, tmp_path: Path
+    ):
         """Test that invalid JSON raises JSONDecodeError."""
         test_file = tmp_path / "invalid.json"
         with open(test_file, "w") as f:

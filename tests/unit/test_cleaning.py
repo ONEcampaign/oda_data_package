@@ -7,7 +7,6 @@ and unit conversions.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -19,7 +18,6 @@ from oda_data.clean_data.common import (
     map_column_schema,
 )
 
-
 # ============================================================================
 # Tests for clean_column_name
 # ============================================================================
@@ -28,36 +26,39 @@ from oda_data.clean_data.common import (
 class TestCleanColumnName:
     """Tests for the clean_column_name function."""
 
-    @pytest.mark.parametrize("input_name,expected", [
-        # CamelCase conversions
-        ("DonorCode", "donor_code"),
-        ("RecipientName", "recipient_name"),
-        ("SectorCode", "sector_code"),
-        ("ProviderCode", "provider_code"),
-        # Already snake_case
-        ("donor_code", "donor_code"),
-        ("recipient_name", "recipient_name"),
-        # All caps (should add _code suffix)
-        ("SECTOR", "sector_code"),
-        ("DONOR", "donor_code"),
-        ("CRS", "crs_code"),
-        # Mixed cases
-        ("aidtypeName", "aidtype_name"),
-        ("flowType", "flow_type"),
-        # Spaces
-        ("Donor Code", "donor_code"),
-        ("Recipient Name", "recipient_name"),
-        # Hyphens (removed, underscores added)
-        ("donor-code", "donorcode"),
-        ("sector-name", "sectorname"),
-        # Double underscores (collapsed)
-        ("donor__code", "donor_code"),
-        # Leading/trailing spaces (strip applies, leading space becomes underscore in split)
-        (" DonorCode ", "_donor_code"),
-        # Multiple caps in sequence (all caps stays together)
-        ("GNI", "gni_code"),
-        ("ODAGrant", "odagrant"),  # Consecutive caps stay together
-    ])
+    @pytest.mark.parametrize(
+        "input_name,expected",
+        [
+            # CamelCase conversions
+            ("DonorCode", "donor_code"),
+            ("RecipientName", "recipient_name"),
+            ("SectorCode", "sector_code"),
+            ("ProviderCode", "provider_code"),
+            # Already snake_case
+            ("donor_code", "donor_code"),
+            ("recipient_name", "recipient_name"),
+            # All caps (should add _code suffix)
+            ("SECTOR", "sector_code"),
+            ("DONOR", "donor_code"),
+            ("CRS", "crs_code"),
+            # Mixed cases
+            ("aidtypeName", "aidtype_name"),
+            ("flowType", "flow_type"),
+            # Spaces
+            ("Donor Code", "donor_code"),
+            ("Recipient Name", "recipient_name"),
+            # Hyphens (removed, underscores added)
+            ("donor-code", "donorcode"),
+            ("sector-name", "sectorname"),
+            # Double underscores (collapsed)
+            ("donor__code", "donor_code"),
+            # Leading/trailing spaces (strip applies, leading space becomes underscore in split)
+            (" DonorCode ", "_donor_code"),
+            # Multiple caps in sequence (all caps stays together)
+            ("GNI", "gni_code"),
+            ("ODAGrant", "odagrant"),  # Consecutive caps stay together
+        ],
+    )
     def test_clean_column_name_variations_correct_output(
         self, input_name: str, expected: str
     ):
@@ -102,11 +103,13 @@ class TestCleanRawDF:
 
     def test_clean_raw_df_renames_columns_to_snake_case(self):
         """Test that DataFrame columns are renamed to snake_case."""
-        df = pd.DataFrame({
-            "DonorCode": [1, 2],
-            "RecipientName": ["Country A", "Country B"],
-            "Year": [2020, 2021],
-        })
+        df = pd.DataFrame(
+            {
+                "DonorCode": [1, 2],
+                "RecipientName": ["Country A", "Country B"],
+                "Year": [2020, 2021],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -115,10 +118,12 @@ class TestCleanRawDF:
 
     def test_clean_raw_df_converts_amount_to_numeric(self):
         """Test that 'amount' column is converted to numeric float64."""
-        df = pd.DataFrame({
-            "Amount": ["1000.5", "2000", "invalid", "3000.75"],
-            "Year": [2020, 2021, 2022, 2023],
-        })
+        df = pd.DataFrame(
+            {
+                "Amount": ["1000.5", "2000", "invalid", "3000.75"],
+                "Year": [2020, 2021, 2022, 2023],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -132,10 +137,12 @@ class TestCleanRawDF:
         """Test that column schema mapping is applied correctly."""
         # This test depends on what's in CRS_MAPPING
         # We'll create a simple test that verifies the mapping is called
-        df = pd.DataFrame({
-            "DonorCode": [1, 2],
-            "Year": [2020, 2021],
-        })
+        df = pd.DataFrame(
+            {
+                "DonorCode": [1, 2],
+                "Year": [2020, 2021],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -146,10 +153,12 @@ class TestCleanRawDF:
 
     def test_clean_raw_df_replaces_special_characters(self):
         """Test that special character \\x1a is replaced with pd.NA."""
-        df = pd.DataFrame({
-            "Name": ["Valid", "\x1a", "Another"],
-            "Year": [2020, 2021, 2022],
-        })
+        df = pd.DataFrame(
+            {
+                "Name": ["Valid", "\x1a", "Another"],
+                "Year": [2020, 2021, 2022],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -158,11 +167,13 @@ class TestCleanRawDF:
 
     def test_clean_raw_df_sets_default_types(self):
         """Test that default data types are applied."""
-        df = pd.DataFrame({
-            "Year": [2020, 2021, 2022],
-            "Code": [1, 2, 3],
-            "Value": [100.5, 200.75, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                "Year": [2020, 2021, 2022],
+                "Code": [1, 2, 3],
+                "Value": [100.5, 200.75, 300.0],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -191,16 +202,18 @@ class TestConvertUnits:
 
     def test_convert_units_no_conversion_when_usd_current(self, mock_pydeflate):
         """Test that no conversion occurs when currency is USD and no base_year."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+            }
+        )
 
         result = convert_units(
             data=df,
             indicator="DAC1.40.1",  # Should return as-is
             currency="USD",
-            base_year=None
+            base_year=None,
         )
 
         assert "currency" in result.columns
@@ -213,18 +226,18 @@ class TestConvertUnits:
 
     def test_convert_units_currency_exchange_when_target_not_usd(self, mock_pydeflate):
         """Test that currency exchange is called when target currency is not USD."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "donor_code": [1, 2],  # Required by pydeflate (maps to provider_code in schema)
-            "value": [1000.0, 2000.0],
-        })
-
-        result = convert_units(
-            data=df,
-            indicator=None,
-            currency="EUR",
-            base_year=None
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "donor_code": [
+                    1,
+                    2,
+                ],  # Required by pydeflate (maps to provider_code in schema)
+                "value": [1000.0, 2000.0],
+            }
         )
+
+        result = convert_units(data=df, indicator=None, currency="EUR", base_year=None)
 
         # Currency exchange should be called
         mock_pydeflate["exchange"].assert_called_once()
@@ -233,18 +246,18 @@ class TestConvertUnits:
 
     def test_convert_units_deflation_when_base_year_provided(self, mock_pydeflate):
         """Test that deflation is called when base_year is provided."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "donor_code": [1, 2],  # Required by pydeflate (maps to provider_code in schema)
-            "value": [1000.0, 2000.0],
-        })
-
-        result = convert_units(
-            data=df,
-            indicator=None,
-            currency="USD",
-            base_year=2020
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "donor_code": [
+                    1,
+                    2,
+                ],  # Required by pydeflate (maps to provider_code in schema)
+                "value": [1000.0, 2000.0],
+            }
         )
+
+        result = convert_units(data=df, indicator=None, currency="USD", base_year=2020)
 
         # Deflation should be called
         mock_pydeflate["deflate"].assert_called_once()
@@ -254,17 +267,16 @@ class TestConvertUnits:
 
     def test_convert_units_with_indicator_containing_40(self, mock_pydeflate):
         """Test that indicators with '.40.' skip conversion (except DAC1.40.1)."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+            }
+        )
 
         # Should skip conversion for .40. indicators
         result = convert_units(
-            data=df,
-            indicator="DAC2A.40.100",
-            currency="EUR",
-            base_year=None
+            data=df, indicator="DAC2A.40.100", currency="EUR", base_year=None
         )
 
         # No conversion should occur
@@ -274,18 +286,18 @@ class TestConvertUnits:
 
     def test_convert_units_currency_and_base_year_together(self, mock_pydeflate):
         """Test that both currency exchange and deflation work together."""
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "donor_code": [1, 2],  # Required by pydeflate (maps to provider_code in schema)
-            "value": [1000.0, 2000.0],
-        })
-
-        result = convert_units(
-            data=df,
-            indicator="TEST",
-            currency="EUR",
-            base_year=2020
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "donor_code": [
+                    1,
+                    2,
+                ],  # Required by pydeflate (maps to provider_code in schema)
+                "value": [1000.0, 2000.0],
+            }
         )
+
+        convert_units(data=df, indicator="TEST", currency="EUR", base_year=2020)
 
         # Deflation should be called (which handles both conversion and deflation)
         mock_pydeflate["deflate"].assert_called_once()
@@ -302,10 +314,12 @@ class TestMapColumnSchema:
     def test_map_column_schema_applies_crs_mapping(self):
         """Test that CRS column mapping is applied to DataFrame."""
         # Create a DataFrame with columns that might be in CRS_MAPPING
-        df = pd.DataFrame({
-            "donor_code": [1, 2],
-            "year": [2020, 2021],
-        })
+        df = pd.DataFrame(
+            {
+                "donor_code": [1, 2],
+                "year": [2020, 2021],
+            }
+        )
 
         result = map_column_schema(df)
 
@@ -316,10 +330,12 @@ class TestMapColumnSchema:
 
     def test_map_column_schema_preserves_unmapped_columns(self):
         """Test that columns not in mapping are preserved."""
-        df = pd.DataFrame({
-            "custom_column": ["a", "b"],
-            "another_column": [1, 2],
-        })
+        df = pd.DataFrame(
+            {
+                "custom_column": ["a", "b"],
+                "another_column": [1, 2],
+            }
+        )
 
         result = map_column_schema(df)
 
@@ -349,19 +365,21 @@ class TestCleanParquetFileInBatches:
         output_path = tmp_path / "output.parquet"
 
         # Create sample data with CamelCase columns
-        df = pd.DataFrame({
-            "DonorCode": [1, 2, 3, 4, 5],
-            "RecipientName": ["A", "B", "C", "D", "E"],
-            "Year": [2020, 2020, 2021, 2021, 2022],
-            "Amount": [100.0, 200.0, 300.0, 400.0, 500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "DonorCode": [1, 2, 3, 4, 5],
+                "RecipientName": ["A", "B", "C", "D", "E"],
+                "Year": [2020, 2020, 2021, 2021, 2022],
+                "Amount": [100.0, 200.0, 300.0, 400.0, 500.0],
+            }
+        )
         df.to_parquet(input_path, engine="pyarrow")
 
         # Process the file in batches
         clean_parquet_file_in_batches(
             input_path=input_path,
             output_path=output_path,
-            batch_size=2  # Small batch for testing
+            batch_size=2,  # Small batch for testing
         )
 
         # Read the output and verify
@@ -387,18 +405,18 @@ class TestCleanParquetFileInBatches:
         output_path = tmp_path / "large_output.parquet"
 
         # Create a moderately sized file (1000 rows)
-        df = pd.DataFrame({
-            "DonorCode": range(1000),
-            "Year": [2020] * 1000,
-            "Amount": [100.0] * 1000,
-        })
+        df = pd.DataFrame(
+            {
+                "DonorCode": range(1000),
+                "Year": [2020] * 1000,
+                "Amount": [100.0] * 1000,
+            }
+        )
         df.to_parquet(input_path, engine="pyarrow")
 
         # Process with batch size
         clean_parquet_file_in_batches(
-            input_path=input_path,
-            output_path=output_path,
-            batch_size=100
+            input_path=input_path, output_path=output_path, batch_size=100
         )
 
         # Verify output
@@ -422,10 +440,12 @@ class TestCleaningEdgeCases:
 
     def test_clean_raw_df_with_all_na_column(self):
         """Test that DataFrame with all NA values is handled correctly."""
-        df = pd.DataFrame({
-            "AllNA": [None, None, None],
-            "Year": [2020, 2021, 2022],
-        })
+        df = pd.DataFrame(
+            {
+                "AllNA": [None, None, None],
+                "Year": [2020, 2021, 2022],
+            }
+        )
 
         result = clean_raw_df(df)
 
@@ -438,20 +458,18 @@ class TestCleaningEdgeCases:
         Some conversions require provider_code for exchange/deflate functions.
         This tests behavior when it's missing.
         """
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-            # No provider_code
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+                # No provider_code
+            }
+        )
 
         # This might raise an error or handle gracefully
         # Depending on the pydeflate implementation
         try:
-            result = convert_units(
-                data=df,
-                currency="USD",
-                base_year=None
-            )
+            result = convert_units(data=df, currency="USD", base_year=None)
             # If it succeeds, verify currency is added
             assert "currency" in result.columns
         except KeyError:

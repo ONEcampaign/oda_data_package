@@ -12,7 +12,6 @@ import pytest
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.crs.common import crs_value_cols, group_data_based_on_indicator
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -21,25 +20,39 @@ from oda_data.indicators.crs.common import crs_value_cols, group_data_based_on_i
 @pytest.fixture
 def sample_crs_data():
     """Sample CRS data for testing grouping logic."""
-    return pd.DataFrame({
-        "year": [2020, 2020, 2020, 2021, 2021],
-        "donor_code": [1, 1, 2, 1, 2],
-        "de_donorcode": [1, 1, 2, 1, 2],
-        "donor_name": ["USA", "USA", "France", "USA", "France"],
-        "recipient_code": [100, 100, 200, 100, 200],
-        "de_recipientcode": [100, 100, 200, 100, 200],
-        "recipient_name": ["Country A", "Country A", "Country B", "Country A", "Country B"],
-        "recipient_region_code": [1, 1, 2, 1, 2],
-        "recipient_region": ["Region 1", "Region 1", "Region 2", "Region 1", "Region 2"],
-        "recipient_income_code": [1, 1, 2, 1, 2],
-        "incomegroup_name": ["LDC", "LDC", "LMIC", "LDC", "LMIC"],
-        "category": [10, 10, 20, 10, 20],  # Type of flow
-        "type_of_finance": [110, 110, 420, 110, 420],  # Type of finance
-        "modality": ["C", "C", "B", "C", "B"],  # Modality
-        "purpose_code": [110, 120, 110, 120, 110],  # Purpose
-        "usd_commitment": [100.0, 150.0, 200.0, 300.0, 400.0],
-        "usd_disbursement": [80.0, 120.0, 160.0, 240.0, 320.0],
-    })
+    return pd.DataFrame(
+        {
+            "year": [2020, 2020, 2020, 2021, 2021],
+            "donor_code": [1, 1, 2, 1, 2],
+            "de_donorcode": [1, 1, 2, 1, 2],
+            "donor_name": ["USA", "USA", "France", "USA", "France"],
+            "recipient_code": [100, 100, 200, 100, 200],
+            "de_recipientcode": [100, 100, 200, 100, 200],
+            "recipient_name": [
+                "Country A",
+                "Country A",
+                "Country B",
+                "Country A",
+                "Country B",
+            ],
+            "recipient_region_code": [1, 1, 2, 1, 2],
+            "recipient_region": [
+                "Region 1",
+                "Region 1",
+                "Region 2",
+                "Region 1",
+                "Region 2",
+            ],
+            "recipient_income_code": [1, 1, 2, 1, 2],
+            "incomegroup_name": ["LDC", "LDC", "LMIC", "LDC", "LMIC"],
+            "category": [10, 10, 20, 10, 20],  # Type of flow
+            "type_of_finance": [110, 110, 420, 110, 420],  # Type of finance
+            "modality": ["C", "C", "B", "C", "B"],  # Modality
+            "purpose_code": [110, 120, 110, 120, 110],  # Purpose
+            "usd_commitment": [100.0, 150.0, 200.0, 300.0, 400.0],
+            "usd_disbursement": [80.0, 120.0, 160.0, 240.0, 320.0],
+        }
+    )
 
 
 # ============================================================================
@@ -85,7 +98,7 @@ class TestGroupDataBasedOnIndicator:
         result = group_data_based_on_indicator(
             sample_crs_data,
             indicator_code="CRS.FLOW",
-            measures=["commitment", "gross_disbursement"]
+            measures=["commitment", "gross_disbursement"],
         )
 
         # Should have measure column
@@ -101,9 +114,7 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_two_dimensions_finance_type(self, sample_crs_data):
         """Test grouping by flow type and finance type (CRS.X.Y format)."""
         result = group_data_based_on_indicator(
-            sample_crs_data,
-            indicator_code="CRS.FLOW.FINANCE",
-            measures=["commitment"]
+            sample_crs_data, indicator_code="CRS.FLOW.FINANCE", measures=["commitment"]
         )
 
         # Should have measure and value columns
@@ -119,7 +130,7 @@ class TestGroupDataBasedOnIndicator:
         result = group_data_based_on_indicator(
             sample_crs_data,
             indicator_code="CRS.FLOW.FINANCE.MODALITY",
-            measures=["commitment"]
+            measures=["commitment"],
         )
 
         # Should have measure and value columns
@@ -135,7 +146,7 @@ class TestGroupDataBasedOnIndicator:
         result = group_data_based_on_indicator(
             sample_crs_data,
             indicator_code="CRS.FLOW.FINANCE.MODALITY.PURPOSE",
-            measures=["commitment"]
+            measures=["commitment"],
         )
 
         # Should have measure and value columns
@@ -149,27 +160,27 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_sums_values_correctly(self, sample_crs_data):
         """Test that values are summed correctly within groups."""
         # Create simple data where we know the expected sum
-        simple_data = pd.DataFrame({
-            "year": [2020, 2020],
-            "donor_code": [1, 1],
-            "de_donorcode": [1, 1],
-            "donor_name": ["USA", "USA"],
-            "recipient_code": [100, 100],
-            "de_recipientcode": [100, 100],
-            "recipient_name": ["Country A", "Country A"],
-            "recipient_region_code": [1, 1],
-            "recipient_region": ["Region 1", "Region 1"],
-            "recipient_income_code": [1, 1],
-            "incomegroup_name": ["LDC", "LDC"],
-            "category": [10, 10],
-            "usd_commitment": [100.0, 200.0],
-            "usd_disbursement": [50.0, 75.0],
-        })
+        simple_data = pd.DataFrame(
+            {
+                "year": [2020, 2020],
+                "donor_code": [1, 1],
+                "de_donorcode": [1, 1],
+                "donor_name": ["USA", "USA"],
+                "recipient_code": [100, 100],
+                "de_recipientcode": [100, 100],
+                "recipient_name": ["Country A", "Country A"],
+                "recipient_region_code": [1, 1],
+                "recipient_region": ["Region 1", "Region 1"],
+                "recipient_income_code": [1, 1],
+                "incomegroup_name": ["LDC", "LDC"],
+                "category": [10, 10],
+                "usd_commitment": [100.0, 200.0],
+                "usd_disbursement": [50.0, 75.0],
+            }
+        )
 
         result = group_data_based_on_indicator(
-            simple_data,
-            indicator_code="CRS.FLOW",
-            measures=["commitment"]
+            simple_data, indicator_code="CRS.FLOW", measures=["commitment"]
         )
 
         # Filter to commitment measure
@@ -181,9 +192,7 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_preserves_base_dimensions(self, sample_crs_data):
         """Test that base dimensions (year, donor, recipient) are preserved."""
         result = group_data_based_on_indicator(
-            sample_crs_data,
-            indicator_code="CRS.FLOW",
-            measures=["commitment"]
+            sample_crs_data, indicator_code="CRS.FLOW", measures=["commitment"]
         )
 
         # Should preserve key dimensions
@@ -198,7 +207,7 @@ class TestGroupDataBasedOnIndicator:
         result = group_data_based_on_indicator(
             sample_crs_data,
             indicator_code="CRS.FLOW",
-            measures=["commitment", "gross_disbursement"]
+            measures=["commitment", "gross_disbursement"],
         )
 
         # Should have both measures in the measure column
@@ -214,27 +223,27 @@ class TestGroupDataBasedOnIndicator:
 
     def test_group_data_handles_missing_grouping_columns(self):
         """Test that grouping works when some grouping columns are missing."""
-        data = pd.DataFrame({
-            "year": [2020, 2020],
-            "donor_code": [1, 1],
-            "de_donorcode": [1, 1],
-            "donor_name": ["USA", "USA"],
-            "recipient_code": [100, 100],
-            "de_recipientcode": [100, 100],
-            "recipient_name": ["Country A", "Country A"],
-            "recipient_region_code": [1, 1],
-            "recipient_region": ["Region 1", "Region 1"],
-            "recipient_income_code": [1, 1],
-            "incomegroup_name": ["LDC", "LDC"],
-            # Missing: category, type_of_finance, modality, purpose_code
-            "usd_commitment": [100.0, 200.0],
-        })
+        data = pd.DataFrame(
+            {
+                "year": [2020, 2020],
+                "donor_code": [1, 1],
+                "de_donorcode": [1, 1],
+                "donor_name": ["USA", "USA"],
+                "recipient_code": [100, 100],
+                "de_recipientcode": [100, 100],
+                "recipient_name": ["Country A", "Country A"],
+                "recipient_region_code": [1, 1],
+                "recipient_region": ["Region 1", "Region 1"],
+                "recipient_income_code": [1, 1],
+                "incomegroup_name": ["LDC", "LDC"],
+                # Missing: category, type_of_finance, modality, purpose_code
+                "usd_commitment": [100.0, 200.0],
+            }
+        )
 
         # Should still work, just won't group by missing columns
         result = group_data_based_on_indicator(
-            data,
-            indicator_code="CRS.FLOW.FINANCE",
-            measures=["commitment"]
+            data, indicator_code="CRS.FLOW.FINANCE", measures=["commitment"]
         )
 
         # Should return a result without errors
@@ -244,9 +253,7 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_groups_separately_by_year(self, sample_crs_data):
         """Test that data is grouped separately for each year."""
         result = group_data_based_on_indicator(
-            sample_crs_data,
-            indicator_code="CRS.FLOW",
-            measures=["commitment"]
+            sample_crs_data, indicator_code="CRS.FLOW", measures=["commitment"]
         )
 
         # Should have separate entries for each year
@@ -257,9 +264,7 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_groups_separately_by_donor(self, sample_crs_data):
         """Test that data is grouped separately for each donor."""
         result = group_data_based_on_indicator(
-            sample_crs_data,
-            indicator_code="CRS.FLOW",
-            measures=["commitment"]
+            sample_crs_data, indicator_code="CRS.FLOW", measures=["commitment"]
         )
 
         # Should have separate entries for each donor
@@ -270,9 +275,7 @@ class TestGroupDataBasedOnIndicator:
     def test_group_data_maps_measure_names_correctly(self, sample_crs_data):
         """Test that measure column names are mapped back to measure names."""
         result = group_data_based_on_indicator(
-            sample_crs_data,
-            indicator_code="CRS.FLOW",
-            measures=["commitment"]
+            sample_crs_data, indicator_code="CRS.FLOW", measures=["commitment"]
         )
 
         # Measure column should contain the original measure name, not column name

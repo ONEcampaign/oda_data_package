@@ -11,7 +11,6 @@ This module tests the business logic for generating CRS indicators, including:
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
 
 from oda_data.indicators.crs.oecd import (
     apply_filter,
@@ -20,7 +19,6 @@ from oda_data.indicators.crs.oecd import (
     generate_totals,
     map_column,
 )
-
 
 # ============================================================================
 # Tests for generate_totals
@@ -32,12 +30,14 @@ class TestGenerateTotals:
 
     def test_generate_totals_creates_hierarchical_totals(self):
         """Test that totals are created at each hierarchical level."""
-        data = pd.DataFrame({
-            "source": ["CRS", "CRS"],
-            "perspective": ["P", "R"],
-            "flow_type": ["10", "20"],
-            "finance_type": ["100", "200"],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS", "CRS"],
+                "perspective": ["P", "R"],
+                "flow_type": ["10", "20"],
+                "finance_type": ["100", "200"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -49,11 +49,13 @@ class TestGenerateTotals:
 
     def test_generate_totals_assigns_t_markers_correctly(self):
         """Test that 'T' markers are assigned to grouped columns."""
-        data = pd.DataFrame({
-            "col1": ["A", "B"],
-            "col2": ["X", "Y"],
-            "col3": ["1", "2"],
-        })
+        data = pd.DataFrame(
+            {
+                "col1": ["A", "B"],
+                "col2": ["X", "Y"],
+                "col3": ["1", "2"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -62,10 +64,12 @@ class TestGenerateTotals:
 
     def test_generate_totals_with_two_columns(self):
         """Test base case with 2-column DataFrame."""
-        data = pd.DataFrame({
-            "source": ["CRS", "CRS"],
-            "perspective": ["P", "R"],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS", "CRS"],
+                "perspective": ["P", "R"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -74,12 +78,14 @@ class TestGenerateTotals:
 
     def test_generate_totals_with_four_columns(self):
         """Test full hierarchy with 4-column DataFrame."""
-        data = pd.DataFrame({
-            "col1": ["A"],
-            "col2": ["B"],
-            "col3": ["C"],
-            "col4": ["D"],
-        })
+        data = pd.DataFrame(
+            {
+                "col1": ["A"],
+                "col2": ["B"],
+                "col3": ["C"],
+                "col4": ["D"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -89,11 +95,13 @@ class TestGenerateTotals:
 
     def test_generate_totals_preserves_column_order(self):
         """Test that original column order is preserved."""
-        data = pd.DataFrame({
-            "first": ["A"],
-            "second": ["B"],
-            "third": ["C"],
-        })
+        data = pd.DataFrame(
+            {
+                "first": ["A"],
+                "second": ["B"],
+                "third": ["C"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -102,10 +110,12 @@ class TestGenerateTotals:
 
     def test_generate_totals_handles_duplicates(self):
         """Test that duplicate rows are handled correctly."""
-        data = pd.DataFrame({
-            "col1": ["A", "A"],
-            "col2": ["X", "X"],
-        })
+        data = pd.DataFrame(
+            {
+                "col1": ["A", "A"],
+                "col2": ["X", "X"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -123,11 +133,13 @@ class TestGenerateTotals:
 
     def test_generate_totals_single_row(self):
         """Test with single-row DataFrame."""
-        data = pd.DataFrame({
-            "col1": ["A"],
-            "col2": ["B"],
-            "col3": ["C"],
-        })
+        data = pd.DataFrame(
+            {
+                "col1": ["A"],
+                "col2": ["B"],
+                "col3": ["C"],
+            }
+        )
 
         result = generate_totals(data)
 
@@ -145,12 +157,14 @@ class TestGeneratePartialTotals:
 
     def test_generate_partial_totals_creates_three_variants(self):
         """Test that three partial total variants are created."""
-        data = pd.DataFrame({
-            "source": ["CRS"],
-            "type_of_finance": ["100"],
-            "modality": ["C"],
-            "purpose_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS"],
+                "type_of_finance": ["100"],
+                "modality": ["C"],
+                "purpose_code": [110],
+            }
+        )
 
         result = generate_partial_totals(data)
 
@@ -159,12 +173,14 @@ class TestGeneratePartialTotals:
 
     def test_generate_partial_totals_sets_correct_columns_to_t(self):
         """Test that correct columns are set to 'T'."""
-        data = pd.DataFrame({
-            "source": ["CRS"],
-            "type_of_finance": ["100"],
-            "modality": ["C"],
-            "purpose_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS"],
+                "type_of_finance": ["100"],
+                "modality": ["C"],
+                "purpose_code": [110],
+            }
+        )
 
         result = generate_partial_totals(data)
 
@@ -175,13 +191,15 @@ class TestGeneratePartialTotals:
 
     def test_generate_partial_totals_preserves_other_values(self):
         """Test that other column values are preserved."""
-        data = pd.DataFrame({
-            "source": ["CRS"],
-            "other_col": ["KEEP"],
-            "type_of_finance": ["100"],
-            "modality": ["C"],
-            "purpose_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS"],
+                "other_col": ["KEEP"],
+                "type_of_finance": ["100"],
+                "modality": ["C"],
+                "purpose_code": [110],
+            }
+        )
 
         result = generate_partial_totals(data)
 
@@ -191,12 +209,14 @@ class TestGeneratePartialTotals:
 
     def test_generate_partial_totals_drops_duplicates(self):
         """Test that duplicates are dropped."""
-        data = pd.DataFrame({
-            "source": ["CRS", "CRS"],
-            "type_of_finance": ["100", "100"],
-            "modality": ["C", "C"],
-            "purpose_code": [110, 110],
-        })
+        data = pd.DataFrame(
+            {
+                "source": ["CRS", "CRS"],
+                "type_of_finance": ["100", "100"],
+                "modality": ["C", "C"],
+                "purpose_code": [110, 110],
+            }
+        )
 
         result = generate_partial_totals(data)
 
@@ -406,12 +426,14 @@ class TestUniqueCRSIndicatorRowsIntegration:
         # Import here to avoid loading issues
         from oda_data.indicators.crs.oecd import unique_crs_indicator_rows
 
-        data = pd.DataFrame({
-            "category": [10],
-            "type_of_finance": [100],
-            "modality": ["C"],
-            "sector_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "category": [10],
+                "type_of_finance": [100],
+                "modality": ["C"],
+                "sector_code": [110],
+            }
+        )
 
         result = unique_crs_indicator_rows(data)
 
@@ -436,12 +458,14 @@ class TestUniqueCRSIndicatorRowsIntegration:
 
         from oda_data.indicators.crs.oecd import unique_crs_indicator_rows
 
-        data = pd.DataFrame({
-            "category": [10],
-            "type_of_finance": [100],
-            "modality": ["C"],
-            "sector_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "category": [10],
+                "type_of_finance": [100],
+                "modality": ["C"],
+                "sector_code": [110],
+            }
+        )
 
         result = unique_crs_indicator_rows(data)
 
@@ -462,12 +486,14 @@ class TestUniqueCRSIndicatorRowsIntegration:
 
         from oda_data.indicators.crs.oecd import unique_crs_indicator_rows
 
-        data = pd.DataFrame({
-            "category": [10],
-            "type_of_finance": [100],
-            "modality": ["C"],
-            "sector_code": [110],
-        })
+        data = pd.DataFrame(
+            {
+                "category": [10],
+                "type_of_finance": [100],
+                "modality": ["C"],
+                "sector_code": [110],
+            }
+        )
 
         result = unique_crs_indicator_rows(data)
 

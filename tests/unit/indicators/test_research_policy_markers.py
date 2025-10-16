@@ -8,14 +8,12 @@ This module tests the business logic for filtering bilateral policy marker data:
 """
 
 import pandas as pd
-import pytest
 
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.research.policy_markers import (
     _marker_modality_filter,
     _marker_score_map,
 )
-
 
 # ============================================================================
 # Tests for _marker_score_map
@@ -128,10 +126,12 @@ class TestBilateralPolicyMarkerFiltering:
         #     data = data.loc[lambda d: d[marker].isna()]
 
         # Let's verify this logic with a sample DataFrame
-        df = pd.DataFrame({
-            "gender": [pd.NA, 1, 2, 0],
-            "value": [100.0, 200.0, 300.0, 400.0],
-        })
+        df = pd.DataFrame(
+            {
+                "gender": [pd.NA, 1, 2, 0],
+                "value": [100.0, 200.0, 300.0, 400.0],
+            }
+        )
 
         # Simulate the not_screened filter
         marker = "gender"

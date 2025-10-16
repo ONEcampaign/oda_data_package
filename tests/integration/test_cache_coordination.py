@@ -7,11 +7,9 @@ fallback logic and coordination.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from freezegun import freeze_time
 
 from oda_data.tools.cache import (
     BulkCacheEntry,
@@ -19,7 +17,6 @@ from oda_data.tools.cache import (
     QueryCacheManager,
     ThreadSafeMemoryCache,
 )
-
 
 # ============================================================================
 # Integration Tests - Cache Tier Coordination
@@ -31,9 +28,7 @@ class TestCacheTierCoordination:
     """Integration tests for cache tier fallback and coordination."""
 
     def test_cache_tiers_work_together_correctly(
-        self,
-        temp_cache_dir: Path,
-        mock_bulk_fetcher
+        self, temp_cache_dir: Path, mock_bulk_fetcher
     ):
         """Test that all three cache tiers coordinate correctly.
 
@@ -74,18 +69,17 @@ class TestCacheTierCoordination:
         cached_df = memory_cache[cache_key]
         pd.testing.assert_frame_equal(cached_df, df)
 
-    def test_memory_cache_miss_falls_back_to_query_cache(
-        self,
-        temp_cache_dir: Path
-    ):
+    def test_memory_cache_miss_falls_back_to_query_cache(self, temp_cache_dir: Path):
         """Test that memory cache miss correctly falls back to query cache."""
         memory_cache = ThreadSafeMemoryCache(maxsize=10, ttl=60)
         query_manager = QueryCacheManager(base_dir=temp_cache_dir)
 
-        df = pd.DataFrame({
-            "year": [2020, 2021],
-            "value": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020, 2021],
+                "value": [1000.0, 2000.0],
+            }
+        )
 
         # Populate only query cache (skip memory)
         query_manager.save("TestData", "hash1", df)
@@ -99,9 +93,7 @@ class TestCacheTierCoordination:
         pd.testing.assert_frame_equal(query_result, df)
 
     def test_query_cache_miss_falls_back_to_bulk_cache(
-        self,
-        temp_cache_dir: Path,
-        mock_bulk_fetcher
+        self, temp_cache_dir: Path, mock_bulk_fetcher
     ):
         """Test that query cache miss correctly falls back to bulk cache."""
         query_manager = QueryCacheManager(base_dir=temp_cache_dir)
@@ -137,9 +129,7 @@ class TestCacheConcurrentAccess:
     """Integration tests for concurrent access to cache system."""
 
     def test_concurrent_bulk_cache_downloads_use_file_lock(
-        self,
-        temp_cache_dir: Path,
-        mock_bulk_fetcher
+        self, temp_cache_dir: Path, mock_bulk_fetcher
     ):
         """Test that concurrent bulk cache accesses are serialized by file lock.
 
@@ -185,10 +175,7 @@ class TestCacheConcurrentAccess:
         parquet_files = list(cache_dir.glob("*.parquet"))
         assert len(parquet_files) == 1
 
-    def test_concurrent_query_cache_writes_are_safe(
-        self,
-        temp_cache_dir: Path
-    ):
+    def test_concurrent_query_cache_writes_are_safe(self, temp_cache_dir: Path):
         """Test that concurrent query cache writes don't corrupt data."""
         import threading
 
@@ -199,19 +186,13 @@ class TestCacheConcurrentAccess:
         def write_data(thread_id: int):
             """Thread worker that writes to query cache."""
             try:
-                df = pd.DataFrame({
-                    "thread_id": [thread_id] * 10,
-                    "value": range(10)
-                })
+                df = pd.DataFrame({"thread_id": [thread_id] * 10, "value": range(10)})
                 manager.save(f"ThreadData{thread_id}", f"hash{thread_id}", df)
             except Exception as e:
                 errors.append(e)
 
         # Create multiple threads writing different data
-        threads = [
-            threading.Thread(target=write_data, args=(i,))
-            for i in range(5)
-        ]
+        threads = [threading.Thread(target=write_data, args=(i,)) for i in range(5)]
 
         # Start all threads
         for t in threads:
@@ -242,9 +223,7 @@ class TestCacheCleanup:
     """Integration tests for cache cleanup operations."""
 
     def test_clearing_one_cache_doesnt_affect_others(
-        self,
-        temp_cache_dir: Path,
-        mock_bulk_fetcher
+        self, temp_cache_dir: Path, mock_bulk_fetcher
     ):
         """Test that clearing one cache tier doesn't affect other tiers."""
         query_manager = QueryCacheManager(base_dir=temp_cache_dir)
@@ -268,13 +247,10 @@ class TestCacheCleanup:
         # Bulk cache should still exist
         assert bulk_path.exists()
 
-    def test_cache_directory_isolation(
-        self,
-        temp_cache_dir: Path
-    ):
+    def test_cache_directory_isolation(self, temp_cache_dir: Path):
         """Test that different cache types use isolated directories."""
-        query_manager = QueryCacheManager(base_dir=temp_cache_dir)
-        bulk_manager = BulkCacheManager(base_dir=temp_cache_dir)
+        QueryCacheManager(base_dir=temp_cache_dir)
+        BulkCacheManager(base_dir=temp_cache_dir)
 
         # Different subdirectories should exist
         query_dir = temp_cache_dir / "query_cache"
@@ -283,4 +259,3 @@ class TestCacheCleanup:
         assert query_dir.exists()
         assert bulk_dir.exists()
         assert query_dir != bulk_dir
-

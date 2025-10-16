@@ -3,16 +3,16 @@ import pandas as pd
 
 from oda_data.clean_data.schema import ODASchema
 
-edu_unspecified = list(range(111 * 100, 112 * 100)) + [111]
-edu_basic = list(range(112 * 100, 113 * 100)) + [112]
-edu_secondary = list(range(113 * 100, 114 * 100)) + [113]
-edu_postsec = list(range(114 * 100, 115 * 100)) + [114]
+edu_unspecified = [*list(range(111 * 100, 112 * 100)), 111]
+edu_basic = [*list(range(112 * 100, 113 * 100)), 112]
+edu_secondary = [*list(range(113 * 100, 114 * 100)), 113]
+edu_postsec = [*list(range(114 * 100, 115 * 100)), 114]
 
 # Health
-health_general = list(range(121 * 100, 122 * 100)) + [121]
-health_basic = list(range(122 * 100, 123 * 100)) + [122]
-health_NCDs = list(range(123 * 100, 124 * 100)) + [123]
-pop_RH = list(range(130 * 100, 131 * 100)) + [130]
+health_general = [*list(range(121 * 100, 122 * 100)), 121]
+health_basic = [*list(range(122 * 100, 123 * 100)), 122]
+health_NCDs = [*list(range(123 * 100, 124 * 100)), 123]
+pop_RH = [*list(range(130 * 100, 131 * 100)), 130]
 
 # Social protection
 social_pro = list(range(16010, 16020))
@@ -20,8 +20,8 @@ social_services = [16050]
 social_other = list(range(16020, 16050)) + list(range(16060, 16100)) + [160]
 
 # other social infrastructure
-water_sanitation = list(range(140 * 100, 141 * 100)) + [140]
-gov_ps = list(range(152 * 100, 153 * 100)) + [152]
+water_sanitation = [*list(range(140 * 100, 141 * 100)), 140]
+gov_ps = [*list(range(152 * 100, 153 * 100)), 152]
 
 # Government and Civil Society
 public_sector = [
@@ -57,25 +57,25 @@ migration = [15190]
 
 
 # Agriculture, forestry, fishing
-agriculture = list(range(311 * 100, 312 * 100)) + [311]
-forestry_fishing = list(range(312 * 100, 314 * 100)) + [312, 313]
+agriculture = [*list(range(311 * 100, 312 * 100)), 311]
+forestry_fishing = [*list(range(312 * 100, 314 * 100)), 312, 313]
 
 # Other Economic infrastructure
-transport_storage = list(range(210 * 100, 211 * 100)) + [210]
-communications = list(range(220 * 100, 221 * 100)) + [220]
-banking_financial = list(range(240 * 100, 241 * 100)) + [240]
-business = list(range(250 * 100, 251 * 100)) + [250]
-industry_mining_const = list(range(321 * 100, 324 * 100)) + [320, 321, 322, 323]
-trade_p_r = list(range(331 * 100, 333 * 100)) + [331, 332]
+transport_storage = [*list(range(210 * 100, 211 * 100)), 210]
+communications = [*list(range(220 * 100, 221 * 100)), 220]
+banking_financial = [*list(range(240 * 100, 241 * 100)), 240]
+business = [*list(range(250 * 100, 251 * 100)), 250]
+industry_mining_const = [*list(range(321 * 100, 324 * 100)), 320, 321, 322, 323]
+trade_p_r = [*list(range(331 * 100, 333 * 100)), 331, 332]
 trade_other = [330]
 
 # Energy
-energy_policy = [231] + list(range(231 * 100, 232 * 100))
-energy_generation_renewable = [232] + list(range(232 * 100, 233 * 100))
-energy_generation_nonrenewable = [233] + list(range(233 * 100, 234 * 100))
-hybrid_energy_plants = [234] + list(range(234 * 100, 235 * 100))
-nuclear_energy_plants = [235] + list(range(235 * 100, 236 * 100))
-energy_distribution = [236] + list(range(236 * 100, 237 * 100))
+energy_policy = [231, *list(range(231 * 100, 232 * 100))]
+energy_generation_renewable = [232, *list(range(232 * 100, 233 * 100))]
+energy_generation_nonrenewable = [233, *list(range(233 * 100, 234 * 100))]
+hybrid_energy_plants = [234, *list(range(234 * 100, 235 * 100))]
+nuclear_energy_plants = [235, *list(range(235 * 100, 236 * 100))]
+energy_distribution = [236, *list(range(236 * 100, 237 * 100))]
 
 # Environmental Protection
 env_policy = [41010]
@@ -86,26 +86,26 @@ environment_edu = [41081]
 environment_research = [41082]
 
 # Humanitarian
-emergency_response = list(range(720 * 100, 721 * 100)) + [720]
-reconstruction = list(range(730 * 100, 731 * 100)) + [730]
-disaster_prevention = list(range(740 * 100, 741 * 100)) + [740]
+emergency_response = [*list(range(720 * 100, 721 * 100)), 720]
+reconstruction = [*list(range(730 * 100, 731 * 100)), 730]
+disaster_prevention = [*list(range(740 * 100, 741 * 100)), 740]
 
 # Multi_sector
 multi_sector = [43010, 430]
 urban_dev = list(range(43030, 43040))
 rural_dev = list(range(43040, 43050))
 drr = [43060]
-other_multi = [43050] + list(range(43070, 431 * 100))
+other_multi = [43050, *list(range(43070, 431 * 100))]
 
 # other
-general_budget = list(range(510 * 100, 511 * 100)) + [510]
-food_aid = list(range(520 * 100, 521 * 100)) + [520]
-commodity_other = list(range(530 * 100, 531 * 100)) + [530]
-debt_action_total = list(range(600 * 100, 610 * 100)) + [600]
-admin_total = list(range(910 * 100, 911 * 100)) + [910]
+general_budget = [*list(range(510 * 100, 511 * 100)), 510]
+food_aid = [*list(range(520 * 100, 521 * 100)), 520]
+commodity_other = [*list(range(530 * 100, 531 * 100)), 530]
+debt_action_total = [*list(range(600 * 100, 610 * 100)), 600]
+admin_total = [*list(range(910 * 100, 911 * 100)), 910]
 
-refugees = list(range(930 * 100, 931 * 100)) + [930]
-unspecified = list(range(998 * 100, 999 * 100)) + [998]
+refugees = [*list(range(930 * 100, 931 * 100)), 930]
+unspecified = [*list(range(998 * 100, 999 * 100)), 998]
 
 
 def get_sector_groups():

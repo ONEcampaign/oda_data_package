@@ -20,7 +20,6 @@ from oda_data.indicators.research.eu import (
     get_eui_plus_bilateral_providers_indicator,
 )
 
-
 # ============================================================================
 # Tests for _compute_spending_by_eui
 # ============================================================================
@@ -31,14 +30,16 @@ class TestComputeSpendingByEUI:
 
     def test_compute_spending_filters_to_provider_918(self):
         """Test that function filters to provider 918 (EU institutions)."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 918, 1, 2],
-            ODASchema.AIDTYPE_CODE: [1010, 1010, 1010, 1010],
-            ODASchema.YEAR: [2020, 2021, 2020, 2021],
-            ODASchema.FLOWS_CODE: [1, 1, 1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
-            ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 918, 1, 2],
+                ODASchema.AIDTYPE_CODE: [1010, 1010, 1010, 1010],
+                ODASchema.YEAR: [2020, 2021, 2020, 2021],
+                ODASchema.FLOWS_CODE: [1, 1, 1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
+                ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
+            }
+        )
 
         result = _compute_spending_by_eui(df)
 
@@ -47,14 +48,16 @@ class TestComputeSpendingByEUI:
 
     def test_compute_spending_filters_to_aidtype_1010(self):
         """Test that function filters to aid type 1010."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 918],
-            ODASchema.AIDTYPE_CODE: [1010, 2102],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 918],
+                ODASchema.AIDTYPE_CODE: [1010, 2102],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 200.0],
+            }
+        )
 
         result = _compute_spending_by_eui(df)
 
@@ -63,14 +66,16 @@ class TestComputeSpendingByEUI:
 
     def test_compute_spending_groups_and_sums_correctly(self):
         """Test that function groups by year/flows/fund_flows/aidtype and sums."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 918],
-            ODASchema.AIDTYPE_CODE: [1010, 1010],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 50.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 918],
+                ODASchema.AIDTYPE_CODE: [1010, 1010],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 50.0],
+            }
+        )
 
         result = _compute_spending_by_eui(df)
 
@@ -79,14 +84,16 @@ class TestComputeSpendingByEUI:
 
     def test_compute_spending_renames_value_to_spending(self):
         """Test that value column is renamed to 'spending'."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918],
-            ODASchema.AIDTYPE_CODE: [1010],
-            ODASchema.YEAR: [2020],
-            ODASchema.FLOWS_CODE: [1],
-            ODASchema.FUND_FLOWS: ["Net"],
-            ODASchema.VALUE: [100.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918],
+                ODASchema.AIDTYPE_CODE: [1010],
+                ODASchema.YEAR: [2020],
+                ODASchema.FLOWS_CODE: [1],
+                ODASchema.FUND_FLOWS: ["Net"],
+                ODASchema.VALUE: [100.0],
+            }
+        )
 
         result = _compute_spending_by_eui(df)
 
@@ -105,14 +112,16 @@ class TestComputeInflowsByProviders:
 
     def test_compute_inflows_filters_to_specified_providers(self):
         """Test that function filters to specified provider list."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 3, 918],
-            ODASchema.AIDTYPE_CODE: [2102, 2102, 2102, 2102],
-            ODASchema.YEAR: [2020, 2020, 2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1, 1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
-            ODASchema.VALUE: [10.0, 20.0, 30.0, 40.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 3, 918],
+                ODASchema.AIDTYPE_CODE: [2102, 2102, 2102, 2102],
+                ODASchema.YEAR: [2020, 2020, 2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1, 1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
+                ODASchema.VALUE: [10.0, 20.0, 30.0, 40.0],
+            }
+        )
 
         result = _compute_inflows_by_providers(df, providers=[1, 2])
 
@@ -122,14 +131,16 @@ class TestComputeInflowsByProviders:
 
     def test_compute_inflows_filters_to_aidtype_2102(self):
         """Test that function filters to aid type 2102."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 1],
-            ODASchema.AIDTYPE_CODE: [2102, 1010],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.AIDTYPE_CODE: [2102, 1010],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 200.0],
+            }
+        )
 
         result = _compute_inflows_by_providers(df, providers=[1])
 
@@ -139,14 +150,16 @@ class TestComputeInflowsByProviders:
 
     def test_compute_inflows_groups_and_sums_correctly(self):
         """Test that function groups and sums by year/flows/fund_flows/aidtype."""
-        df = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 1],
-            ODASchema.AIDTYPE_CODE: [2102, 2102, 2102],
-            ODASchema.YEAR: [2020, 2020, 2021],
-            ODASchema.FLOWS_CODE: [1, 1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net", "Net"],
-            ODASchema.VALUE: [100.0, 50.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 1],
+                ODASchema.AIDTYPE_CODE: [2102, 2102, 2102],
+                ODASchema.YEAR: [2020, 2020, 2021],
+                ODASchema.FLOWS_CODE: [1, 1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net", "Net"],
+                ODASchema.VALUE: [100.0, 50.0, 200.0],
+            }
+        )
 
         result = _compute_inflows_by_providers(df, providers=[1, 2])
 
@@ -169,14 +182,16 @@ class TestGetEUIWeights:
     def test_get_eui_weights_formula_basic(self, mock_load_data):
         """Test weight formula: weight = 1 - (inflow / spending)."""
         # Mock data with known values
-        mock_load_data.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 1],
-            ODASchema.AIDTYPE_CODE: [1010, 2102],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 30.0],  # spending=100, inflow=30
-        })
+        mock_load_data.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 1],
+                ODASchema.AIDTYPE_CODE: [1010, 2102],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 30.0],  # spending=100, inflow=30
+            }
+        )
 
         result = get_eui_oda_weights(
             years=[2020], providers=[1], measure="gross_disbursement"
@@ -189,14 +204,16 @@ class TestGetEUIWeights:
     def test_get_eui_weights_with_zero_inflow(self, mock_load_data):
         """Test that weight calculation works when inflow is 0."""
         # Provide both spending and zero inflow
-        mock_load_data.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 1],
-            ODASchema.AIDTYPE_CODE: [1010, 2102],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 0.0],  # spending=100, inflow=0
-        })
+        mock_load_data.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 1],
+                ODASchema.AIDTYPE_CODE: [1010, 2102],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 0.0],  # spending=100, inflow=0
+            }
+        )
 
         result = get_eui_oda_weights(
             years=[2020], providers=[1], measure="gross_disbursement"
@@ -208,14 +225,16 @@ class TestGetEUIWeights:
     @patch("oda_data.indicators.research.eu._load_dac1_eui_data")
     def test_get_eui_weights_when_inflow_equals_spending(self, mock_load_data):
         """Test that weight is 0.0 when inflow equals spending."""
-        mock_load_data.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 1],
-            ODASchema.AIDTYPE_CODE: [1010, 2102],
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net"],
-            ODASchema.VALUE: [100.0, 100.0],  # spending=inflow=100
-        })
+        mock_load_data.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 1],
+                ODASchema.AIDTYPE_CODE: [1010, 2102],
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net"],
+                ODASchema.VALUE: [100.0, 100.0],  # spending=inflow=100
+            }
+        )
 
         result = get_eui_oda_weights(
             years=[2020], providers=[1], measure="gross_disbursement"
@@ -227,14 +246,16 @@ class TestGetEUIWeights:
     @patch("oda_data.indicators.research.eu._load_dac1_eui_data")
     def test_get_eui_weights_returns_dict_mapping_year_to_weight(self, mock_load_data):
         """Test that function returns dict mapping year to weight."""
-        mock_load_data.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 1, 918, 2],
-            ODASchema.AIDTYPE_CODE: [1010, 2102, 1010, 2102],
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            ODASchema.FLOWS_CODE: [1, 1, 1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
-            ODASchema.VALUE: [100.0, 30.0, 200.0, 80.0],
-        })
+        mock_load_data.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 1, 918, 2],
+                ODASchema.AIDTYPE_CODE: [1010, 2102, 1010, 2102],
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                ODASchema.FLOWS_CODE: [1, 1, 1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
+                ODASchema.VALUE: [100.0, 30.0, 200.0, 80.0],
+            }
+        )
 
         result = get_eui_oda_weights(
             years=[2020, 2021], providers=[1, 2], measure="gross_disbursement"
@@ -252,14 +273,16 @@ class TestGetEUIWeights:
     def test_get_eui_weights_with_realistic_values(self, mock_load_data):
         """Test with realistic spending and inflow values."""
         # Realistic scenario: EU spends 10 billion, bilateral donors contribute 3 billion
-        mock_load_data.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [918, 1, 2, 3],
-            ODASchema.AIDTYPE_CODE: [1010, 2102, 2102, 2102],
-            ODASchema.YEAR: [2020, 2020, 2020, 2020],
-            ODASchema.FLOWS_CODE: [1, 1, 1, 1],
-            ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
-            ODASchema.VALUE: [10000.0, 1000.0, 1000.0, 1000.0],
-        })
+        mock_load_data.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [918, 1, 2, 3],
+                ODASchema.AIDTYPE_CODE: [1010, 2102, 2102, 2102],
+                ODASchema.YEAR: [2020, 2020, 2020, 2020],
+                ODASchema.FLOWS_CODE: [1, 1, 1, 1],
+                ODASchema.FUND_FLOWS: ["Net", "Net", "Net", "Net"],
+                ODASchema.VALUE: [10000.0, 1000.0, 1000.0, 1000.0],
+            }
+        )
 
         result = get_eui_oda_weights(
             years=[2020], providers=[1, 2, 3], measure="gross_disbursement"
@@ -291,11 +314,13 @@ class TestGetEUIPlusBilateralProvidersIndicator:
         client.use_bulk_download = False
 
         # Mock indicator data
-        client.get_indicators.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 918, 1, 918],
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            ODASchema.VALUE: [100.0, 1000.0, 150.0, 1500.0],
-        })
+        client.get_indicators.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 918, 1, 918],
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                ODASchema.VALUE: [100.0, 1000.0, 150.0, 1500.0],
+            }
+        )
 
         result = get_eui_plus_bilateral_providers_indicator(
             client, indicator="test_indicator"
@@ -309,16 +334,14 @@ class TestGetEUIPlusBilateralProvidersIndicator:
 
         # Provider 918 should be weighted
         prov_918_2020 = result[
-            (result[ODASchema.PROVIDER_CODE] == 918)
-            & (result[ODASchema.YEAR] == 2020)
+            (result[ODASchema.PROVIDER_CODE] == 918) & (result[ODASchema.YEAR] == 2020)
         ]
         assert prov_918_2020[ODASchema.VALUE].iloc[0] == pytest.approx(
             1000.0 * 0.8
         )  # 800.0
 
         prov_918_2021 = result[
-            (result[ODASchema.PROVIDER_CODE] == 918)
-            & (result[ODASchema.YEAR] == 2021)
+            (result[ODASchema.PROVIDER_CODE] == 918) & (result[ODASchema.YEAR] == 2021)
         ]
         assert prov_918_2021[ODASchema.VALUE].iloc[0] == pytest.approx(
             1500.0 * 0.7
@@ -334,15 +357,15 @@ class TestGetEUIPlusBilateralProvidersIndicator:
         client.providers = [1, 2]  # No 918
         client.measure = ["gross_disbursement"]
         client.use_bulk_download = False
-        client.get_indicators.return_value = pd.DataFrame({
-            ODASchema.PROVIDER_CODE: [1, 2, 918],
-            ODASchema.YEAR: [2020, 2020, 2020],
-            ODASchema.VALUE: [100.0, 150.0, 1000.0],
-        })
-
-        result = get_eui_plus_bilateral_providers_indicator(
-            client, indicator="test_indicator"
+        client.get_indicators.return_value = pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 2, 918],
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.VALUE: [100.0, 150.0, 1000.0],
+            }
         )
+
+        get_eui_plus_bilateral_providers_indicator(client, indicator="test_indicator")
 
         # 918 should have been added to providers list
         assert 918 in client.providers

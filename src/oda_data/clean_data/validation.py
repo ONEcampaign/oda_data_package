@@ -59,11 +59,7 @@ def _checktype(values: list | int | float, type_: type) -> list:
 
     if isinstance(values, list):
         return [type_(d) for d in values]
-    elif isinstance(values, str):
-        return [type_(values)]
-    elif isinstance(values, float):
-        return [type_(values)]
-    elif isinstance(values, int):
+    elif isinstance(values, str | float | int):
         return [type_(values)]
     else:
         raise ValueError("Invalid values passed. Please check the type and try again.")

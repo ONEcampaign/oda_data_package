@@ -12,7 +12,6 @@ import pytest
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.dac2a.dac2a_functions import total_bilateral_plus_imputed
 
-
 # ============================================================================
 # Tests for total_bilateral_plus_imputed
 # ============================================================================
@@ -23,16 +22,18 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_groups_by_dimensions(self):
         """Test that data is grouped by all dimensions except aidtype."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1, 1],
-            ODASchema.PROVIDER_NAME: ["Donor A", "Donor A", "Donor A"],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100],
-            ODASchema.RECIPIENT_NAME: ["Country X", "Country X", "Country X"],
-            "aidtype_code": [1010, 1020, 1030],  # Different aid types
-            "aid_type": ["ODA", "Other", "Mixed"],
-            ODASchema.VALUE: [100.0, 200.0, 300.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1, 1],
+                ODASchema.PROVIDER_NAME: ["Donor A", "Donor A", "Donor A"],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100],
+                ODASchema.RECIPIENT_NAME: ["Country X", "Country X", "Country X"],
+                "aidtype_code": [1010, 1020, 1030],  # Different aid types
+                "aid_type": ["ODA", "Other", "Mixed"],
+                ODASchema.VALUE: [100.0, 200.0, 300.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -44,14 +45,16 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_sets_correct_aidtype(self):
         """Test that aidtype_code is set to bilateral plus imputed code."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.RECIPIENT_CODE: [100],
-            "aidtype_code": [1010],
-            "aid_type": ["ODA"],
-            ODASchema.VALUE: [100.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.RECIPIENT_CODE: [100],
+                "aidtype_code": [1010],
+                "aid_type": ["ODA"],
+                ODASchema.VALUE: [100.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -61,15 +64,17 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_preserves_column_order(self):
         """Test that original column order is preserved."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020],
-            ODASchema.PROVIDER_CODE: [1],
-            ODASchema.RECIPIENT_CODE: [100],
-            "aidtype_code": [1010],
-            "aid_type": ["ODA"],
-            ODASchema.VALUE: [100.0],
-            "extra_column": ["test"],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020],
+                ODASchema.PROVIDER_CODE: [1],
+                ODASchema.RECIPIENT_CODE: [100],
+                "aidtype_code": [1010],
+                "aid_type": ["ODA"],
+                ODASchema.VALUE: [100.0],
+                "extra_column": ["test"],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -78,14 +83,16 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_multiple_years(self):
         """Test grouping across multiple years."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2021, 2021],
-            ODASchema.PROVIDER_CODE: [1, 1, 1, 1],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
-            "aidtype_code": [1010, 1020, 1010, 1020],
-            "aid_type": ["ODA", "Other", "ODA", "Other"],
-            ODASchema.VALUE: [100.0, 200.0, 150.0, 250.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2021, 2021],
+                ODASchema.PROVIDER_CODE: [1, 1, 1, 1],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
+                "aidtype_code": [1010, 1020, 1010, 1020],
+                "aid_type": ["ODA", "Other", "ODA", "Other"],
+                ODASchema.VALUE: [100.0, 200.0, 150.0, 250.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -102,16 +109,18 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_multiple_providers(self):
         """Test that grouping is done separately for each provider."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1, 2, 2],
-            ODASchema.PROVIDER_NAME: ["Donor A", "Donor A", "Donor B", "Donor B"],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
-            ODASchema.RECIPIENT_NAME: ["Country X"] * 4,
-            "aidtype_code": [1010, 1020, 1010, 1020],
-            "aid_type": ["ODA", "Other", "ODA", "Other"],
-            ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1, 2, 2],
+                ODASchema.PROVIDER_NAME: ["Donor A", "Donor A", "Donor B", "Donor B"],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100, 100],
+                ODASchema.RECIPIENT_NAME: ["Country X"] * 4,
+                "aidtype_code": [1010, 1020, 1010, 1020],
+                "aid_type": ["ODA", "Other", "ODA", "Other"],
+                ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -128,16 +137,23 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_multiple_recipients(self):
         """Test that grouping is done separately for each recipient."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1, 1, 1],
-            ODASchema.PROVIDER_NAME: ["Donor A"] * 4,
-            ODASchema.RECIPIENT_CODE: [100, 100, 200, 200],
-            ODASchema.RECIPIENT_NAME: ["Country X", "Country X", "Country Y", "Country Y"],
-            "aidtype_code": [1010, 1020, 1010, 1020],
-            "aid_type": ["ODA", "Other", "ODA", "Other"],
-            ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1, 1, 1],
+                ODASchema.PROVIDER_NAME: ["Donor A"] * 4,
+                ODASchema.RECIPIENT_CODE: [100, 100, 200, 200],
+                ODASchema.RECIPIENT_NAME: [
+                    "Country X",
+                    "Country X",
+                    "Country Y",
+                    "Country Y",
+                ],
+                "aidtype_code": [1010, 1020, 1010, 1020],
+                "aid_type": ["ODA", "Other", "ODA", "Other"],
+                ODASchema.VALUE: [100.0, 200.0, 50.0, 75.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -154,17 +170,19 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_preserves_all_grouping_columns(self):
         """Test that all non-aggregated columns are preserved in result."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1],
-            ODASchema.PROVIDER_NAME: ["Donor A", "Donor A"],
-            ODASchema.RECIPIENT_CODE: [100, 100],
-            ODASchema.RECIPIENT_NAME: ["Country X", "Country X"],
-            "flow_type": ["ODA", "ODA"],
-            "aidtype_code": [1010, 1020],
-            "aid_type": ["Type1", "Type2"],
-            ODASchema.VALUE: [100.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.PROVIDER_NAME: ["Donor A", "Donor A"],
+                ODASchema.RECIPIENT_CODE: [100, 100],
+                ODASchema.RECIPIENT_NAME: ["Country X", "Country X"],
+                "flow_type": ["ODA", "ODA"],
+                "aidtype_code": [1010, 1020],
+                "aid_type": ["Type1", "Type2"],
+                ODASchema.VALUE: [100.0, 200.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -178,14 +196,16 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_with_na_values(self):
         """Test handling of NA values in the data."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020],
-            ODASchema.PROVIDER_CODE: [1, 1, 1],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100],
-            "aidtype_code": [1010, 1020, 1030],
-            "aid_type": ["ODA", "Other", "Mixed"],
-            ODASchema.VALUE: [100.0, None, 300.0],  # One NA value
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1, 1],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100],
+                "aidtype_code": [1010, 1020, 1030],
+                "aid_type": ["ODA", "Other", "Mixed"],
+                ODASchema.VALUE: [100.0, None, 300.0],  # One NA value
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -194,16 +214,18 @@ class TestTotalBilateralPlusImputed:
 
     def test_total_bilateral_plus_imputed_complex_grouping(self):
         """Test complex multi-dimensional grouping."""
-        df = pd.DataFrame({
-            ODASchema.YEAR: [2020, 2020, 2020, 2021, 2021, 2021],
-            ODASchema.PROVIDER_CODE: [1, 1, 2, 1, 1, 2],
-            ODASchema.PROVIDER_NAME: ["A", "A", "B", "A", "A", "B"],
-            ODASchema.RECIPIENT_CODE: [100, 100, 100, 200, 200, 200],
-            ODASchema.RECIPIENT_NAME: ["X", "X", "X", "Y", "Y", "Y"],
-            "aidtype_code": [1010, 1020, 1010, 1010, 1020, 1010],
-            "aid_type": ["T1", "T2", "T1", "T1", "T2", "T1"],
-            ODASchema.VALUE: [100.0, 200.0, 50.0, 150.0, 250.0, 75.0],
-        })
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020, 2021, 2021, 2021],
+                ODASchema.PROVIDER_CODE: [1, 1, 2, 1, 1, 2],
+                ODASchema.PROVIDER_NAME: ["A", "A", "B", "A", "A", "B"],
+                ODASchema.RECIPIENT_CODE: [100, 100, 100, 200, 200, 200],
+                ODASchema.RECIPIENT_NAME: ["X", "X", "X", "Y", "Y", "Y"],
+                "aidtype_code": [1010, 1020, 1010, 1010, 1020, 1010],
+                "aid_type": ["T1", "T2", "T1", "T1", "T2", "T1"],
+                ODASchema.VALUE: [100.0, 200.0, 50.0, 150.0, 250.0, 75.0],
+            }
+        )
 
         result = total_bilateral_plus_imputed(df)
 
@@ -214,9 +236,9 @@ class TestTotalBilateralPlusImputed:
 
         # Verify one specific combination
         p1_r100_2020 = result[
-            (result[ODASchema.YEAR] == 2020) &
-            (result[ODASchema.PROVIDER_CODE] == 1) &
-            (result[ODASchema.RECIPIENT_CODE] == 100)
+            (result[ODASchema.YEAR] == 2020)
+            & (result[ODASchema.PROVIDER_CODE] == 1)
+            & (result[ODASchema.RECIPIENT_CODE] == 100)
         ]
         assert p1_r100_2020[ODASchema.VALUE].iloc[0] == 300.0  # 100 + 200
 
