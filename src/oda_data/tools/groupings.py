@@ -5,7 +5,7 @@ from oda_data import config
 
 
 def _read_grouping(path: Path) -> dict:
-    with open(path, "r") as f:
+    with open(path) as f:
         data = json.load(f)
 
     for k, v in data.items():

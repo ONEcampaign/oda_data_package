@@ -37,7 +37,9 @@ def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
         # Create a grouping Total
         if idx >= 2:
             columns_g.append(column)
-            dft = crs_indicators.assign(**{c: "T" for c in columns_g}).drop_duplicates()
+            dft = crs_indicators.assign(
+                **dict.fromkeys(columns_g, "T")
+            ).drop_duplicates()
             totals.append(dft)
 
         # Track visited columns
@@ -272,7 +274,7 @@ def format_description(*parts: str, perspective: str) -> str:
     return f"Bilateral {description} ({perspective})"
 
 
-def indicator_description(row, mapping: dict = None) -> str:
+def indicator_description(row, mapping: dict | None = None) -> str:
     """Generate a detailed description for an indicator.
 
     Args:

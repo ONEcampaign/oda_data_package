@@ -45,7 +45,7 @@ def _marker_modality_filter() -> list:
 
 
 def bilateral_policy_marker(
-    years: list | int | range = None,
+    years: list | int | range | None = None,
     providers: list | int | None = None,
     recipients: list | int | None = None,
     measure: Measure | str = "gross_disbursement",
@@ -109,7 +109,7 @@ def bilateral_policy_marker(
 
     # Read the data and group by provider and purpose
 
-    cols = grouper + [measure]
+    cols = [*grouper, measure]
 
     try:
         data = crs.read(

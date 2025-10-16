@@ -878,7 +878,6 @@
     "filters": {
       "aidtype_code": 201,
       "data_type_code": "A"
-      "data_type_code": "A"
     },
     "share_of": "recipient_total_flow_net"
   },

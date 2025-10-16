@@ -1,7 +1,7 @@
 import threading
 from abc import abstractmethod
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 import pandas as pd
 from oda_reader import (
@@ -74,12 +74,11 @@ def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
                     else:
                         quoted.append(str(v))
                 query += f"{column} in [{', '.join(quoted)}]"
+            # Single value wrapped in list
+            elif isinstance(values, str):
+                query += f"{column} in ['{values}']"
             else:
-                # Single value wrapped in list
-                if isinstance(values, str):
-                    query += f"{column} in ['{values}']"
-                else:
-                    query += f"{column} in [{values}]"
+                query += f"{column} in [{values}]"
         elif predicate == "==":
             # Quote strings, but not numbers or booleans
             if isinstance(values, str):
@@ -107,8 +106,8 @@ class Source:
     )
 
     # Shared bulk and query caches (singletons per process)
-    _shared_bulk_cache: Optional[BulkCacheManager] = None
-    _shared_query_cache: Optional[QueryCacheManager] = None
+    _shared_bulk_cache: BulkCacheManager | None = None
+    _shared_query_cache: QueryCacheManager | None = None
     _cache_lock = threading.Lock()
 
     def __init__(self):
@@ -180,7 +179,7 @@ class Source:
         self.filters.append((column, predicate, value))
 
     def _get_read_filters(
-        self, additional_filters: Optional[list[tuple]] = None
+        self, additional_filters: list[tuple] | None = None
     ) -> list[tuple[str, str, list]] | None:
         filters = (
             self.filters + additional_filters if additional_filters else self.filters
@@ -201,7 +200,7 @@ class Source:
     def _apply_columns_and_clean(
         self,
         df: pd.DataFrame,
-        columns: Optional[list] = None,
+        columns: list | None = None,
         already_cleaned: bool = False,
     ) -> pd.DataFrame:
         """Apply cleaning and column selection to DataFrame.
@@ -251,10 +250,10 @@ class DACSource(Source):
 
     def _init_filters(
         self,
-        years: Optional[list[int] | range | int] = None,
-        providers: Optional[list[int] | int] = None,
-        recipients: Optional[list[int] | int] = None,
-        sectors: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        providers: list[int] | int | None = None,
+        recipients: list[int] | int | None = None,
+        sectors: list[int] | int | None = None,
     ):
         self.years, self.providers, self.recipients = (
             validate_years_providers_recipients(
@@ -330,12 +329,7 @@ class DACSource(Source):
         for column, _, values in filters:
             if column not in data.columns:
                 continue
-            if isinstance(values, str):
-                values_check = [values]
-            elif isinstance(values, int):
-                values_check = [values]
-            else:
-                values_check = values
+            values_check = [values] if isinstance(values, str | int) else values
             missing_values = set(values_check) - set(data[column].unique())
             if missing_values:
                 logger.warning(
@@ -398,8 +392,8 @@ class DACSource(Source):
     def read(
         self,
         using_bulk_download: bool = False,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
+        additional_filters: list[tuple] | None = None,
+        columns: list | None = None,
     ):
         """Reads a dataset with 3-tier cache coordination.
 
@@ -461,8 +455,8 @@ class DACSource(Source):
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # 5. Return full data (already cleaned, no column selection needed)
-        return df
+        # 5. Apply column selection if requested (data is already cleaned)
+        return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
@@ -475,9 +469,9 @@ class DAC1Data(DACSource):
 
     def __init__(
         self,
-        years: Optional[list[int] | range | int] = None,
-        providers: Optional[list[int] | int] = None,
-        indicators: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        providers: list[int] | int | None = None,
+        indicators: list[int] | int | None = None,
     ):
         """Initializes the DAC1 data handler.
 
@@ -534,10 +528,10 @@ class DAC2AData(DACSource):
 
     def __init__(
         self,
-        years: Optional[list[int] | range | int] = None,
-        providers: Optional[list[int] | int] = None,
-        recipients: Optional[list[int] | int] = None,
-        indicators: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        providers: list[int] | int | None = None,
+        recipients: list[int] | int | None = None,
+        indicators: list[int] | int | None = None,
     ):
         """Initializes the DAC2A data handler.
 
@@ -595,9 +589,9 @@ class CRSData(DACSource):
 
     def __init__(
         self,
-        years: Optional[list[int] | range | int] = None,
-        providers: Optional[list[int] | int] = None,
-        recipients: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        providers: list[int] | int | None = None,
+        recipients: list[int] | int | None = None,
     ):
         """
         Initialize CRSData.
@@ -638,11 +632,11 @@ class MultiSystemData(DACSource):
 
     def __init__(
         self,
-        years: Optional[list[int] | range | int] = None,
-        providers: Optional[list[int] | int] = None,
-        recipients: Optional[list[int] | int] = None,
-        indicators: Optional[list[str] | str] = None,
-        sectors: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        providers: list[int] | int | None = None,
+        recipients: list[int] | int | None = None,
+        indicators: list[str] | str | None = None,
+        sectors: list[int] | int | None = None,
     ):
         """
         Initialize Multisystem data.
@@ -708,9 +702,9 @@ class AidDataSource(Source):
 
     def _init_filters(
         self,
-        years: Optional[list[int] | range | int] = None,
-        recipients: Optional[list[str] | str] = None,
-        sectors: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        recipients: list[str] | str | None = None,
+        sectors: list[int] | int | None = None,
     ):
         self.years = check_integers(years)
         self.recipients = check_strings(recipients)
@@ -748,9 +742,9 @@ class AidDataData(AidDataSource):
 
     def __init__(
         self,
-        years: Optional[list[int] | range | int] = None,
-        recipients: Optional[list[str] | str] = None,
-        sectors: Optional[list[int] | int] = None,
+        years: list[int] | range | int | None = None,
+        recipients: list[str] | str | None = None,
+        sectors: list[int] | int | None = None,
     ):
         """Initializes the AidData data handler.
 
@@ -787,8 +781,8 @@ class AidDataData(AidDataSource):
 
     def read(
         self,
-        additional_filters: Optional[list[tuple]] = None,
-        columns: Optional[list] = None,
+        additional_filters: list[tuple] | None = None,
+        columns: list | None = None,
     ):
         """Reads AidData from bulk cache with filtering.
 

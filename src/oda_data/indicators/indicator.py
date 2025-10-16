@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 SEPARATOR = "."
 
@@ -14,7 +14,7 @@ class Indicator:
     sources: list[str] = field(default_factory=list)
     type: IndicatorType = field(default="DAC")
     filters: dict = field(default_factory=dict)
-    custom_function: Optional[str] = field(default_factory=str)
+    custom_function: str | None = field(default_factory=str)
 
     @property
     def to_dict(self) -> dict:

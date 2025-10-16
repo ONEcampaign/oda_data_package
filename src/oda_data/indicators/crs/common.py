@@ -1,5 +1,6 @@
 import json
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import pandas as pd
 
@@ -10,7 +11,7 @@ from oda_data.config import ODAPaths
 
 def load_json(file_path: str) -> dict:
     """Load a JSON file and return its content."""
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return json.load(f)
 
 
@@ -23,7 +24,7 @@ def save_json(data: dict, file_path: str) -> None:
 def create_mapping_file(
     crs: pd.DataFrame,
     column: str,
-    mapping_func: Callable[[Any], Dict[str, Any]],
+    mapping_func: Callable[[Any], dict[str, Any]],
     output_file: str,
     fill_value: Any = None,
 ) -> None:
@@ -59,10 +60,13 @@ def create_mapping_file(
 def generate_crs_type_of_flow_mapping(crs: pd.DataFrame) -> None:
     """Generate a mapping of CRS flow types to category names."""
     flow_types = load_json(ODAPaths.settings / "flow_types.json")
-    mapping_func = lambda category: {
-        "code": int(category),
-        "name": flow_types[str(int(category))],
-    }
+
+    def mapping_func(category):
+        return {
+            "code": int(category),
+            "name": flow_types[str(int(category))],
+        }
+
     create_mapping_file(
         crs=crs,
         column="category",
@@ -140,15 +144,10 @@ def generate_crs_modality_mapping(crs: pd.DataFrame) -> None:
 
     def mapping_func(modality: str) -> dict:
         """Map a modality to its group and name."""
-        if pd.isna(modality):  # Check explicitly if modality is NaN or NA
-            group = "X"
-        else:
-            group = modality[0]
+        # Check explicitly if modality is NaN or NA, use "X" as fallback
+        group = "X" if pd.isna(modality) else modality[0]
         # Use a fallback only for truly undefined modalities
-        if group in modality_names:
-            name = modality_names[group]
-        else:
-            name = "Undefined modality"
+        name = modality_names.get(group, "Undefined modality")
         return {"code": group, "name": name}
 
     create_mapping_file(
@@ -198,7 +197,7 @@ def generate_crs_purpose_mapping(crs: pd.DataFrame) -> None:
     }
 
     def mapping_func(sector_code: int) -> dict:
-        group = max(k for k in sectors.keys() if k <= sector_code)
+        group = max(k for k in sectors if k <= sector_code)
         return {"code": group, "name": sectors[group]}
 
     create_mapping_file(

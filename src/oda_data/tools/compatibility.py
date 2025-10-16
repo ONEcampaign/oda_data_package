@@ -21,6 +21,7 @@ class ODAData:
         warnings.warn(
             "This feature is provided for partial compatibility. It will be "
             "removed when the package exits the beta stage",
+            stacklevel=2,
             category=DeprecationWarning,
         )
 

@@ -11,7 +11,10 @@
   },
   "total_oda_official_definition": {
     "indicator": "DAC1.10.1010",
-    "masure": ["grant_equivalent","net_disbursement"],
+    "masure": [
+      "grant_equivalent",
+      "net_disbursement"
+    ],
     "bulk": false
   },
   "total_oda_bilateral_flow_net": {
@@ -119,7 +122,6 @@
     "masure": "grant_equivalent",
     "bulk": false
   },
-
   "development_awareness_flow": {
     "indicator": "DAC1.10.1810",
     "masure": "net_disbursement",

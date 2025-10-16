@@ -1,8 +1,8 @@
+import contextlib
 import json
 import pathlib
 from functools import partial
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 import pyarrow as pa
@@ -69,7 +69,7 @@ def read_settings(settings_file_path: pathlib.Path | str) -> dict:
         dict: A dictionary containing the settings.
     """
 
-    with open(settings_file_path, "r") as f:
+    with open(settings_file_path) as f:
         settings = json.load(f)
 
     return settings
@@ -220,22 +220,20 @@ def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
 
 def convert_units(
     data,
-    indicator: Optional[str] = None,
+    indicator: str | None = None,
     currency: str = "USD",
-    base_year: Optional[int] = None,
+    base_year: int | None = None,
 ):
     # Ensure pydeflate has the current data path and directory exists (lazy init)
-    try:
+    # In read-only environments, let downstream functions surface meaningful errors
+    with contextlib.suppress(Exception):
         ODAPaths.raw_data.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        # In read-only environments, let downstream functions surface meaningful errors
-        pass
     set_pydeflate_path(ODAPaths.raw_data)
 
     if indicator is None:
         indicator = ""
 
-    if ((".40." in indicator) and ("DAC1.40.1" != indicator)) or (
+    if ((".40." in indicator) and (indicator != "DAC1.40.1")) or (
         currency == "USD" and base_year is None
     ):
         return data.assign(currency=currency, prices="current")

@@ -32,26 +32,40 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
 def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
     """Calculate a rolling total of Y period length"""
     values = list(crs_value_cols().values())
-    data = pd.DataFrame()
-    cols = [c for c in df.columns if c not in [ODASchema.YEAR] + values]
+    cols = [c for c in df.columns if c not in [ODASchema.YEAR, *values]]
 
-    for y in range(df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + 1, -1):
+    min_year = int(df[ODASchema.YEAR].min())
+    max_year = int(df[ODASchema.YEAR].max())
+    min_complete_year = min_year + period_length - 1
+
+    # If there are not enough observations to build a complete window, bail early
+    if max_year < min_complete_year:
+        return df.head(0).copy()
+
+    frames: list[pd.DataFrame] = []
+
+    for y in range(max_year, min_complete_year - 1, -1):
         years = [y - i for i in range(period_length)]
         _ = (
             df.copy(deep=True)
             .loc[lambda d: d[ODASchema.YEAR].isin(years)]
             .groupby(cols, observed=True, dropna=False)
-            .agg({v: "sum" for v in values} | {ODASchema.YEAR: "max"})
+            .agg(dict.fromkeys(values, "sum") | {ODASchema.YEAR: "max"})
             .assign(**{ODASchema.YEAR: y})
             .reset_index()
         )
-        data = pd.concat([data, _], ignore_index=True)
+        frames.append(_)
 
-    return (
-        data.astype({ODASchema.YEAR: "int16[pyarrow]"})
+    if not frames:
+        return df.head(0).copy()
+
+    data = (
+        pd.concat(frames, ignore_index=True)
+        .astype({ODASchema.YEAR: "int16[pyarrow]"})
         .loc[lambda d: d[ODASchema.YEAR].notna()]
-        .reset_index(drop=True)
     )
+
+    return data.reset_index(drop=True)
 
 
 def _purpose_share(value_row: pd.DataFrame, value_col: str) -> pd.Series:

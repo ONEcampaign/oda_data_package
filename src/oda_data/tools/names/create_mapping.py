@@ -194,7 +194,7 @@ def get_merged_names_mapping():
 
     for file in files:
         file_path = ODAPaths.names / file
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             mapping = json.load(f)
             for k, v in mapping.items():
                 if k not in merged_mapping:

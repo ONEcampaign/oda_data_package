@@ -58,7 +58,8 @@ def _get_gni_data(client_obj: OECDClient) -> pd.DataFrame:
     # If it is, aggregate GNI for EU27 countries and assign it to provider 918
     if 918 in providers or not providers:
         eu_gni_df = _get_eu27_gni_as_eu_institutions(gni_obj)
-        gni_df = pd.concat([gni_df, eu_gni_df], ignore_index=True)
+        if not eu_gni_df.empty:
+            gni_df = pd.concat([gni_df, eu_gni_df], ignore_index=True)
 
     return gni_df.filter([ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
 

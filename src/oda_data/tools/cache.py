@@ -9,15 +9,16 @@ This module provides a three-tier caching system:
 Design follows pydeflate patterns for robustness and thread safety.
 """
 
+import contextlib
 import hashlib
 import json
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 from cachetools import TTLCache
@@ -152,7 +153,7 @@ class BulkCacheManager:
         if not self.manifest_path.exists():
             return {}
         try:
-            with open(self.manifest_path, "r") as f:
+            with open(self.manifest_path) as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError) as e:
             logger.warning(f"Failed to load manifest: {e}. Creating new manifest.")
@@ -179,7 +180,7 @@ class BulkCacheManager:
         # Check TTL expiration
         try:
             downloaded = datetime.fromisoformat(record["downloaded_at"])
-            age = datetime.now(timezone.utc) - downloaded
+            age = datetime.now(UTC) - downloaded
             return age > timedelta(seconds=self.ttl_seconds)
         except (KeyError, ValueError):
             return True
@@ -224,7 +225,7 @@ class BulkCacheManager:
                 file_size = path.stat().st_size / (1024 * 1024)  # MB
                 manifest[entry.key] = {
                     "filename": path.name,
-                    "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                    "downloaded_at": datetime.now(UTC).isoformat(),
                     "version": entry.version,
                     "size_mb": round(file_size, 2),
                 }
@@ -252,13 +253,12 @@ class BulkCacheManager:
                     filepath.unlink(missing_ok=True)
                 manifest.clear()
                 logger.info("Cleared all bulk cache entries")
-            else:
-                # Clear specific entry
-                if key in manifest:
-                    filepath = self.base_dir / manifest[key]["filename"]
-                    filepath.unlink(missing_ok=True)
-                    del manifest[key]
-                    logger.info(f"Cleared bulk cache entry: {key}")
+            # Clear specific entry
+            elif key in manifest:
+                filepath = self.base_dir / manifest[key]["filename"]
+                filepath.unlink(missing_ok=True)
+                del manifest[key]
+                logger.info(f"Cleared bulk cache entry: {key}")
 
             self._save_manifest(manifest)
 
@@ -278,7 +278,7 @@ class BulkCacheManager:
         for record in manifest.values():
             try:
                 downloaded = datetime.fromisoformat(record["downloaded_at"])
-                age = datetime.now(timezone.utc) - downloaded
+                age = datetime.now(UTC) - downloaded
                 if age > timedelta(seconds=self.ttl_seconds):
                     stale_count += 1
             except (KeyError, ValueError):
@@ -302,7 +302,7 @@ class BulkCacheManager:
         for key, record in manifest.items():
             try:
                 downloaded = datetime.fromisoformat(record["downloaded_at"])
-                age = datetime.now(timezone.utc) - downloaded
+                age = datetime.now(UTC) - downloaded
                 age_days = age.total_seconds() / 86400
 
                 records.append(
@@ -404,11 +404,9 @@ class QueryCacheManager:
 
         if self._is_expired(path):
             logger.debug(f"Query cache expired: {dataset_name}-{param_hash}")
-            # Expired - try to delete (non-blocking)
-            try:
+            # Expired - try to delete (non-blocking, another process might have deleted it)
+            with contextlib.suppress(OSError):
                 path.unlink()
-            except OSError:
-                pass  # Another process might have deleted it
             return None
 
         try:
@@ -419,10 +417,8 @@ class QueryCacheManager:
         except Exception as e:
             logger.warning(f"Failed to load query cache: {e}")
             # Corrupted file - try to delete
-            try:
+            with contextlib.suppress(OSError):
                 path.unlink()
-            except OSError:
-                pass
             return None
 
     def save(self, dataset_name: str, param_hash: str, df: pd.DataFrame):
@@ -497,6 +493,7 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_crs
+
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
@@ -564,6 +561,7 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import bulk_download_multisystem
+
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
@@ -633,6 +631,7 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
         Fetcher function that takes a target Path and writes parquet to it
     """
     from oda_reader import download_aiddata
+
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):

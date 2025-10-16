@@ -29,7 +29,7 @@ def _load_dac1_eui_data(
         DAC1Data(years=years, indicators=indicators)
         .read(additional_filters=filters, using_bulk_download=use_bulk_download)
         .loc[lambda d: d[ODASchema.FLOWS_CODE] == measure_filter]
-        .filter(idx + [ODASchema.PROVIDER_CODE, ODASchema.VALUE])
+        .filter([*idx, ODASchema.PROVIDER_CODE, ODASchema.VALUE])
     )
 
     return df
@@ -77,7 +77,7 @@ def _compute_inflows_by_providers(
 
 
 def get_eui_oda_weights(
-    years: list[int] | int | range = None,
+    years: list[int] | int | range | None = None,
     providers: list[int] | int | None = None,
     measure: Measure | str = "gross_disbursement",
     use_bulk_download: bool = False,
