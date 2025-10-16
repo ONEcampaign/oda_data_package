@@ -455,8 +455,8 @@ class DACSource(Source):
         self.query_cache.save(self.__class__.__name__, param_hash, df)
         self._cache_in_memory(param_hash, df)
 
-        # 5. Return full data (already cleaned, no column selection needed)
-        return df
+        # 5. Apply column selection if requested (data is already cleaned)
+        return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
     @abstractmethod
     def download(self, **kwargs) -> pd.DataFrame:
