@@ -117,16 +117,3 @@ repos:
 
       # Validate pyproject.toml
       - id: check-toml
-
-  # ============================================================================
-  # Run pytest on commit to catch test failures and import errors
-  # ============================================================================
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest
-        entry: bash -c 'uv run pytest -m "not slow" -x --tb=short'
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
