@@ -9,8 +9,6 @@
 # The ODA Data Package
 This is a Python package designed for accessing, processing, and analyzing Official Development Assistance (ODA) data from OECD DAC. With an intuitive API, it simplifies common tasks like retrieving ODA indicators, converting currencies, filtering data, and handling bulk downloads.
 
-**Current Version: 2.3.0**
-
 **Note: This is the new version of the package (V2). This release includes many breaking changes and previous workflows
 will not work. The previous 1.5.x version remains available on PyPI and we will continue to support it at least until
 August 2025.**
