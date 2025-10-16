@@ -34,3 +34,10 @@ build-backend = "uv_build"
 dev = [
     "uv-build>=0.8.22",
 ]
+test = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "freezegun>=1.4.0",
+]
