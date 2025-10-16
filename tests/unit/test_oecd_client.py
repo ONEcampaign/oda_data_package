@@ -243,7 +243,10 @@ class TestOECDClientLoadData:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac1_df
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient(years=[2020, 2021], providers=[1, 2])
         client._load_data("TEST.DAC1")
@@ -268,7 +271,10 @@ class TestOECDClientLoadData:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac1_df
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient(years=[2020, 2021], providers=[1, 2])
         client._load_data("TEST.DAC1")
@@ -294,7 +300,10 @@ class TestOECDClientLoadData:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac1_df
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient()
         client._load_data("TEST.DAC1")

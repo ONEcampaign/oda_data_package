@@ -25,7 +25,7 @@ class TestOECDClientFullWorkflow:
 
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
-    @patch("oda_data.clean_data.common.oecd_dac_exchange")
+    @patch("oda_data.clean_data.common.dac_exchange")
     def test_full_workflow_single_dac1_indicator(
         self,
         mock_exchange,
@@ -58,7 +58,10 @@ class TestOECDClientFullWorkflow:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac1_df.copy()
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         # Mock currency exchange
         def exchange_side_effect(data, **kwargs):
@@ -96,7 +99,7 @@ class TestOECDClientFullWorkflow:
 
     @patch("oda_data.api.oecd.load_indicators")
     @patch("oda_data.api.oecd.READERS")
-    @patch("oda_data.clean_data.common.oecd_dac_deflate")
+    @patch("oda_data.clean_data.common.dac_deflate")
     def test_full_workflow_with_base_year_deflation(
         self,
         mock_deflate,
@@ -120,7 +123,10 @@ class TestOECDClientFullWorkflow:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac2a_df.copy()
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC2A"
 
         # Mock deflation
         def deflate_side_effect(data, **kwargs):
@@ -174,18 +180,24 @@ class TestOECDClientFullWorkflow:
             }
         }
 
-        # Mock both readers
-        def reader_side_effect(source):
-            if source == "DAC1":
-                instance = MagicMock()
-                instance.read.return_value = sample_dac1_df.copy()
-                return MagicMock(return_value=instance)
-            elif source == "DAC2A":
-                instance = MagicMock()
-                instance.read.return_value = sample_dac2a_df.copy()
-                return MagicMock(return_value=instance)
+        # Mock both readers - need to return reader class that when instantiated gives instance
+        readers_dict = {}
 
-        mock_readers.__getitem__.side_effect = lambda key: reader_side_effect(key)()
+        # Setup DAC1 reader
+        dac1_instance = MagicMock()
+        dac1_instance.read.return_value = sample_dac1_df.copy()
+        dac1_class = MagicMock(return_value=dac1_instance)
+        readers_dict["DAC1"] = dac1_class
+
+        # Setup DAC2A reader
+        dac2a_instance = MagicMock()
+        dac2a_instance.read.return_value = sample_dac2a_df.copy()
+        dac2a_class = MagicMock(return_value=dac2a_instance)
+        readers_dict["DAC2A"] = dac2a_class
+
+        mock_readers.__getitem__.side_effect = lambda key: readers_dict[key]
+        # Setup __contains__ for both sources
+        mock_readers.__contains__ = lambda self, key: key in ["DAC1", "DAC2A"]
 
         client = OECDClient(years=[2020, 2021])
         result = client.get_indicators(["DAC1.IND", "DAC2A.IND"])
@@ -225,7 +237,10 @@ class TestOECDClientFullWorkflow:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.return_value = sample_dac1_df.copy()
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         # Mock custom function
         processed_df = sample_dac1_df.copy()
@@ -286,7 +301,10 @@ class TestOECDClientErrorHandling:
         mock_reader_instance = MagicMock()
         mock_reader_instance.read.side_effect = ConnectionError("API unavailable")
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient()
 
@@ -325,7 +343,10 @@ class TestOECDClientDataFiltering:
         filtered_df = sample_dac1_df[sample_dac1_df["year"] == 2020].copy()
         mock_reader_instance.read.return_value = filtered_df
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient(years=[2020])
         result = client.get_indicators("TEST")
@@ -355,11 +376,14 @@ class TestOECDClientDataFiltering:
         }
 
         mock_reader_instance = MagicMock()
-        # Return only provider 1 data
-        filtered_df = sample_dac1_df[sample_dac1_df["provider_code"] == 1].copy()
+        # Return only provider 1 data (sample_dac1_df uses donor_code per ODASchema)
+        filtered_df = sample_dac1_df[sample_dac1_df["donor_code"] == 1].copy()
         mock_reader_instance.read.return_value = filtered_df
         mock_reader_class = MagicMock(return_value=mock_reader_instance)
+
+        # Setup READERS mock as a proper dict
         mock_readers.__getitem__.return_value = mock_reader_class
+        mock_readers.__contains__ = lambda self, key: key == "DAC1"
 
         client = OECDClient(providers=[1])
         result = client.get_indicators("TEST")
@@ -368,5 +392,5 @@ class TestOECDClientDataFiltering:
         call_kwargs = mock_reader_class.call_args[1]
         assert call_kwargs["providers"] == [1]
 
-        # Result should only contain provider 1
-        assert (result["provider_code"] == 1).all()
+        # Result should only contain provider 1 (column is donor_code per ODASchema)
+        assert (result["donor_code"] == 1).all()

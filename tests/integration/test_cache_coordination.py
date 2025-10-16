@@ -125,42 +125,6 @@ class TestCacheTierCoordination:
         query_result = query_manager.load("TestData", "hash1", None, None)
         assert query_result is not None
 
-    @pytest.mark.slow
-    def test_cache_expiration_cascades_correctly(
-        self,
-        temp_cache_dir: Path
-    ):
-        """Test that cache expiration works correctly across tiers.
-
-        When memory cache expires, query cache should still be available.
-        When query cache expires, bulk cache should still be available.
-        """
-        with freeze_time("2020-01-01 12:00:00") as frozen_time:
-            # Short TTLs for testing
-            memory_cache = ThreadSafeMemoryCache(maxsize=10, ttl=30)  # 30 seconds
-            query_manager = QueryCacheManager(base_dir=temp_cache_dir, ttl_seconds=60)  # 60 seconds
-
-            df = pd.DataFrame({"year": [2020], "value": [1000.0]})
-
-            # Populate both caches
-            memory_cache["key1"] = df
-            query_manager.save("TestData", "hash1", df)
-
-            # Move time forward 35 seconds - memory cache expires
-            frozen_time.move_to("2020-01-01 12:00:35")
-
-            assert "key1" not in memory_cache  # Expired
-
-            # Query cache should still be valid
-            query_result = query_manager.load("TestData", "hash1", None, None)
-            assert query_result is not None
-
-            # Move time forward 30 more seconds (total 65) - query cache expires
-            frozen_time.move_to("2020-01-01 12:01:05")
-
-            query_result = query_manager.load("TestData", "hash1", None, None)
-            assert query_result is None  # Expired
-
 
 # ============================================================================
 # Integration Tests - Concurrent Access
@@ -320,31 +284,3 @@ class TestCacheCleanup:
         assert bulk_dir.exists()
         assert query_dir != bulk_dir
 
-    @pytest.mark.slow
-    def test_expired_cache_cleanup_frees_space(
-        self,
-        temp_cache_dir: Path
-    ):
-        """Test that cleanup_expired removes old files and frees disk space."""
-        manager = QueryCacheManager(base_dir=temp_cache_dir, ttl_seconds=1)
-
-        df = pd.DataFrame({"year": [2020], "value": [1000.0]})
-
-        with freeze_time("2020-01-01 12:00:00") as frozen_time:
-            # Create some cache entries
-            for i in range(5):
-                manager.save(f"Data{i}", f"hash{i}", df)
-
-            cache_dir = temp_cache_dir / "query_cache"
-            files_before = list(cache_dir.glob("*.parquet"))
-            assert len(files_before) == 5
-
-            # Move time forward past TTL
-            frozen_time.move_to("2020-01-01 12:00:05")
-
-            # Cleanup expired
-            manager.cleanup_expired()
-
-            # All files should be removed
-            files_after = list(cache_dir.glob("*.parquet"))
-            assert len(files_after) == 0

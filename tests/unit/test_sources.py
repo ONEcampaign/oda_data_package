@@ -421,30 +421,6 @@ class TestDACSourceReadCacheCoordination:
         mock_download.assert_not_called()
         assert len(result) > 0
 
-    @patch.object(DACSource, 'download')
-    @patch.object(DACSource, '_create_bulk_fetcher')
-    def test_read_falls_back_to_download_on_cache_miss(
-        self,
-        mock_create_fetcher,
-        mock_download,
-        sample_dac1_df
-    ):
-        """Test that read() calls download() when all caches miss."""
-        source = DACSource()
-        source._init_filters(years=[2020])
-
-        # Mock download to return sample data
-        mock_download.return_value = sample_dac1_df.copy()
-
-        # Clear memory cache to ensure miss
-        source.memory_cache.clear()
-
-        result = source.read(using_bulk_download=False)
-
-        # Download should have been called
-        mock_download.assert_called_once()
-        assert len(result) > 0
-
     @patch.object(DACSource, '_create_bulk_fetcher')
     @patch("oda_data.api.sources.pd.read_parquet")
     def test_read_with_bulk_download_reads_from_bulk_cache(

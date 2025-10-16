@@ -24,7 +24,7 @@ def sample_dac1_df() -> pd.DataFrame:
 
     Contains:
     - Multiple years (2019-2021) to test pre/post-2018 logic
-    - Multiple providers
+    - Multiple providers (using donor_code as per ODASchema)
     - Different aid types (including ODA codes)
     - Realistic value ranges
 
@@ -33,7 +33,7 @@ def sample_dac1_df() -> pd.DataFrame:
     """
     return pd.DataFrame({
         "year": [2019, 2019, 2020, 2020, 2021, 2021],
-        "provider_code": [1, 2, 1, 2, 1, 2],
+        "donor_code": [1, 2, 1, 2, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
         "provider_name": ["Donor A", "Donor B", "Donor A", "Donor B", "Donor A", "Donor B"],
         "aidtype_code": [1010, 1010, 1010, 1010, 11010, 11010],
         "aidtype_name": ["ODA", "ODA", "ODA", "ODA", "ODA GE", "ODA GE"],
@@ -49,7 +49,7 @@ def sample_dac2a_df() -> pd.DataFrame:
     """Sample DAC2A DataFrame with bilateral flow structure.
 
     Contains:
-    - Provider-recipient pairs
+    - Provider-recipient pairs (using donor_code as per ODASchema)
     - Multiple years
     - Different aid types
     - Recipient codes and names
@@ -59,7 +59,7 @@ def sample_dac2a_df() -> pd.DataFrame:
     """
     return pd.DataFrame({
         "year": [2020, 2020, 2020, 2021, 2021, 2021],
-        "provider_code": [1, 1, 2, 1, 1, 2],
+        "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
         "provider_name": ["Donor A", "Donor A", "Donor B", "Donor A", "Donor A", "Donor B"],
         "recipient_code": [100, 200, 100, 100, 200, 100],
         "recipient_name": ["Country X", "Country Y", "Country X", "Country X", "Country Y", "Country X"],
@@ -76,7 +76,7 @@ def sample_crs_df() -> pd.DataFrame:
     """Sample CRS DataFrame with project-level structure.
 
     Contains:
-    - Project-level detail
+    - Project-level detail (using donor_code as per ODASchema)
     - Multiple sectors
     - Different flow types
     - Provider-recipient-sector combinations
@@ -86,7 +86,7 @@ def sample_crs_df() -> pd.DataFrame:
     """
     return pd.DataFrame({
         "year": [2020, 2020, 2020, 2021, 2021, 2021],
-        "provider_code": [1, 1, 2, 1, 1, 2],
+        "donor_code": [1, 1, 2, 1, 1, 2],  # ODASchema.PROVIDER_CODE = "donor_code"
         "provider_name": ["Donor A", "Donor A", "Donor B", "Donor A", "Donor A", "Donor B"],
         "recipient_code": [100, 100, 200, 100, 100, 200],
         "recipient_name": ["Country X", "Country X", "Country Y", "Country X", "Country X", "Country Y"],
@@ -204,8 +204,8 @@ def mock_pydeflate(mocker):
     """Mock pydeflate currency conversion and deflation functions.
 
     Provides mocks for:
-    - oecd_dac_exchange
-    - oecd_dac_deflate
+    - dac_exchange (partial function using oecd_dac_exchange)
+    - dac_deflate (partial function using oecd_dac_deflate)
     - set_pydeflate_path
 
     Returns:
@@ -226,11 +226,11 @@ def mock_pydeflate(mocker):
 
     return {
         "exchange": mocker.patch(
-            "oda_data.clean_data.common.oecd_dac_exchange",
+            "oda_data.clean_data.common.dac_exchange",
             side_effect=mock_exchange
         ),
         "deflate": mocker.patch(
-            "oda_data.clean_data.common.oecd_dac_deflate",
+            "oda_data.clean_data.common.dac_deflate",
             side_effect=mock_deflate
         ),
         "set_path": mocker.patch(
