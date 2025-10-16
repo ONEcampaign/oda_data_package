@@ -222,10 +222,10 @@ def _apply_fuzzy_match(
     for dictionary, tolerance in mapping_dictionaries:
         df["fuzzy_mapping"] = df[names_column].apply(
             _fuzzy_match_name, channels_dict=dictionary, tolerance=tolerance
-        )
+        ).astype("Int32")
 
-        # Fill in the channel codes where there is a match
-        df["channel_code"] = df["channel_code"].fillna(df["fuzzy_mapping"])
+        # Fill in the channel codes where there is a match (using where to avoid downcasting warning)
+        df["channel_code"] = df["channel_code"].where(df["channel_code"].notna(), df["fuzzy_mapping"])
 
     # Drop the fuzzy mapping column and return dataframe
     return df.drop(columns=["fuzzy_mapping"])
