@@ -5,6 +5,29 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-10-16
+
+### Added
+- Comprehensive test suite with unit and integration tests
+- `clean_parquet_file_in_batches()` function for memory-efficient processing of large files
+- Thread-safe memory caching with `ThreadSafeMemoryCache`
+- Manifest-based bulk cache tracking system
+- Query cache manager for filtered dataset results
+- Contributing guidelines and pre-commit hooks
+
+### Changed
+- Complete caching refactor with three-tier architecture (memory, bulk, query caches)
+- Improved thread and process safety using FileLock for cache coordination
+- Better memory management with configurable cache size limits
+- Atomic file operations for cache writes to prevent corruption
+- Enhanced error handling in query filter construction
+
+### Fixed
+- Cache corruption issues in multi-threaded/multi-process environments
+- Memory issues when processing large bulk files (now processes in batches)
+- Race conditions in cache initialization across threads
+- Stale cache detection and automatic refresh logic
+
 ## [2.2.2] - 2025-09-26
 
 ### Fixed
