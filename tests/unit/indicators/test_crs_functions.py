@@ -161,14 +161,9 @@ class TestRollingPeriodTotal:
 
         result = _rolling_period_total(df)
 
-        # Rolling totals only return rows where all period years exist
-        # Year 2023: sum of 2021, 2022, 2023 = 200 + 300 + 400 = 900
-        # Year 2022: sum of 2020, 2021, 2022 = 100 + 200 + 300 = 600
-        # Year 2021 and 2020 may not be included if prior years are missing
+        # Only complete 3-year windows (2021-2023 and 2020-2022) should remain
+        assert sorted(result[ODASchema.YEAR].unique().tolist()) == [2022, 2023]
 
-        assert len(result) >= 2  # At least 2022 and 2023 should be present
-
-        # Check specific rolling totals
         year_2023 = result[result[ODASchema.YEAR] == 2023]
         assert year_2023["commitment_current"].iloc[0] == 900.0
 
@@ -188,12 +183,13 @@ class TestRollingPeriodTotal:
 
         result = _rolling_period_total(df, period_length=2)
 
-        # 2-year rolling totals
-        # Year 2022: sum of 2021, 2022 = 200 + 300 = 500
-        # Year 2021: sum of 2020, 2021 = 100 + 200 = 300
+        assert sorted(result[ODASchema.YEAR].unique().tolist()) == [2021, 2022]
 
         year_2022 = result[result[ODASchema.YEAR] == 2022]
         assert year_2022["commitment_current"].iloc[0] == 500.0
+
+        year_2021 = result[result[ODASchema.YEAR] == 2021]
+        assert year_2021["commitment_current"].iloc[0] == 300.0
 
     @patch("oda_data.indicators.crs.crs_functions.crs_value_cols")
     def test_rolling_period_total_groups_by_other_columns(self, mock_value_cols):
