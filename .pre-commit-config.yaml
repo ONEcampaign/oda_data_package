@@ -119,15 +119,14 @@ repos:
       - id: check-toml
 
   # ============================================================================
-  # Optional: Run pytest on changed files (commented out by default)
-  # Uncomment to enable automatic test running on commit
+  # Run pytest on commit to catch test failures and import errors
   # ============================================================================
-  # - repo: local
-  #   hooks:
-  #    - id: pytest-check
-  #      name: pytest
-  #      entry: bash -c 'uv run pytest -m "not slow" -x --tb=short'
-  #      language: system
-  #      pass_filenames: false
-  #      always_run: true
-  #      stages: [pre-commit]
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest
+        entry: bash -c 'uv run pytest -m "not slow" -x --tb=short'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
