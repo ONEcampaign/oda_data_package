@@ -45,13 +45,14 @@ print(data.head())
 
 **Output:**
 ```
-   provider_code  year        value  ...
-0              1  2020  16234567890  ...
-1              1  2021  17123456789  ...
-2              1  2022  18012345678  ...
+   donor_code     donor_name  year         value  ...
+0           1        Austria  2020  3245678901.0  ...
+1           1        Austria  2021  3456789012.0  ...
+2           1        Austria  2022  3678901234.0  ...
 ```
 
-The data includes values in USD (current prices) by default, with columns for provider codes, years, and ODA amounts.
+!!! note "Understanding the Data"
+    The data includes values in USD (current prices) by default. Note the `unit_multiplier` column (typically '6') indicates that values are in millions. For example, a value of 3245.68 with unit_multiplier '6' means $3.246 billion.
 
 ### Example 2: Filter by Specific Donors
 
@@ -65,19 +66,22 @@ client = OECDClient(
     providers=[4, 302]  # France and USA
 )
 
-data = client.get_indicators("DAC1.10.11015")  # Bilateral ODA
+data = client.get_indicators("DAC1.10.1015")  # Bilateral ODA
 
-print(data[["provider_code", "year", "value"]])
+print(data[["donor_code", "year", "value"]])
 ```
 
 **Output:**
 ```
-   provider_code  year        value
-0              4  2021   12345678901
-1              4  2022   13234567890
-2            302  2021   39876543210
-3            302  2022   41234567890
+   donor_code  year      value
+0           4  2021   10312.19
+1           4  2022   10533.46
+2         302  2021   38229.28
+3         302  2022   52001.97
 ```
+
+!!! note "Values in Millions"
+    The values shown are in millions of USD (unit_multiplier='6'). To get actual amounts, multiply by 1,000,000.
 
 ### Example 3: Add Human-Readable Names
 
@@ -92,22 +96,26 @@ client = OECDClient(
     recipients=[249]  # Kenya
 )
 
-data = client.get_indicators("DAC2A.10.1010")  # Bilateral ODA by recipient
+data = client.get_indicators("DAC2A.10.206")  # Bilateral ODA disbursements by recipient
 
 # Add human-readable names
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 
-print(data[["provider_name", "recipient_name", "year", "value"]])
+print(data[["donor_name", "recipient_name", "year", "value"]].head())
 ```
 
 **Output:**
 ```
-          provider_name recipient_name  year       value
-0               France          Kenya  2022  45000000.0
-1              Germany          Kenya  2022  89000000.0
-2       United Kingdom          Kenya  2022  67000000.0
-3        United States          Kenya  2022  123000000.0
+     donor_name recipient_name  year    value
+0       Austria          Kenya  2022    15.54
+1       Belgium          Kenya  2022    41.78
+2        Canada          Kenya  2022    75.23
+3       Denmark          Kenya  2022    89.45
+4        France          Kenya  2022   245.67
 ```
+
+!!! note "Values in Millions"
+    Values are displayed in millions of USD. For instance, 245.67 means $245.67 million.
 
 ## What's Next?
 
@@ -141,17 +149,25 @@ Need to find provider or recipient codes?
 ```python
 from oda_data import OECDClient
 
-# Get all available providers
+# Get all available providers (returns dict of code: name)
 providers = OECDClient.available_providers()
-print(providers)
+print(f"Total providers: {len(providers)}")
+print(f"France code: {[code for code, name in providers.items() if name == 'France'][0]}")
 
-# Get all available recipients
+# Get all available recipients (returns dict of code: name)
 recipients = OECDClient.available_recipients()
-print(recipients)
+print(f"Total recipients: {len(recipients)}")
+print(f"Kenya code: {[code for code, name in recipients.items() if name == 'Kenya'][0]}")
 
-# Get all available currencies
+# Get all available currencies (returns list of currency codes)
 currencies = OECDClient.available_currencies()
-print(currencies)
+print(f"Available currencies: {currencies}")
+# Returns: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 ```
 
-These methods return dictionaries mapping codes to names, making it easy to find what you need.
+!!! tip "Currency Codes"
+    - **USD**: United States Dollars (default)
+    - **EUR**: Euros
+    - **GBP**: British Pounds
+    - **CAD**: Canadian Dollars
+    - **LCU**: Local Currency Units (recipient's or donor's own currency)

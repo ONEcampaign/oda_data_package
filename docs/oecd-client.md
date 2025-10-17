@@ -68,11 +68,14 @@ print(data[["provider_code", "year", "value"]].head())
 
 **Output:**
 ```
-   provider_code  year         value
-0              1  2018  14567890123.0
-1              1  2019  15123456789.0
-2              1  2020  16234567890.0
+   donor_code     donor_name  year      value
+0           1        Austria  2018  14567.89
+1           1        Austria  2019  15123.46
+2           1        Austria  2020  16234.57
 ```
+
+!!! note "Values in Millions"
+    Values use `unit_multiplier='6'`, meaning they're in millions of USD.
 
 ### Filter by Providers
 
@@ -295,7 +298,7 @@ data = client.get_indicators("DAC1.10.1010")
 
 # Add names for readability
 from oda_data import add_names_columns
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 print(data)
 ```
@@ -306,10 +309,10 @@ print(data)
 from oda_data import OECDClient
 
 client = OECDClient(years=range(2015, 2024))
-data = client.get_indicators("CRS.R.10.100.T.110") 
+data = client.get_indicators("CRS.R.10.100.T.110")
 
 # Group by year to see trends
-annual_totals = data.groupby(["provider_code", "year"])["value"].sum()
+annual_totals = data.groupby(["donor_code", "year"])["value"].sum()
 print(annual_totals)
 ```
 

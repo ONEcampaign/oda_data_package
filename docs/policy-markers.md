@@ -41,11 +41,14 @@ print(gender_data[["provider_code", "year", "value"]].head())
 
 **Output:**
 ```
-   provider_code  year         value
-0              1  2018  234567890.0
-1              1  2019  245678901.0
-2              1  2020  256789012.0
+   donor_code  year      value
+0           1  2018  234567.89
+1           1  2019  245678.90
+2           1  2020  256789.01
 ```
+
+!!! note "Values in Millions"
+    Values shown use `unit_multiplier='6'`, meaning they're in millions of USD.
 
 ### Get Climate Mitigation ODA
 
@@ -203,23 +206,23 @@ data = bilateral_policy_marker(
 )
 
 # Add donor names
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 # Rank by total amount
-ranking = data.groupby("provider_name")["value"].sum().sort_values(ascending=False)
+ranking = data.groupby("donor_name")["value"].sum().sort_values(ascending=False)
 
 print("Gender equality ODA by donor (2022):")
 for donor, amount in ranking.items():
     print(f"{donor:.<30} ${amount/1e9:.2f}B")
 ```
 
-**Output:**
+**Output (values in millions of USD):**
 ```
 Gender equality ODA by donor (2022):
-United States.................. $3.45B
-Germany........................ $2.12B
-United Kingdom................. $1.89B
-France......................... $1.23B
+United States.................. $3,450M
+Germany........................ $2,120M
+United Kingdom................. $1,890M
+France......................... $1,230M
 ```
 
 ### Use Case: Calculate Share of Aid Targeting a Marker
@@ -353,13 +356,13 @@ for marker, amount in sorted(results.items(), key=lambda x: x[1], reverse=True):
     print(f"{marker:.<20} ${amount/1e9:.2f}B")
 ```
 
-**Output:**
+**Output (values in millions of USD):**
 ```
 Bilateral ODA by policy marker (2022):
-Gender............... $45.67B
-Environment.......... $38.92B
-Nutrition............ $12.45B
-Disability........... $3.21B
+Gender............... $45,670M
+Environment.......... $38,920M
+Nutrition............ $12,450M
+Disability........... $3,210M
 ```
 
 ## Advanced Configuration
@@ -405,7 +408,7 @@ data = bilateral_policy_marker(
 )
 
 # Add names and sectors
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 data = add_broad_sectors(data)
 
 # Analyze: Which sectors receive the most gender-focused aid?
@@ -417,7 +420,7 @@ sector_analysis = (
 
 print("Gender-focused ODA by sector:")
 for sector, amount in sector_analysis.head(10).items():
-    print(f"{sector:.<35} ${amount/1e9:.2f}B")
+    print(f"{sector:.<35} ${amount:,.0f}M")
 ```
 
 ## Understanding the Data

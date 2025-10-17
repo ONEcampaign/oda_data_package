@@ -32,7 +32,7 @@ client = OECDClient(
     currency="LCU"     # Local currency units
 )
 
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
 ```
 
 ## Available Currencies
@@ -42,21 +42,24 @@ The package supports major donor currencies and local currency units:
 ```python
 from oda_data import OECDClient
 
-# Get all available currencies
+# Get all available currencies (returns a list of currency codes)
 currencies = OECDClient.available_currencies()
 
-for code, name in currencies.items():
-    print(f"{code}: {name}")
+print(f"Available currencies: {currencies}")
 ```
 
 **Output:**
 ```
-USD: United States Dollars
-EUR: Euros
-GBP: British Pounds
-CAD: Canadian Dollars
-LCU: Local Currency Units (recipient's currency)
+Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 ```
+
+**Currency Descriptions:**
+
+- **USD**: United States Dollars (default)
+- **EUR**: Euros
+- **GBP**: British Pounds
+- **CAD**: Canadian Dollars
+- **LCU**: Local Currency Units (recipient's or donor's own currency)
 
 !!! note "Adding Currencies"
     Need a specific DAC donor currency? [Request it via GitHub issues](https://github.com/ONEcampaign/oda_data_package/issues). The package can add any donor currency used in DAC reporting.
@@ -89,6 +92,9 @@ Total ODA in USD: $204,000,000,000
 Total ODA in EUR: €188,000,000,000
 ```
 
+!!! note "Illustrative Values"
+    Output values shown in examples are illustrative. Actual values will vary based on the year queried and current OECD data. The values also use the `unit_multiplier` - typically you'll need to multiply by 10^6 to get actual amounts.
+
 ### Get Data in Provider's Own Currency
 
 Use local currency units (LCU) to see each donor's aid in their own currency:
@@ -103,18 +109,21 @@ client = OECDClient(
 )
 
 data = client.get_indicators("DAC1.10.1010")
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
-print(data[["provider_name", "value"]])
+print(data[["donor_name", "value"]])
 ```
 
 **Output:**
 ```
-      provider_name           value
-0            France  13500000000.0  # Euros
-1    United Kingdom  15200000000.0  # Pounds
-2     United States  60100000000.0  # US Dollars
+         donor_name        value
+0            France  13500000.0  # Euros (millions)
+1    United Kingdom  15200000.0  # Pounds (millions)
+2     United States  60100000.0  # US Dollars (millions)
 ```
+
+!!! note "Values in Millions"
+    Remember that values use `unit_multiplier='6'`, meaning they're in millions of the specified currency.
 
 ## Constant Prices: Adjusting for Inflation
 
@@ -238,21 +247,21 @@ client = OECDClient(
 )
 
 data = client.get_indicators("DAC1.10.1010")
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 # Rank donors
-ranking = data.groupby("provider_name")["value"].sum().sort_values(ascending=False)
+ranking = data.groupby("donor_name")["value"].sum().sort_values(ascending=False)
 print(ranking)
 ```
 
-**Output:**
+**Output (values in millions of EUR):**
 ```
-provider_name
-United States     €56,234,567,890
-Germany          €28,123,456,789
-United Kingdom   €17,234,567,890
-France           €13,456,789,012
-Japan            €12,345,678,901
+donor_name
+United States     56234.57
+Germany          28123.46
+United Kingdom   17234.57
+France           13456.79
+Japan            12345.68
 ...
 ```
 
@@ -269,7 +278,7 @@ client = OECDClient(
     currency="LCU"  # Local currency for each recipient
 )
 
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
 data = add_names_columns(data, ["recipient_code"])
 
 # See aid in each country's own currency

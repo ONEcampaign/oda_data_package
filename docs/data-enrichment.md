@@ -12,29 +12,31 @@ Transform code columns into readable names for better analysis and reporting.
 from oda_data import OECDClient, add_names_columns
 
 client = OECDClient(years=[2022])
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
 
 # Before: just codes
-print(data[["provider_code", "recipient_code", "value"]].head())
+print(data[["donor_code", "recipient_code", "value"]].head())
 
 # Add names
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 
 # After: readable names
-print(data[["provider_name", "recipient_name", "value"]].head())
+print(data[["donor_name", "recipient_name", "value"]].head())
 ```
 
 **Output:**
 ```
 # Before:
-   provider_code  recipient_code       value
-0              4             249  45000000.0
-1             12             249  89000000.0
+   donor_code  recipient_code    value
+0           1             249    12.45
+1           2             249    23.67
+2           3             249    34.89
 
 # After:
-   provider_code  recipient_code       value provider_name recipient_name
-0              4             249  45000000.0        France          Kenya
-1             12             249  89000000.0United Kingdom          Kenya
+   donor_code  recipient_code    value   donor_name recipient_name
+0           1             249    12.45      Austria          Kenya
+1           2             249    23.67      Belgium          Kenya
+2           3             249    34.89      Denmark          Kenya
 ```
 
 ### Supported Column Types
@@ -46,14 +48,14 @@ from oda_data import add_names_columns
 
 # Works with various column types
 data = add_names_columns(data, [
-    "provider_code",
+    "donor_code",
     "recipient_code",
     "sector_code",      # If your data has sectors
     "channel_code"      # If your data has channels
 ])
 ```
 
-The function automatically detects the column type and adds the appropriate name column (e.g., `provider_name`, `recipient_name`, etc.).
+The function automatically detects the column type and adds the appropriate name column (e.g., `donor_name`, `recipient_name`, etc.).
 
 ## Adding Sector Classifications
 
@@ -154,15 +156,15 @@ client = OECDClient(
 data = add_gni_share_column(client, "DAC1.10.1010")
 
 # View ODA/GNI ratios
-print(data[["provider_code", "year", "value", "gni_share_pct"]])
+print(data[["donor_code", "year", "value", "gni_share_pct"]])
 ```
 
 **Output:**
 ```
-   provider_code  year         value  gni_share_pct
-0              4  2015  10234567890           0.43
-1              4  2016  11123456789           0.45
-2              4  2017  11234567890           0.44
+   donor_code  year      value  gni_share_pct
+0           4  2015  10234.57           0.43
+1           4  2016  11123.46           0.45
+2           4  2017  11234.57           0.44
 ...
 ```
 
@@ -173,19 +175,19 @@ from oda_data import OECDClient, add_gni_share_column, add_names_columns
 
 client = OECDClient(years=[2022])
 data = add_gni_share_column(client, "DAC1.10.1010")
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 # Find donors meeting the 0.7% target
 meets_target = data[data["gni_share_pct"] >= 0.7]
 
 print("Donors meeting 0.7% ODA/GNI target:")
-print(meets_target[["provider_name", "gni_share_pct"]].sort_values("gni_share_pct", ascending=False))
+print(meets_target[["donor_name", "gni_share_pct"]].sort_values("gni_share_pct", ascending=False))
 ```
 
 **Output:**
 ```
 Donors meeting 0.7% ODA/GNI target:
-      provider_name  gni_share_pct
+         donor_name  gni_share_pct
 0            Norway           1.02
 1        Luxembourg           0.99
 2           Denmark           0.76
@@ -220,9 +222,9 @@ client = OECDClient(
 )
 
 data = client.get_indicators("DAC1.10.1010")
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
-print(data[["provider_name", "value"]].sort_values("value", ascending=False))
+print(data[["donor_name", "value"]].sort_values("value", ascending=False))
 ```
 
 **Available provider groupings:**
@@ -256,7 +258,7 @@ client = OECDClient(
     recipients=ldcs
 )
 
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
 
 # Total ODA to LDCs by year
 annual_totals = data.groupby("year")["value"].sum()
@@ -294,20 +296,23 @@ for region_name, countries in regions.items():
         years=[2022],
         recipients=countries
     )
-    data = client.get_indicators("DAC2A.10.1010")
+    data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
     results[region_name] = data["value"].sum()
 
-# Compare regions
+# Compare regions (values in millions, multiply by 1e6 to get actual amounts)
 for region, total in sorted(results.items(), key=lambda x: x[1], reverse=True):
-    print(f"{region}: ${total/1e9:.1f}B")
+    print(f"{region}: ${total:,.0f}M")
 ```
 
 **Output:**
 ```
-Sub-Saharan Africa: $45.6B
-Asia: $38.2B
-Latin America: $12.4B
+Sub-Saharan Africa: $45,600M
+Asia: $38,200M
+Latin America: $12,400M
 ```
+
+!!! note "Values in Millions"
+    Values shown are in millions of USD (unit_multiplier='6').
 
 ## Combining Enrichments
 
@@ -333,14 +338,14 @@ client = OECDClient(
 data = client.get_indicators("CRS.10.1010")
 
 # Enrich with names
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 
 # Add sector classifications
 data = add_broad_sectors(data)
 
 # Now you have a fully enriched dataset ready for analysis
 print(data[[
-    "provider_name",
+    "donor_name",
     "recipient_name",
     "broad_sector",
     "year",
@@ -350,11 +355,11 @@ print(data[[
 
 **Output:**
 ```
-  provider_name recipient_name    broad_sector  year        value
-0        France          Kenya       Education  2022  12000000.0
-1        France          Kenya          Health  2022  23000000.0
-2        France      Tanzania       Education  2022   8000000.0
-3           USA          Kenya Infrastructure  2022  45000000.0
+     donor_name recipient_name    broad_sector  year    value
+0        France          Kenya       Education  2022    12.34
+1        France          Kenya          Health  2022    23.45
+2        France      Tanzania       Education  2022     8.67
+3           USA          Kenya Infrastructure  2022    45.78
 ...
 ```
 
@@ -381,7 +386,7 @@ client = OECDClient(
 data = client.get_indicators("CRS.10.1010")
 
 # Enrich data
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 data = add_broad_sectors(data)
 
 # Analyze: Top sectors for EU ODA
@@ -389,16 +394,16 @@ sector_analysis = data.groupby("broad_sector")["value"].sum().sort_values(ascend
 
 print("Top sectors for EU ODA (2022):")
 for sector, value in sector_analysis.head(10).items():
-    print(f"{sector:.<30} ${value/1e9:.1f}B")
+    print(f"{sector:.<30} ${value:,.0f}M")
 ```
 
 **Output:**
 ```
 Top sectors for EU ODA (2022):
-Health......................... $8.9B
-Education...................... $6.2B
-Infrastructure................. $5.1B
-Water & Sanitation............. $3.8B
+Health......................... $8,900M
+Education...................... $6,200M
+Infrastructure................. $5,100M
+Water & Sanitation............. $3,800M
 ...
 ```
 
@@ -410,7 +415,7 @@ Water & Sanitation............. $3.8B
 from oda_data import OECDClient, add_names_columns
 
 client = OECDClient(years=[2022])
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")  # ODA disbursements
 
 # Add names
 data = add_names_columns(data, ["recipient_code"])
@@ -433,11 +438,11 @@ from oda_data import OECDClient, add_gni_share_column, add_names_columns
 
 client = OECDClient(years=[2022])
 data = add_gni_share_column(client, "DAC1.10.1010")
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 # Rank by ODA/GNI ratio
 ranking = data.sort_values("gni_share_pct", ascending=False)
-print(ranking[["provider_name", "value", "gni_share_pct"]].head(10))
+print(ranking[["donor_name", "value", "gni_share_pct"]].head(10))
 ```
 
 ### Pattern: Sectoral Focus Analysis
