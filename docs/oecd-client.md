@@ -32,9 +32,9 @@ for code, info in list(all_indicators.items())[:3]:
 
 **Output:**
 ```
-DAC1.10.1010: Total ODA (Net Disbursements)
-DAC1.10.1020: Total ODA (Gross Disbursements)
-DAC1.10.11015: Bilateral ODA
+ONE.10.1010_11010: Total ODA (Official Definition)
+ONE.40.1010_11010_1: Total ODA (official definition) as a percentage of GNI
+ONE.40.1010_1: Total ODA (net flows) as a percentage of GNI
 ```
 
 ### Export Indicators to CSV
@@ -63,15 +63,17 @@ set_data_path("data")
 client = OECDClient(years=range(2018, 2023))
 data = client.get_indicators("DAC1.10.1010")
 
-print(data[["provider_code", "year", "value"]].head())
+print(data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 **Output:**
 ```
-   donor_code     donor_name  year      value
-0           1        Austria  2018  14567.89
-1           1        Austria  2019  15123.46
-2           1        Austria  2020  16234.57
+ donor_code  donor_name  year     value
+      20000 DAC Members  2018 167308.20
+      20000 DAC Members  2019 161893.22
+      20000 DAC Members  2020 183776.35
+      20000 DAC Members  2021 205638.09
+      20000 DAC Members  2022 240675.09
 ```
 
 !!! note "Values in Millions"
@@ -110,7 +112,7 @@ client = OECDClient(
     recipients=africa_countries
 )
 
-data = client.get_indicators("DAC2A.10.1010")  # Bilateral ODA by recipient
+data = client.get_indicators("DAC2A.10.206")  # Bilateral ODA disbursements by recipient
 ```
 
 ## Working with Measures
@@ -157,7 +159,7 @@ client = OECDClient(
     measure="gross_disbursement"  # Options: net_disbursement, gross_disbursement
 )
 
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")
 ```
 
 ### CRS Measures
@@ -173,7 +175,7 @@ client = OECDClient(
                          # gross_disbursement, received, etc.
 )
 
-data = client.get_indicators("CRS.10.1010")
+data = client.get_indicators("CRS.P.10")  # ODA
 ```
 
 ## Multiple Indicators
@@ -191,22 +193,22 @@ client = OECDClient(
 # Get multiple indicators
 indicators = [
     "DAC1.10.1010",  # Total ODA
-    "DAC1.10.11015", # Bilateral ODA
+    "DAC1.10.1015",  # Bilateral ODA
     "DAC1.10.1210"   # Multilateral ODA
 ]
 
 data = client.get_indicators(indicators)
 
 # Data includes all three indicators
-print(data.groupby("indicator_code")["value"].sum())
+print(data.groupby("one_indicator")["value"].sum())
 ```
 
 **Output:**
 ```
-indicator_code
-DAC1.10.1010     1234567890123.0
-DAC1.10.11015     987654321098.0
-DAC1.10.1210      246913579024.0
+one_indicator
+DAC1.10.1010    244839.77
+DAC1.10.1015    185343.11
+DAC1.10.1210      1691.70
 Name: value, dtype: float64
 ```
 
@@ -281,7 +283,7 @@ client = OECDClient(
     use_bulk_download=True           # Use bulk files
 )
 
-data = client.get_indicators("DAC2A.10.1010")
+data = client.get_indicators("DAC2A.10.206")
 ```
 
 ## Common Patterns

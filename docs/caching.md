@@ -216,57 +216,6 @@ data3 = client.get_indicators("DAC1.10.1210")
 # All fast because they use the same cached bulk file
 ```
 
-### Pattern: Reuse Client Configuration
-
-```python title="Reuse Configured Clients"
-from oda_data import OECDClient
-
-# Create client once
-client = OECDClient(
-    years=range(2020, 2023),
-    providers=[4, 12, 302],
-    currency="EUR",
-    base_year=2021,
-    use_bulk_download=True
-)
-
-# Reuse for multiple indicators
-indicators = [
-    "DAC1.10.1010",
-    "DAC1.10.11015",
-    "DAC1.10.1210",
-    "DAC1.10.1100"
-]
-
-results = {}
-for indicator in indicators:
-    results[indicator] = client.get_indicators(indicator)
-
-# All queries benefit from caching
-```
-
-### Pattern: Pre-download Bulk Files
-
-```python title="Pre-download for Offline Work"
-from oda_data import DAC1Data, DAC2AData, CRSData, set_data_path
-
-set_data_path("data")
-
-# Download all needed bulk files upfront
-print("Downloading DAC1...")
-DAC1Data().download(bulk=True)
-
-print("Downloading DAC2A...")
-DAC2AData().download(bulk=True)
-
-print("Downloading CRS...")
-CRSData(years=range(2015, 2024)).download(bulk=True)
-
-print("All data cached! Now work offline.")
-
-# Now all queries work offline from cache
-```
-
 ## Cache Lifetime and Refresh
 
 ### When Cache is Invalidated

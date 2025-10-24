@@ -32,7 +32,7 @@ data = oda.load_indicator("total_oda_flow_net")
 
 ### Option 2: Stay on v1.5.x
 
-Version 1.5.x remains available and supported until at least August 2025:
+Version 1.5.x remains available and supported until at least November 2025:
 
 ```bash
 # Install specific v1.x version
@@ -472,7 +472,7 @@ If you encounter migration issues:
 
 ## Version Support Timeline
 
-- **v1.5.x**: Supported until at least August 2025
+- **v1.5.x**: Supported until at least November 2025
 - **v2.x**: Current stable version, recommended for new projects
 - **Compatibility layer**: Available in v2.x for gradual migration
 

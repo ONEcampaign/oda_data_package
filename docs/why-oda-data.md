@@ -100,8 +100,8 @@ from oda_data import OECDClient
 # High-level indicators (uses DAC1, DAC2A, CRS automatically)
 client = OECDClient(years=[2022])
 total_oda = client.get_indicators("DAC1.10.1010")
-bilateral = client.get_indicators("DAC2A.10.1010")
-projects = client.get_indicators("CRS.10.1010")
+bilateral = client.get_indicators("DAC2A.10.206")
+projects = client.get_indicators("CRS.P.10")
 
 # Or direct database access when you need it
 from oda_data import DAC1Data, DAC2AData, CRSData
@@ -132,36 +132,7 @@ client = OECDClient(
 eu_data = client.get_indicators("DAC1.10.1010")
 ```
 
-### 3. Data Enrichment Out of the Box
-
-Add context automatically:
-
-```python title="From Codes to Insights"
-from oda_data import (
-    OECDClient,
-    add_names_columns,
-    add_broad_sectors,
-    add_gni_share_column
-)
-
-client = OECDClient(years=[2022])
-
-# Get data
-data = client.get_indicators("CRS.10.1010")
-
-# Enrich with names
-data = add_names_columns(data, ["provider_code", "recipient_code"])
-
-# Add sector categories
-data = add_broad_sectors(data)
-
-# Add ODA/GNI ratios
-data = add_gni_share_column(client, "DAC1.10.1010")
-
-# Ready for analysis with human-readable, contextualized data
-```
-
-### 4. Performance Through Smart Caching
+### 3. Performance Through Smart Caching
 
 The OECD data-explorer API has extremely low rate limits, which make it difficult 
 to build production-ready tools and applications. The oda-data package manages caches
@@ -183,7 +154,7 @@ data4 = client.get_indicators("DAC1.10.1100")   # Milliseconds
 # Three-tier caching: memory → query cache → bulk cache
 ```
 
-### 5. Research-Ready Features
+### 4. Research-Ready Features
 
 Advanced capabilities for complex analysis:
 
@@ -272,9 +243,9 @@ Ready to simplify your ODA data workflow? Check out [Getting Started](getting-st
 
 ## Questions?
 
-- **How is this different from the OECD's tools?** This package programmatic access with data cleaning, currency conversion, and research features built-in. OECD provides raw data through web interfaces and APIs.
+- **How is this different from the OECD's tools?** This package programmatic access with data cleaning, currency conversion, and research features built-in. OECD provides raw data through web interfaces and APIs. 
 
-- **Is the data official?** Yes, all data comes directly from OECD DAC official sources. The package just makes it easier to access and use. Note that ODA Data is not affiliated with or endorsed by the OECD.
+- **Is the data official?** Yes, all data comes directly from OECD DAC official sources. The package just makes it easier to access and use. Note that ODA Data is not affiliated with nor endorsed by the OECD.
 
 - **Can I still access raw data?** Absolutely. You have full access to raw databases when needed. See [Accessing Raw Data](data-sources.md).
 

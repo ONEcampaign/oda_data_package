@@ -70,7 +70,9 @@ Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 ### Get Data in Euros
 
 ```python title="Convert USD Data to EUR"
-from oda_data import OECDClient
+from oda_data import OECDClient, set_data_path
+
+set_data_path("data")
 
 # Default is USD, current prices
 client_usd = OECDClient(years=[2022])
@@ -83,18 +85,22 @@ client_eur = OECDClient(
 )
 data_eur = client_eur.get_indicators("DAC1.10.1010")
 
-print(f"Total ODA in USD: ${data_usd['value'].sum():,.0f}")
-print(f"Total ODA in EUR: €{data_eur['value'].sum():,.0f}")
+# Get DAC Members total (code 20000)
+dac_usd = data_usd[data_usd["donor_code"] == 20000]["value"].iloc[0]
+dac_eur = data_eur[data_eur["donor_code"] == 20000]["value"].iloc[0]
+
+print(f"Total ODA in USD: ${dac_usd:,.0f}M")
+print(f"Total ODA in EUR: €{dac_eur:,.0f}M")
 ```
 
 **Output:**
 ```
-Total ODA in USD: $204,000,000,000
-Total ODA in EUR: €188,000,000,000
+Total ODA in USD: $240,675M
+Total ODA in EUR: €228,859M
 ```
 
-!!! note "Illustrative Values"
-    Output values shown in examples are illustrative. Actual values will vary based on the year queried and current OECD data. The values also use the `unit_multiplier` - typically you'll need to multiply by 10^6 to get actual amounts.
+!!! note "Values in Millions"
+    Values use `unit_multiplier='6'`, meaning they're in millions. So $240,675M = $240.7 billion USD.
 
 ### Get Data in Provider's Own Currency
 
@@ -169,22 +175,22 @@ client_constant = OECDClient(
 )
 constant = client_constant.get_indicators("DAC1.10.1010")
 
-# Compare totals
+# Compare totals for DAC Members (code 20000)
 print("Year | Current Prices | Constant 2021 Prices")
 for year in years:
-    curr_val = current[current["year"] == year]["value"].sum()
-    const_val = constant[constant["year"] == year]["value"].sum()
-    print(f"{year} | ${curr_val/1e9:.1f}B | ${const_val/1e9:.1f}B")
+    curr_val = current[(current["year"] == year) & (current["donor_code"] == 20000)]["value"].iloc[0]
+    const_val = constant[(constant["year"] == year) & (constant["donor_code"] == 20000)]["value"].iloc[0]
+    print(f"{year} | ${curr_val/1000:.1f}B | ${const_val/1000:.1f}B")
 ```
 
 **Output:**
 ```
 Year | Current Prices | Constant 2021 Prices
-2018 | $153.2B | $168.4B
-2019 | $156.8B | $169.1B
-2020 | $162.4B | $171.2B
-2021 | $178.9B | $178.9B  # Base year: values are the same
-2022 | $204.3B | $186.7B  # Nominal increase includes inflation
+2018 | $167.3B | $179.1B
+2019 | $161.9B | $176.1B
+2020 | $183.8B | $194.5B
+2021 | $205.6B | $205.6B  # Base year: values are the same
+2022 | $240.7B | $248.3B  # Deflation adjusts 2022 to 2021 prices
 ```
 
 Notice how the constant prices show that "real" aid grew more slowly than the nominal figures suggest.

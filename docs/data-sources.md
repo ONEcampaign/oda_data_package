@@ -318,5 +318,4 @@ data = dac1.read(using_bulk_download=True)
 ## Next Steps
 
 - **Advanced techniques**: See [Sector Imputations](sector-imputations.md)
-- **Alternative source**: Explore [AidData Integration](aiddata.md)
 - **Performance tips**: Read [Cache Management](caching.md)

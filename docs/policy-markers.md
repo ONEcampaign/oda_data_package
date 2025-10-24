@@ -27,7 +27,9 @@ Each project receives a score indicating the priority of that objective:
 ### Get Gender-Focused ODA
 
 ```python title="Analyze Gender Equality ODA"
-from oda_data import bilateral_policy_marker
+from oda_data import bilateral_policy_marker, set_data_path
+
+set_data_path("data")
 
 # Get bilateral ODA with gender as principal objective
 gender_data = bilateral_policy_marker(
@@ -36,15 +38,17 @@ gender_data = bilateral_policy_marker(
     marker_score="principal"  # Projects where gender is the main focus
 )
 
-print(gender_data[["provider_code", "year", "value"]].head())
+print(gender_data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 **Output:**
 ```
-   donor_code  year      value
-0           1  2018  234567.89
-1           1  2019  245678.90
-2           1  2020  256789.01
+ donor_code donor_name  year    value
+          1    Austria  2018 0.100909
+          1    Austria  2019 0.001330
+          1    Austria  2020 0.000000
+          1    Austria  2021 0.331126
+          1    Austria  2022 0.001779
 ```
 
 !!! note "Values in Millions"
@@ -478,4 +482,3 @@ data = bilateral_policy_marker(
 
 - **Access project-level data**: See [Accessing Raw Data](data-sources.md)
 - **Advanced research**: Explore [Sector Imputations](sector-imputations.md)
-- **Alternative data source**: Check [AidData Integration](aiddata.md)
