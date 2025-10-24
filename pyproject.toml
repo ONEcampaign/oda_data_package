@@ -49,6 +49,7 @@ dev = [
     "uv-build>=0.8.22",
     "pre-commit>=4.0.0",
     "ruff>=0.14.0",
+    "mkdocs-material>=9.6.22",
 ]
 test = [
     "pytest>=8.0.0",
