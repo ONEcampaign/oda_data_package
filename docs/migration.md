@@ -113,7 +113,7 @@ data = client.get_indicators("DAC1.10.1010")  # Total ODA
 | v1.x Indicator Name | v2.x Code | Description |
 |---------------------|-----------|-------------|
 | `total_oda_flow_net` | `DAC1.10.1010` | Total ODA, net disbursements |
-| `bilateral_oda_flow_net` | `DAC1.10.11015` | Bilateral ODA |
+| `bilateral_oda_flow_net` | `DAC1.10.1015` | Bilateral ODA |
 | `multilateral_oda_flow_net` | `DAC1.10.1210` | Multilateral ODA |
 | `total_oda_ge` | `DAC1.20.1010` | Total ODA, grant equivalent |
 
@@ -247,7 +247,7 @@ data = add_names(data)
 from oda_data import add_names_columns
 
 # More explicit: specify which columns
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 ```
 
 ### GNI Calculations
@@ -356,7 +356,7 @@ client = OECDClient(
 data = client.get_indicators("DAC1.10.1010")  # Total ODA
 
 # Add names (specify columns explicitly)
-data = add_names_columns(data, ["provider_code"])
+data = add_names_columns(data, ["donor_code"])
 
 # Add GNI share (different function)
 data = add_gni_share_column(client, "DAC1.10.1010")
@@ -425,7 +425,7 @@ for code, info in indicators.items():
         print(f"{code}: {info['name']}")
 
 # Use the code
-data = client.get_indicators("DAC1.10.11015")
+data = client.get_indicators("DAC1.10.1015")
 ```
 
 ### Issue: Different column names

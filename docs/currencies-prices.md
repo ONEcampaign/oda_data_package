@@ -96,7 +96,7 @@ print(f"Total ODA in EUR: €{dac_eur:,.0f}M")
 **Output:**
 ```
 Total ODA in USD: $240,675M
-Total ODA in EUR: €228,859M
+Total ODA in EUR: €228,858M
 ```
 
 !!! note "Values in Millions"

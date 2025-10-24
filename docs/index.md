@@ -28,7 +28,7 @@ client = OECDClient(
     base_year=2021,  # Constant 2021 prices
     measure="grant_equivalent"
 )
-data = client.get_indicators("DAC1.10.11015")  # Bilateral ODA
+data = client.get_indicators("DAC1.10.1015")  # Bilateral ODA
 ```
 
 **Add human-readable context:**
@@ -36,7 +36,7 @@ data = client.get_indicators("DAC1.10.11015")  # Bilateral ODA
 ```python
 from oda_data import add_names_columns, add_sectors
 
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 data = add_sectors(data)  # Add sector classifications (to CRS data)
 ```
 

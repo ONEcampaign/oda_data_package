@@ -85,7 +85,7 @@ df = df[df['AmountType'] == 'D']  # What does 'D' mean again?
 from oda_data import add_names_columns
 
 # Handles all the mappings for you
-data = add_names_columns(data, ["provider_code", "recipient_code"])
+data = add_names_columns(data, ["donor_code", "recipient_code"])
 ```
 
 ## What This Package Does For You
@@ -147,7 +147,7 @@ client = OECDClient(
 data1 = client.get_indicators("DAC1.10.1010")  # Can take minutes
 
 # Subsequent queries: Instant from cache
-data2 = client.get_indicators("DAC1.10.11015")  # Milliseconds
+data2 = client.get_indicators("DAC1.10.1015")  # Milliseconds
 data3 = client.get_indicators("DAC1.10.1210")   # Milliseconds
 data4 = client.get_indicators("DAC1.10.1100")   # Milliseconds
 

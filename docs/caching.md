@@ -211,7 +211,7 @@ client = OECDClient(
 data1 = client.get_indicators("DAC1.10.1010")
 
 # Subsequent calls are very fast
-data2 = client.get_indicators("DAC1.10.11015")
+data2 = client.get_indicators("DAC1.10.1015")
 data3 = client.get_indicators("DAC1.10.1210")
 # All fast because they use the same cached bulk file
 ```
@@ -334,7 +334,7 @@ def fetch_indicator(indicator):
 
 # Safe: Multiple processes can share cache
 if __name__ == "__main__":
-    indicators = ["DAC1.10.1010", "DAC1.10.11015", "DAC1.10.1210"]
+    indicators = ["DAC1.10.1010", "DAC1.10.1015", "DAC1.10.1210"]
     with Pool(3) as pool:
         results = pool.map(fetch_indicator, indicators)
 ```
