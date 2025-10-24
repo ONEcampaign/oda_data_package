@@ -55,7 +55,6 @@ nav:
   - User Guides:
       - Working with Indicators: oecd-client.md
       - Currencies and Prices: currencies-prices.md
-      - Adding Context to Data: data-enrichment.md
       - Policy Marker Analysis: policy-markers.md
       - Accessing Raw Data: data-sources.md
   - Advanced Topics:

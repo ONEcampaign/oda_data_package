@@ -283,7 +283,6 @@ for func in functions:
 
 - **Bilateral sectoral data**: See [Accessing Raw Data](data-sources.md) for CRS data
 - **Multilateral contributions**: See [Accessing Raw Data](data-sources.md) for MultiSystem data
-- **Sector classifications**: See [Adding Context to Data](data-enrichment.md) for sector groupings
 
 ## Further Reading
 

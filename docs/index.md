@@ -2,17 +2,18 @@
 
 ## The Problem
 
-Working with Official Development Assistance (ODA) data from the OECD DAC can be overwhelming. The data is scattered across multiple databases (DAC1, DAC2A, CRS), each with different structures and access methods. Getting the specific indicators you need requires expert knowledge—not just of ODA concepts, but also of how the DAC databases and tools are organized. You might spend hours navigating web interfaces, downloading files, and transforming data before you can even start your analysis.
+Working with Official Development Assistance (ODA) data from the OECD DAC can be overwhelming. The data is scattered across multiple databases (DAC1, DAC2A, CRS, etc), each with different structures and access methods. Getting the specific indicators you need requires expert knowledge—not just of ODA concepts, but also of how the DAC databases and tools are organized. You might spend hours navigating web interfaces, downloading files, and transforming data before you can even start your analysis.
 
 This package simplifies that entire process. Whether you need total ODA flows, bilateral aid to specific countries, or detailed project-level data, you can get it with a few lines of Python code.
 
 ## What You Can Do
 
-**Get ODA indicators with automatic filtering:**
+**Easily get ODA data**
 
 ```python
 from oda_data import OECDClient, set_data_path
 
+# Set a folder where to store the raw data
 set_data_path("data")
 client = OECDClient(years=range(2018, 2023), providers=[4, 302])  # France and USA
 data = client.get_indicators("DAC1.10.1010")  # Total ODA
@@ -36,7 +37,7 @@ data = client.get_indicators("DAC1.10.11015")  # Bilateral ODA
 from oda_data import add_names_columns, add_sectors
 
 data = add_names_columns(data, ["provider_code", "recipient_code"])
-data = add_sectors(data)  # Add sector classifications
+data = add_sectors(data)  # Add sector classifications (to CRS data)
 ```
 
 **Analyze policy markers:**

@@ -376,6 +376,5 @@ print(f"Found {len(data)} rows")
 ## Next Steps
 
 - **Customize output**: Learn about [Currencies and Prices](currencies-prices.md)
-- **Enrich data**: Add context with [Adding Context to Data](data-enrichment.md)
 - **Advanced analysis**: Explore [Policy Marker Analysis](policy-markers.md)
 - **Raw data access**: See [Accessing Raw Data](data-sources.md) for more control

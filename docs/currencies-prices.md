@@ -9,11 +9,11 @@ When analyzing ODA data, you often need to compare aid flows across countries, t
 ```python title="Get ODA in Euros for European Analysis"
 from oda_data import OECDClient, provider_groupings
 
-eu_members = provider_groupings()["dac_eu_members"]
+eu_members = provider_groupings()["eu27_countries"]
 
 client = OECDClient(
     years=range(2020, 2023),
-    providers=eu_members,
+    providers=list(eu_members),
     currency="EUR"  # Convert all data to Euros
 )
 
@@ -22,12 +22,13 @@ data = client.get_indicators("DAC1.10.1010")
 
 **Understand local purchasing power:**
 
-```python title="Get ODA in Recipient's Local Currency"
+```python title="Get ODA in Provider's Local Currency"
 from oda_data import OECDClient
 
-# ODA to Bangladesh in local currency units (Taka)
+# ODA to Bangladesh in euros (local currency for France)
 client = OECDClient(
     years=[2022],
+    providers=[4], # France
     recipients=[246],  # Bangladesh
     currency="LCU"     # Local currency units
 )
@@ -59,7 +60,7 @@ Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 - **EUR**: Euros
 - **GBP**: British Pounds
 - **CAD**: Canadian Dollars
-- **LCU**: Local Currency Units (recipient's or donor's own currency)
+- **LCU**: Local Currency Units (donor's own currency)
 
 !!! note "Adding Currencies"
     Need a specific DAC donor currency? [Request it via GitHub issues](https://github.com/ONEcampaign/oda_data_package/issues). The package can add any donor currency used in DAC reporting.
@@ -370,21 +371,7 @@ client2 = OECDClient(years=[2022], currency="EUR", base_year=2021)  # Constant p
 
 # These aren't directly comparable!
 ```
-
-### Issue: Local currency values vary widely
-
-This is expected—exchange rates differ greatly between countries. Bangladesh (Taka) will have much larger numbers than Japan (Yen) for the same dollar amount.
-
-```python
-# Add currency labels to your output
-from oda_data import add_names_columns
-
-data = add_names_columns(data, ["recipient_code"])
-# Now you can see which currency each value represents
-```
-
 ## Next Steps
 
-- **Enrich your data**: Learn about [Adding Context to Data](data-enrichment.md)
 - **Advanced filtering**: See [Working with Indicators](oecd-client.md)
 - **Policy analysis**: Explore [Policy Marker Analysis](policy-markers.md)

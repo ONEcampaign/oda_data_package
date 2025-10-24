@@ -46,9 +46,6 @@ set_data_path("data")
 # Instantiate DAC1 data source
 dac1 = DAC1Data()
 
-# Download data (bulk download recommended)
-dac1.download(bulk=True)
-
 # Read the data
 data = dac1.read(using_bulk_download=True)
 
@@ -84,14 +81,13 @@ from oda_data import DAC1Data, set_data_path
 set_data_path("data")
 
 dac1 = DAC1Data(years=2022)
-dac1.download(bulk=True)
 
 # Read with additional filters and specific columns
 data = dac1.read(
     using_bulk_download=True,
     additional_filters=[
         ("amount_type", "==", "Current prices"),
-        ("flow_type", "==", "1010")  # Total ODA
+        ("aidtype_code", "==", 1010)  # Total ODA
     ],
     columns=["donor_code", "year", "flow_type", "value"]
 )
@@ -113,7 +109,6 @@ set_data_path("data")
 dac2a = DAC2AData()
 
 # Bulk download recommended for DAC2A (larger dataset)
-dac2a.download(bulk=True)
 data = dac2a.read(using_bulk_download=True)
 
 print(f"Shape: {data.shape}")
@@ -127,17 +122,16 @@ from oda_data import DAC2AData, recipient_groupings, set_data_path
 set_data_path("data")
 
 # Get African countries
-africa = recipient_groupings()["africa_south_of_sahara"]
+africa = list(recipient_groupings()["african_countries"])
 
 dac2a = DAC2AData(
     years=range(2020, 2023),
     providers=[4],  # France
     recipients=africa,
-    indicators=[1010]  # Total bilateral ODA
 )
 
 # Download
-data = dac2a.download(bulk=False)
+data = dac2a.read(using_bulk_download=True)
 
 print(data.head())
 ```
@@ -202,13 +196,13 @@ crs = CRSData(
 data = crs.read(
     using_bulk_download=True,
     additional_filters=[
-        ("sector_code", ">=", "11000"),  # Education sector codes
-        ("sector_code", "<", "12000")
+        ("purpose_code", ">=", 11000),  # Education sector codes
+        ("purpose_code", "<", 12000)
     ]
 )
 
 print(f"Found {len(data)} education projects")
-print(data[["donor_name", "recipient_name", "sector_name", "project_title", "value"]].head())
+print(data[["donor_name", "recipient_name", "sector_name", "project_title", "usd_disbursement"]].head())
 ```
 
 ### Analyze Project Characteristics
@@ -223,20 +217,18 @@ data = crs.read(using_bulk_download=True)
 
 # Available columns include:
 # - sector_code, sector_name, purpose_code, purpose_name
-# - channel_code, channel_name (implementing organization)
+# - channel_code, channel_name 
 # - project_title, project_description
-# - gender_marker, climate_adaptation_marker, etc.
-# - commitment_amount, disbursement_amount
 
 # Example: Top implementing channels
 top_channels = (
-    data.groupby("channel_name")["value"]
+    data.groupby("channel_name")["usd_disbursement"]
     .sum()
     .sort_values(ascending=False)
     .head(10)
 )
 
-print("Top 10 implementing channels:")
+print("Top 10 channels:")
 print(top_channels)
 ```
 
@@ -269,14 +261,13 @@ set_data_path("data")
 multisystem = MultiSystemData(
     years=[2022],
     providers=[4, 12, 302],  # France, UK, USA
-    indicators=["through"]  # Aid channeled through multilaterals
 )
 
-data = multisystem.download(bulk=False)
+data = multisystem.read(using_bulk_download=False)
 
 # Analyze by organization
 org_totals = (
-    data.groupby("recipient_name")["value"]
+    data.loc[lambda d: d.aid_type == 'Contributions through'].groupby("recipient_name")["value"]
     .sum()
     .sort_values(ascending=False)
 )
@@ -317,186 +308,12 @@ Use bulk files for comprehensive analysis:
 # - Repeated queries
 
 dac1 = DAC1Data(years=range(2010, 2024))
-dac1.download(bulk=True)  # Downloads complete file
 data = dac1.read(using_bulk_download=True)
 ```
 
 **Pros**: Very fast after initial download, no rate limits
 
 **Cons**: First download takes time, file may be slightly outdated
-
-## Common Patterns
-
-### Pattern: Build Custom Indicator
-
-```python title="Create Custom ODA Indicator from DAC1"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
-
-# Get raw DAC1 data
-dac1 = DAC1Data(years=range(2020, 2023))
-data = dac1.read(using_bulk_download=True)
-
-# Build custom indicator: Total ODA minus in-donor refugee costs
-total_oda = data[
-    (data["aid_type_code"] == "1010") &  # Total ODA
-    (data["flow_type"] == "1140")  # Net disbursements
-]
-
-refugee_costs = data[
-    (data["aid_type_code"] == "1015") &  # Refugee costs
-    (data["flow_type"] == "1140")
-]
-
-# Merge and calculate
-custom = total_oda.merge(
-    refugee_costs[["donor_code", "year", "value"]],
-    on=["donor_code", "year"],
-    suffixes=("_total", "_refugee")
-)
-custom["oda_excl_refugees"] = custom["value_total"] - custom["value_refugee"]
-
-print(custom[["donor_code", "year", "oda_excl_refugees"]].head())
-```
-
-### Pattern: Cross-Database Analysis
-
-```python title="Compare DAC2A and CRS Data"
-from oda_data import DAC2AData, CRSData, set_data_path
-
-set_data_path("data")
-
-# Get bilateral totals from DAC2A
-dac2a = DAC2AData(years=[2022])
-dac2a_data = dac2a.read(using_bulk_download=True)
-dac2a_totals = dac2a_data.groupby("donor_code")["value"].sum()
-
-# Get CRS totals
-crs = CRSData(years=[2022])
-crs_data = crs.read(using_bulk_download=True)
-crs_totals = crs_data.groupby("donor_code")["value"].sum()
-
-# Compare
-comparison = pd.DataFrame({
-    "DAC2A": dac2a_totals,
-    "CRS": crs_totals
-})
-comparison["Difference"] = comparison["DAC2A"] - comparison["CRS"]
-
-print(comparison)
-```
-
-### Pattern: Time Series Construction
-
-```python title="Build Multi-Year Dataset"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
-
-# Download many years
-dac1 = DAC1Data(years=range(2000, 2024))
-dac1.download(bulk=True)
-
-# Read with filters
-data = dac1.read(
-    using_bulk_download=True,
-    additional_filters=[
-        ("aid_type_code", "==", "1010"),
-        ("flow_type", "==", "1140"),
-        ("amount_type", "==", "Constant prices")
-    ]
-)
-
-# Create time series
-time_series = data.groupby(["donor_code", "year"])["value"].sum().unstack()
-print(time_series)
-```
-
-## Data Structure
-
-### DAC1 Columns
-
-Key columns in DAC1 data:
-
-- `donor_code`, `donor_name` - Donor country
-- `aid_type_code`, `aid_type_name` - Type of aid flow
-- `flow_type` - Flow measure code
-- `amount_type` - Current/constant prices
-- `year` - Year
-- `value` - Amount
-
-### DAC2A Columns
-
-Key columns in DAC2A data:
-
-- `donor_code`, `donor_name` - Donor country
-- `recipient_code`, `recipient_name` - Recipient country
-- `aid_type_code`, `aid_type_name` - Type of aid
-- `flow_type_name` - Flow type
-- `amount_type` - Price type
-- `year` - Year
-- `value` - Amount
-
-### CRS Columns
-
-Key columns in CRS data (many more available):
-
-- `donor_code`, `donor_name` - Donor
-- `recipient_code`, `recipient_name` - Recipient
-- `sector_code`, `sector_name` - DAC sector
-- `purpose_code`, `purpose_name` - Detailed purpose
-- `channel_code`, `channel_name` - Implementing agency
-- `project_title`, `project_description` - Project details
-- `commitment_amount`, `disbursement_amount` - Financial data
-- Policy markers: `gender_marker`, `climate_adaptation_marker`, etc.
-
-## Troubleshooting
-
-### Issue: Download is very slow
-
-**Solution:** Use bulk downloads:
-
-```python
-# Instead of:
-data = crs.download(bulk=False)  # Slow!
-
-# Use:
-data = crs.read(using_bulk_download=True)  # Fast!
-```
-
-### Issue: Too much data, running out of memory
-
-**Solution:** Filter more aggressively:
-
-```python
-# Download less data
-crs = CRSData(
-    years=[2022],  # Just one year
-    providers=[4]   # Just one donor
-)
-
-# Or filter when reading
-data = crs.read(
-    using_bulk_download=True,
-    columns=["donor_code", "recipient_code", "value"]  # Fewer columns
-)
-```
-
-### Issue: Can't find the right filter column
-
-**Solution:** Explore available columns:
-
-```python
-dac1 = DAC1Data(years=[2022])
-data = dac1.read(using_bulk_download=True)
-
-# See all columns
-print(data.columns.tolist())
-
-# See unique values
-print(data["flow_type"].unique())
-```
 
 ## Next Steps
 
