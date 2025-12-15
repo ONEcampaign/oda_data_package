@@ -279,7 +279,12 @@
     "1032": "Central America, regional",
     "1033": "Melanesia, regional",
     "1034": "Micronesia, regional",
-    "1035": "Polynesia, regional"
+    "1035": "Polynesia, regional",
+    "6790": "Southern Asia, unspecified",
+    "8600": "Micronesia, unspecified",
+    "10280": "Middle Africa, unspecified",
+    "10330": "Melanesia, unspecified",
+    "10350": "Polynesia, unspecified"
   },
   "all_developing_countries_regions": {
     "30": "Cyprus",
@@ -470,7 +475,12 @@
     "1032": "Central America, regional",
     "1033": "Melanesia, regional",
     "1034": "Micronesia, regional",
-    "1035": "Polynesia, regional"
+    "1035": "Polynesia, regional",
+      "6790": "Southern Asia, unspecified",
+    "8600": "Micronesia, unspecified",
+    "10280": "Middle Africa, unspecified",
+    "10330": "Melanesia, unspecified",
+    "10350": "Polynesia, unspecified"
   },
   "african_countries": {
     "130": "Algeria",
@@ -537,7 +547,8 @@
     "1027": "Eastern Africa, regional",
     "1030": "Western Africa, regional",
     "1028": "Middle Africa, regional",
-    "1029": "Southern Africa, regional"
+    "1029": "Southern Africa, regional",
+    "10280": "Middle Africa, unspecified"
   },
   "african_countries_regional": [
     "africa_regional",
