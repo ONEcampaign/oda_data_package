@@ -136,6 +136,6 @@ class TestIndicatorStructureValidation:
 
         for indicator_code, indicator_data in result.items():
             if "custom_function" in indicator_data:
-                assert isinstance(
-                    indicator_data["custom_function"], str
-                ), f"Indicator {indicator_code} has non-string custom_function"
+                assert isinstance(indicator_data["custom_function"], str), (
+                    f"Indicator {indicator_code} has non-string custom_function"
+                )

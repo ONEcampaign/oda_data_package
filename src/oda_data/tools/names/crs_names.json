@@ -160,7 +160,8 @@
     "1618": "David and Lucile Packard Foundation",
     "1616": "Gatsby Charitable Foundation",
     "1609": "Van Leer Foundation",
-    "1625": "Arcus Foundation"
+    "1625": "Arcus Foundation",
+    "919": "European Investment Bank [EIB]"
   },
   "de_donorcode": {},
   "agency_code": {
@@ -467,7 +468,12 @@
     "10004": "America",
     "10007": "Asia",
     "498": "America, regional",
-    "798": "Asia, regional"
+    "798": "Asia, regional",
+    "6790": "Southern Asia, unspecified",
+    "8600": "Micronesia, unspecified",
+    "10280": "Middle Africa, unspecified",
+    "10330": "Melanesia, unspecified",
+    "10350": "Polynesia, unspecified"
   },
   "de_regioncode": {},
   "recipient_income_code": {
@@ -757,6 +763,7 @@
     "22081": "Education and training in ICT, telecommunications and media",
     "23610": "Heat plants",
     "150": "I.5. Government & Civil Society",
+    "152": "I.5.b. Conflict, Peace & Security",
     "600": "VII. Action Relating to Debt",
     "332": "III.3.b. Tourism",
     "720": "VIII.1. Emergency Response",
@@ -766,7 +773,10 @@
     "323": "III.2.c. Construction",
     "500": "VI. Commodity Aid / General Programme Assistance",
     "60063": "Debt buy-back",
-    "400": "IV. Multi-Sector / Cross-Cutting"
+    "400": "IV. Multi-Sector / Cross-Cutting",
+        "331": "III.3.a. Trade Policies & Regulations",
+        "930": "Refugees in Donor Countries",
+    "700": "VIII. Humanitarian Aid"
   },
   "sector_code": {
     "130": "I.3. Population Policies/Programmes & Reproductive Health",
@@ -821,7 +831,9 @@
     "120": "I.2. Health",
     "150": "I.5. Government & Civil Society",
     "500": "VI. Commodity Aid / General Programme Assistance",
-    "400": "IV. Multi-Sector / Cross-Cutting"
+    "400": "IV. Multi-Sector / Cross-Cutting",
+        "700": "VIII. Humanitarian Aid"
+
   },
   "channel_code": {
     "41114": "United Nations Development Programme",

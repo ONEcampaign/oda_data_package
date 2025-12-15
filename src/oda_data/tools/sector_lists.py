@@ -7,12 +7,14 @@ edu_unspecified = [*list(range(111 * 100, 112 * 100)), 111]
 edu_basic = [*list(range(112 * 100, 113 * 100)), 112]
 edu_secondary = [*list(range(113 * 100, 114 * 100)), 113]
 edu_postsec = [*list(range(114 * 100, 115 * 100)), 114]
+edu = [110]
 
 # Health
 health_general = [*list(range(121 * 100, 122 * 100)), 121]
 health_basic = [*list(range(122 * 100, 123 * 100)), 122]
 health_NCDs = [*list(range(123 * 100, 124 * 100)), 123]
 pop_RH = [*list(range(130 * 100, 131 * 100)), 130]
+health = [120]
 
 # Social protection
 social_pro = list(range(16010, 16020))
@@ -21,7 +23,7 @@ social_other = list(range(16020, 16050)) + list(range(16060, 16100)) + [160]
 
 # other social infrastructure
 water_sanitation = [*list(range(140 * 100, 141 * 100)), 140]
-gov_ps = [*list(range(152 * 100, 153 * 100)), 152]
+gov_ps = [*list(range(152 * 100, 153 * 100)), 152, 150, 151]
 
 # Government and Civil Society
 public_sector = [
@@ -57,6 +59,7 @@ migration = [15190]
 
 
 # Agriculture, forestry, fishing
+ag_for_fish = [310]
 agriculture = [*list(range(311 * 100, 312 * 100)), 311]
 forestry_fishing = [*list(range(312 * 100, 314 * 100)), 312, 313]
 
@@ -70,6 +73,7 @@ trade_p_r = [*list(range(331 * 100, 333 * 100)), 331, 332]
 trade_other = [330]
 
 # Energy
+energy = [230]
 energy_policy = [231, *list(range(231 * 100, 232 * 100))]
 energy_generation_renewable = [232, *list(range(232 * 100, 233 * 100))]
 energy_generation_nonrenewable = [233, *list(range(233 * 100, 234 * 100))]
@@ -78,6 +82,7 @@ nuclear_energy_plants = [235, *list(range(235 * 100, 236 * 100))]
 energy_distribution = [236, *list(range(236 * 100, 237 * 100))]
 
 # Environmental Protection
+env = [410]
 env_policy = [41010]
 biosphere_protection = [41020]
 bio_diversity = [41030]
@@ -105,15 +110,17 @@ debt_action_total = [*list(range(600 * 100, 610 * 100)), 600]
 admin_total = [*list(range(910 * 100, 911 * 100)), 910]
 
 refugees = [*list(range(930 * 100, 931 * 100)), 930]
-unspecified = [*list(range(998 * 100, 999 * 100)), 998]
+unspecified = [*list(range(998 * 100, 999 * 100)), 998, 99810, 99820]
 
 
 def get_sector_groups():
     return {
+        "Education": edu,
         "Education, Level Unspecified": edu_unspecified,
         "Basic Education": edu_basic,
         "Secondary Education": edu_secondary,
         "Post-Secondary Education": edu_postsec,
+        "Health": health,
         "Health, General": health_general,
         "Basic Health": health_basic,
         "Non-communicable diseases (NCDs)": health_NCDs,
@@ -143,6 +150,7 @@ def get_sector_groups():
         "Forestry & Fishing": forestry_fishing,
         "Transport & Storage": transport_storage,
         "Communications": communications,
+        "Energy": energy,
         "Energy Policy": energy_policy,
         "Energy Generation, Renewable": energy_generation_renewable,
         "Energy Generation, Non-renewable": energy_generation_nonrenewable,
@@ -154,10 +162,12 @@ def get_sector_groups():
         "Industry, Mining, Construction": industry_mining_const,
         "Trade Policies & Regulations": trade_p_r,
         "Trade other": trade_other,
+        "Agriculture and Forestry & Fishing": ag_for_fish,
         "Environmental Policy and Admin Management": env_policy,
         "Biosphere Protection": biosphere_protection,
         "Bio-diversity": bio_diversity,
         "Site- Preservation": site_preservation,
+        "General Environment Protection": env,
         "Environment Education/Training": environment_edu,
         "Environmental Research": environment_research,
         "Emergency Response": emergency_response,
@@ -174,7 +184,7 @@ def get_sector_groups():
         "Action Relating to Debt": debt_action_total,
         "Administrative Costs of Donors": admin_total,
         "Refugees in Donor Countries": refugees,
-        "Unallocated/ Unspecificed": unspecified,
+        "Unallocated/ Unspecified": unspecified,
     }
 
 
@@ -213,17 +223,20 @@ def get_broad_sector_groups():
         "Forestry & Fishing": "Agriculture and Forestry & Fishing",
         "Transport & Storage": "Transport & Storage and communications",
         "Communications": "Transport & Storage and communications",
+        "Energy": "Energy",
         "Energy Policy": "Energy",
         "Energy Generation, Renewable": "Energy",
         "Energy Generation, Non-renewable": "Energy",
         "Hybrid Energy Plants": "Energy",
         "Nuclear Energy Plants": "Energy",
         "Energy Distribution": "Energy",
+        "Agriculture and Forestry & Fishing": "Agriculture and Forestry & Fishing",
         "Banking & Financial Services": "Banking & Financial Services and Business",
         "Business & Other Services": "Banking & Financial Services and Business",
         "Industry, Mining, Construction": "Industry, Mining, Construction",
         "Trade Policies & Regulations": "Trade Policies & Regulations",
         "Trade other": "Trade Policies & Regulations",
+        "General Environment Protection": "Environment Protection",
         "Environmental Policy and Admin Management": "Environment Protection",
         "Biosphere Protection": "Environment Protection",
         "Bio-diversity": "Environment Protection",
@@ -245,8 +258,8 @@ def get_broad_sector_groups():
         "Action Relating to Debt": "Action Relating to Debt",
         "Administrative Costs of Donors": "Administrative Costs of Donors",
         "Refugees in Donor Countries": "Refugees in Donor Countries",
-        "Unallocated/ Unspecificed": "Unallocated/ Unspecificed",
-        "government & Civil Society": "Government & Civil Society",
+        "Unallocated/ Unspecified": "Unallocated/ Unspecified",
+        "Government & Civil Society": "Government & Civil Society",
     }
 
 
@@ -285,7 +298,9 @@ def add_broad_sectors(data: pd.DataFrame) -> pd.DataFrame:
     broad = get_broad_sector_groups()
 
     for name, codes in sectors.items():
-        data.loc[data.purpose_code.isin(codes), "broad_sector"] = broad[name]
+        data.loc[data.purpose_code.isin(codes), "broad_sector"] = broad.get(name, name)
+
+    data["broad_sector"] = data["broad_sector"].fillna("Unallocated/ Unspecified")
 
     data = _groupby_sector(data)
 
