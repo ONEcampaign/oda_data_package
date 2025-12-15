@@ -172,7 +172,8 @@
     "1045": "North American Development Bank [NADB]",
     "1025": "Center of Excellence in Finance [CEF]",
     "1634": "Norwegian Postcode Lottery",
-    "903": "International Finance Corporation [IFC]"
+    "903": "International Finance Corporation [IFC]",
+    "919" : "European Investment Bank [EIB]"
   },
   "recipient_code": {
     "10051": "Middle Africa",
