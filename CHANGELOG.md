@@ -5,6 +5,20 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-12-15
+
+### Added
+- European Investment Bank (EIB, code 919) to provider/donor mappings across DAC1, DAC2A, CRS, and provider groupings
+- New unspecified regional recipient codes: Southern Asia (6790), Micronesia (8600), Middle Africa (10280), Melanesia (10330), Polynesia (10350)
+- Broad sector categories for top-level aggregation: Education, Health, Energy, General Environment Protection, Agriculture and Forestry & Fishing
+- New sector/purpose mappings including Conflict/Peace/Security (152), Trade Policies (331), Refugees (930), Humanitarian Aid (700)
+
+### Fixed
+- Type conversion for code columns (sector_code, purpose_code, donor_code, agency_code) when adding name columns to handle mixed types
+- Typo in sector name: "Unallocated/ Unspecificed" → "Unallocated/ Unspecified"
+- Capitalization in broad sector groups: "government & Civil Society" → "Government & Civil Society"
+- Sector mapping now uses fallback for unmapped sectors and fills missing values with "Unallocated/ Unspecified"
+
 ## [2.3.0] - 2025-10-16
 
 ### Added

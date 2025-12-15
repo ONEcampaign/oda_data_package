@@ -126,7 +126,7 @@ class TestGetSectorGroups:
 
         assert "General Budget Support" in result
         assert "Refugees in Donor Countries" in result
-        assert "Unallocated/ Unspecificed" in result
+        assert "Unallocated/ Unspecified" in result
 
 
 # ============================================================================
