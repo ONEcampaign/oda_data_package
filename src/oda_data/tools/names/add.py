@@ -46,6 +46,10 @@ def add_names_columns(
 
         name_col = f"{code_col.replace('_code', '')}_name"
         if name_col not in data.columns:
+            if code_col in ["sector_code", "purpose_code", "donor_code", "agency_code"]:
+                data[code_col] = pd.to_numeric(data[code_col], errors="coerce").astype(
+                    "Int64"
+                )
             data.insert(
                 loc=data.columns.get_loc(code_col) + 1,
                 column=name_col,
