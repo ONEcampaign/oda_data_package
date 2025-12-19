@@ -5,6 +5,16 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-12-19
+
+### Added
+- New `DATA_TYPE_CODE` field to ODASchema and CRS column mapping for datatype_code column support
+
+### Changed
+- DAC2A bulk downloads now use dedicated `bulk_download_dac2a()` function from oda-reader for improved reliability
+- Measure filters are now skipped for DAC2A when using bulk downloads (consistent with CRS behavior)
+- Updated oda-reader dependency from >=1.3.1 to >=1.4.1
+
 ## [2.3.2] - 2025-12-19
 
 ### Added

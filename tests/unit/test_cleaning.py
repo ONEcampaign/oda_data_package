@@ -17,6 +17,7 @@ from oda_data.clean_data.common import (
     convert_units,
     map_column_schema,
 )
+from oda_data.clean_data.schema import CRS_MAPPING, ODASchema
 
 # ============================================================================
 # Tests for clean_column_name
@@ -475,3 +476,49 @@ class TestCleaningEdgeCases:
         except KeyError:
             # If it fails due to missing provider_code, that's expected
             pass
+
+
+# ============================================================================
+# Tests for ODASchema
+# ============================================================================
+
+
+class TestODASchema:
+    """Tests for ODASchema field definitions."""
+
+    def test_schema_has_data_type_code_field(self):
+        """Test that ODASchema includes DATA_TYPE_CODE field.
+
+        The DATA_TYPE_CODE field was added to support the datatype_code
+        column in CRS bulk data files.
+        """
+        assert hasattr(ODASchema, "DATA_TYPE_CODE")
+        assert ODASchema.DATA_TYPE_CODE == "data_type_code"
+
+    def test_crs_mapping_includes_datatype_code(self):
+        """Test that CRS_MAPPING maps datatype_code to ODASchema.DATA_TYPE_CODE.
+
+        CRS bulk data includes a datatype_code column that should be
+        properly mapped to the schema.
+        """
+        assert "datatype_code" in CRS_MAPPING
+        assert CRS_MAPPING["datatype_code"] == ODASchema.DATA_TYPE_CODE
+
+    def test_schema_essential_fields_exist(self):
+        """Test that all essential ODASchema fields are present.
+
+        Ensures backwards compatibility by verifying key fields exist.
+        """
+        essential_fields = [
+            "YEAR",
+            "PROVIDER_CODE",
+            "PROVIDER_NAME",
+            "RECIPIENT_CODE",
+            "RECIPIENT_NAME",
+            "SECTOR_CODE",
+            "PURPOSE_CODE",
+            "VALUE",
+            "DATA_TYPE_CODE",
+        ]
+        for field in essential_fields:
+            assert hasattr(ODASchema, field), f"Missing essential field: {field}"

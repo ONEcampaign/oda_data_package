@@ -141,6 +141,7 @@ class ODASchema:
     KEYWORDS: str = "keywords"
     BUDGET_IDENTIFIER: str = "budget_ident"
     PSI_GRANT_EQ_USD: str = "usd_psi_gr_eq_memo"
+    DATA_TYPE_CODE: str = "data_type_code"
 
 
 CORE_CRS_MAPPING: dict[str, str] = {
@@ -433,6 +434,7 @@ CRS_MAPPING: dict[str, str] = CORE_CRS_MAPPING | {
     "climate_mitigation": ODASchema.MITIGATION,
     "budget_ident": ODASchema.BUDGET_IDENTIFIER,
     "usd_psi_gr_eq_memo": ODASchema.PSI_GRANT_EQ_USD,
+    "datatype_code": ODASchema.DATA_TYPE_CODE,
 }
 
 
