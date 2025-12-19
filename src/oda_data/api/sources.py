@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 from oda_reader import (
+    bulk_download_dac2a,
     download_crs,
     download_dac1,
     download_dac2a,
@@ -561,7 +562,7 @@ class DAC2AData(DACSource):
 
         def fetcher(target_path: Path):
             logger.info("Downloading DAC2A bulk data")
-            df = download_dac2a()  # No filters = full dataset
+            df = bulk_download_dac2a()  # No filters = full dataset
             df = df.pipe(clean_raw_df)  # Clean column names before caching
             logger.info("Writing DAC2A bulk data to cache")
             df.to_parquet(target_path)

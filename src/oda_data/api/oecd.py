@@ -120,6 +120,8 @@ class OECDClient:
             for col in columns:
                 if source == "CRS":
                     continue
+                if self.use_bulk_download and source == "DAC2A":
+                    continue
                 to_filter = []
                 for measure in self.measure:
                     to_filter.append(get_measure_filter(source, measure))

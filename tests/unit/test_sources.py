@@ -523,6 +523,43 @@ class TestDAC2ADataInitialization:
         # API should have been called
         mock_download_dac2a.assert_called_once()
 
+    @patch("oda_data.api.sources.bulk_download_dac2a")
+    @patch("oda_data.api.sources.clean_raw_df")
+    def test_dac2a_data_bulk_fetcher_uses_bulk_download_function(
+        self, mock_clean, mock_bulk_download
+    ):
+        """Test that _create_bulk_fetcher uses bulk_download_dac2a function.
+
+        DAC2A bulk downloads should use the dedicated bulk_download_dac2a
+        function from oda-reader instead of the regular download_dac2a.
+        """
+        mock_bulk_download.return_value = pd.DataFrame(
+            {"Year": [2020, 2021], "DonorCode": [1, 2]}
+        )
+        mock_clean.return_value = pd.DataFrame(
+            {"year": [2020, 2021], "donor_code": [1, 2]}
+        )
+
+        source = DAC2AData()
+        fetcher = source._create_bulk_fetcher()
+
+        # Execute the fetcher with a mock path
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_path = Path(tmpdir) / "test.parquet"
+            fetcher(target_path)
+
+            # bulk_download_dac2a should be called (not download_dac2a)
+            mock_bulk_download.assert_called_once()
+
+            # Data should be cleaned before caching
+            mock_clean.assert_called_once()
+
+            # File should be created
+            assert target_path.exists()
+
 
 class TestCRSDataInitialization:
     """Tests for CRSData initialization."""
