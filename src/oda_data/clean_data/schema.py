@@ -435,6 +435,8 @@ CRS_MAPPING: dict[str, str] = CORE_CRS_MAPPING | {
     "budget_ident": ODASchema.BUDGET_IDENTIFIER,
     "usd_psi_gr_eq_memo": ODASchema.PSI_GRANT_EQ_USD,
     "datatype_code": ODASchema.DATA_TYPE_CODE,
+    "donor": ODASchema.PROVIDER_NAME,
+    "recipient": ODASchema.RECIPIENT_NAME,
 }
 
 
