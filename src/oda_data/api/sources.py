@@ -37,6 +37,7 @@ from oda_data.tools.cache import (
     create_crs_bulk_fetcher,
     create_multisystem_bulk_fetcher,
     generate_param_hash,
+    generate_projection_hash,
 )
 
 
@@ -418,9 +419,20 @@ class DACSource(Source):
         # 1. Try memory cache (thread-safe, fastest)
         df = self.memory_cache.get(param_hash)
         if df is not None:
-            logger.info("Cache hit: memory")
-            # Data is already cleaned, just select columns if needed
-            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+            # Only use if all requested columns are available
+            if not columns or all(c in df.columns for c in columns):
+                logger.info("Cache hit: memory")
+                return self._apply_columns_and_clean(
+                    df, columns, already_cleaned=True
+                )
+
+        # For projected reads, also check a projection-specific memory cache
+        if columns:
+            proj_hash = generate_projection_hash(param_hash, columns)
+            df = self.memory_cache.get(proj_hash)
+            if df is not None:
+                logger.info("Cache hit: memory (projection)")
+                return df
 
         # 2. Try query cache (on-disk parquet, fast)
         df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
@@ -435,9 +447,15 @@ class DACSource(Source):
 
         # 3. Cache miss (query/memory) - need to fetch data
         if using_bulk_download:
-            # Fetch from bulk cache with predicate pushdown and column selection
             logger.info("Query cache miss - reading from bulk cache")
             df = self._fetch_from_bulk_cache(filters, columns)
+            if columns:
+                # Cache projected result under a projection-specific key
+                # so it doesn't pollute the shared filter-only cache
+                self._cache_in_memory(
+                    generate_projection_hash(param_hash, columns), df
+                )
+                return df
         else:
             # Download via API (uses init-time filters only)
             logger.info("Cache miss - downloading via API")
@@ -801,9 +819,20 @@ class AidDataData(AidDataSource):
         # 1. Try memory cache
         df = self.memory_cache.get(param_hash)
         if df is not None:
-            logger.info("Cache hit: memory")
-            # Data is already cleaned, just select columns if needed
-            return self._apply_columns_and_clean(df, columns, already_cleaned=True)
+            # Only use if all requested columns are available
+            if not columns or all(c in df.columns for c in columns):
+                logger.info("Cache hit: memory")
+                return self._apply_columns_and_clean(
+                    df, columns, already_cleaned=True
+                )
+
+        # For projected reads, also check a projection-specific memory cache
+        if columns:
+            proj_hash = generate_projection_hash(param_hash, columns)
+            df = self.memory_cache.get(proj_hash)
+            if df is not None:
+                logger.info("Cache hit: memory (projection)")
+                return df
 
         # 2. Try query cache
         # Use column selection at parquet read level for efficiency
@@ -829,16 +858,19 @@ class AidDataData(AidDataSource):
         # Use PyArrow predicate pushdown and column selection for maximum efficiency
         pyarrow_filters = filters if filters else None
 
-        # If columns specified, read directly without caching (targeted read)
+        # If columns specified, read directly with projection-specific caching
         if columns:
             logger.info(
                 "Query cache miss - reading from bulk cache with column selection"
             )
-            # Targeted read: use full PyArrow optimization, no caching
             df = pd.read_parquet(
                 bulk_path, filters=pyarrow_filters, columns=columns, engine="pyarrow"
             )
-            # Data is already cleaned and column-selected, return directly
+            # Cache under projection-specific key to avoid polluting
+            # the shared filter-only cache
+            self._cache_in_memory(
+                generate_projection_hash(param_hash, columns), df
+            )
             return df
         else:
             logger.info("Query cache miss - reading from bulk cache")

@@ -50,6 +50,25 @@ def generate_param_hash(filters: list[tuple]) -> str:
     return hashlib.md5(json_str.encode("utf-8")).hexdigest()[:10]
 
 
+def generate_projection_hash(param_hash: str, columns: list[str]) -> str:
+    """Generates a cache key for a projected (column-subset) read.
+
+    Combines the filter-based param_hash with a hash of the requested columns,
+    so that projected reads are cached separately from full reads without
+    polluting the shared filter-only cache key.
+
+    Args:
+        param_hash: The filter-only hash from generate_param_hash
+        columns: List of column names in the projection
+
+    Returns:
+        A combined hash string
+    """
+    col_str = json.dumps(sorted(columns), sort_keys=True)
+    col_hash = hashlib.md5(col_str.encode("utf-8")).hexdigest()[:10]
+    return f"{param_hash}_proj_{col_hash}"
+
+
 class ThreadSafeMemoryCache:
     """Thread-safe wrapper around cachetools.TTLCache.
 
