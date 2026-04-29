@@ -417,20 +417,28 @@ dac_members = providers["dac_members"]
 
 ### Cache Management
 
-Control the package's caching behavior:
+`oda_data` stores downloaded data in a per-OS, version-segmented directory
+(`~/Library/Caches/oda-data/<version>/` on macOS, `~/.cache/oda-data/<version>/`
+on Linux, and the equivalent `AppData\Local` path on Windows). The location can be
+overridden with `oda_data.set_cache_root(path)` or the `ODA_DATA_CACHE_DIR`
+environment variable. See [CACHING.md](CACHING.md) for full details on disk
+locations, scopes, multi-process behavior, and migration from older versions.
+
+The fastest recovery path for a corrupt or stale cache is:
 
 ```python
-from oda_data import clear_cache, disable_cache, enable_cache
+from oda_data import cache
 
-# Clear all cached data
-clear_cache()
+# Clear only the raw zip archives and let them re-download on next read:
+cache.clear("raw")
 
-# Temporarily disable caching (for development/testing)
-disable_cache()
-
-# Re-enable caching
-enable_cache()
+# Or wipe everything:
+cache.clear("all")
 ```
+
+The legacy helpers `clear_cache()`, `disable_cache()`, and `enable_cache()` continue
+to work and are thin wrappers over `cache.clear("all")`, `cache.disable_cache("all")`,
+and `cache.enable_cache("all")` respectively.
 
 ### Compatibility with Version 1.x
 

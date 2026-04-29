@@ -12,19 +12,25 @@ pip install oda-data --upgrade
 
 ## Your First ODA Data
 
-### Set Up Data Storage
+### Where the data lives
 
-Before fetching data, tell the package where to cache downloaded files:
+You don't need to configure anything to get started. From version 2.6 onward,
+`oda_data` caches downloads in a standard per-user directory
+(`~/Library/Caches/oda-data/` on macOS, `~/.cache/oda-data/` on Linux, the
+equivalent `AppData\Local` path on Windows), so subsequent queries are fast.
+
+If you want to override that location — for example to use a shared volume or
+to keep cache outside your home directory — use `set_cache_root()` or the
+`ODA_DATA_CACHE_DIR` environment variable:
 
 ```python
-from oda_data import set_data_path
+from oda_data import set_cache_root
 
-# This creates a folder to store cached data
-set_data_path("data")
+set_cache_root("/path/to/cache")
 ```
 
-!!! tip "Choose Your Data Path"
-    Pick a location where you want to cache ODA data. The package will create this folder if it doesn't exist. Cached data speeds up subsequent queries significantly.
+See [Cache Management](caching.md) for inspecting, clearing, and managing the
+cache.
 
 ### Example 1: Get Total ODA
 

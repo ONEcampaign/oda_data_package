@@ -86,7 +86,7 @@ def clean_raw_df(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: The cleaned dataframe.
     """
 
-    df = df.rename(columns=lambda c: clean_column_name(c))
+    df = df.rename(columns=clean_column_name)
 
     if "amount" in df.columns:
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce").astype(

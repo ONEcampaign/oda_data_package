@@ -153,3 +153,4 @@ dev_tests.py
 CLAUDE.md
 /.raw_data
 /src/oda_data/.raw_data
+/.claude

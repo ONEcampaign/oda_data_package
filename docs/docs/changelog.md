@@ -5,6 +5,131 @@ All notable changes to the oda_data package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-04-28
+
+This release reorganises how `oda_data` stores downloaded data on disk.
+Caches now live in a standard per-user location instead of inside your
+project folder, and a new `oda_data.cache.*` namespace gives you a clear,
+typed way to inspect and manage them. Existing caches are migrated
+automatically on first run. See [Cache Management](caching.md) for the
+full walkthrough.
+
+### Added
+- **Per-user cache by default.** Downloads now live under your OS's standard
+  cache directory (`~/Library/Caches/oda-data/` on macOS,
+  `~/.cache/oda-data/` on Linux, `%LOCALAPPDATA%\oda-data\` on Windows),
+  versioned per release. This means cache is shared across projects instead
+  of duplicated in every `.raw_data/` folder, and old versions don't silently
+  get re-used after an upgrade.
+- **Override the cache location** with `oda_data.set_cache_root(path)` or
+  the `ODA_DATA_CACHE_DIR` environment variable — useful for shared volumes
+  or CI runners with limited home-directory space.
+- **One place to manage the cache: `oda_data.cache`.** Inspect what's
+  cached, clear specific parts, or invalidate a single dataset without
+  touching the rest:
+
+    ```python
+    from oda_data import cache, CRSData
+
+    cache.size()                # bytes per scope
+    cache.clear("raw")          # drop only raw OECD zips
+    cache.invalidate(CRSData)   # forget cached CRS, keep everything else
+    ```
+
+- **Per-call `refresh=True`** on every dataset's `read()` to force a fresh
+  download for one call without permanently clearing the cache.
+- **Automatic recovery from corrupt downloads.** When a freshly downloaded
+  zip fails its integrity check, the bad file is removed and the download
+  is retried once. If both attempts fail, you get a clear
+  `BulkPayloadCorrupt` error pointing at the file and the reason.
+
+### Changed
+- **`set_data_path()` no longer controls the cache.** It now only sets
+  where the package writes parquet *exports* (data you explicitly save
+  out). If you used it to redirect cache storage, switch to
+  `set_cache_root()` or `ODA_DATA_CACHE_DIR` — the package will print a
+  one-time deprecation warning to remind you. The old call still works
+  through 2.x and is removed in 3.0.
+- **`clear_cache()`, `enable_cache()`, and `disable_cache()` still work**
+  unchanged. They now delegate to the new `cache.*` namespace, so existing
+  scripts keep running without edits.
+
+### Migration
+On the first cache-touching call after upgrading, the package looks for
+pre-2.6 caches in their old locations (`./.raw_data/`, the per-OS
+`oda-reader` directory) and moves them into the new layout. Caches on
+synced drives (Dropbox, iCloud, OneDrive) are skipped with a clear log
+message — re-run with `oda_data.cache.migrate(force=True)` to override.
+
+## [2.5.1] - 2026-04-28
+
+### Fixed
+- OECD CRS bulk downloads using the newer PKZIP Deflate64 compression
+  method no longer fail with `BadZipFile: File is not a zip file`. Pulled
+  in via `oda-reader >= 1.5.1`. If you saw this error before upgrading,
+  delete any stale file under your `oda-reader` bulk cache (path varies by
+  OS) before retrying.
+
+## [2.5.0] - 2026-04-09
+
+### Changed
+- Romania (code 77) is now classified as a DAC member/country (previously non-DAC),
+  reflecting its new status as a DAC associate.
+
+## [2.4.2] - 2026-02-13
+
+### Fixed
+- Memory cache returning stale results when a cached DataFrame lacks columns requested
+  by a subsequent query.
+
+## [2.4.1] - 2025-12-19
+
+### Added
+- CRS column mappings for `donor` → `provider_name` and `recipient` → `recipient_name`.
+
+## [2.4.0] - 2025-12-19
+
+### Added
+- New `DATA_TYPE_CODE` field to ODASchema and CRS column mapping for datatype_code
+  column support.
+
+### Changed
+- DAC2A bulk downloads now use dedicated `bulk_download_dac2a()` function from
+  oda-reader for improved reliability.
+- Measure filters are now skipped for DAC2A when using bulk downloads (consistent
+  with CRS behavior).
+- Updated oda-reader dependency from `>=1.3.1` to `>=1.4.1`.
+
+## [2.3.2] - 2025-12-19
+
+### Added
+- New Development Bank (code 1044) to provider groupings, CRS names, and DAC2A names.
+- Eurasian Fund for Stabilization and Development (code 1041) to provider groupings,
+  CRS names, and DAC2A names.
+- UN Economic and Social Commission for Western Asia (code 1403) to provider
+  groupings and DAC2A names.
+
+## [2.3.1] - 2025-12-15
+
+### Added
+- European Investment Bank (EIB, code 919) to provider/donor mappings across DAC1,
+  DAC2A, CRS, and provider groupings.
+- New unspecified regional recipient codes: Southern Asia (6790), Micronesia (8600),
+  Middle Africa (10280), Melanesia (10330), Polynesia (10350).
+- Broad sector categories for top-level aggregation: Education, Health, Energy,
+  General Environment Protection, Agriculture and Forestry & Fishing.
+- New sector/purpose mappings including Conflict/Peace/Security (152),
+  Trade Policies (331), Refugees (930), Humanitarian Aid (700).
+
+### Fixed
+- Type conversion for code columns (`sector_code`, `purpose_code`, `donor_code`,
+  `agency_code`) when adding name columns to handle mixed types.
+- Typo in sector name: "Unallocated/ Unspecificed" → "Unallocated/ Unspecified".
+- Capitalization in broad sector groups: "government & Civil Society" →
+  "Government & Civil Society".
+- Sector mapping now uses fallback for unmapped sectors and fills missing values
+  with "Unallocated/ Unspecified".
+
 ## [2.3.0] - 2025-10-16
 
 ### Added

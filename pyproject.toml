@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "2.5.0"
+version = "2.6.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 requires-python = ">=3.11"
 
@@ -28,7 +28,8 @@ classifiers = [
 dependencies = [
     "cachetools>=6.2.0",
     "filelock>=3.20.0",
-    "oda-reader>=1.4.1",
+    "oda-reader>=1.6.0",
+    "platformdirs>=4.0.0",
     "pandas[excel,parquet,performance]>=2.2.0",
     "pydeflate>=2.3.3",
     "reader>=3.18",
@@ -109,11 +110,16 @@ unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 # Allow test files to have longer lines and more assertions
-"tests/**/*.py" = ["E501", "PLR2004", "RUF002", "RUF003"]  # Allow × in comments/docstrings
+"tests/**/*.py" = ["E501", "PLR2004", "RUF002", "RUF003", "PLW0603"]  # Allow × in comments/docstrings; PLW0603 for spawn-pool worker globals
 # Allow global variable usage in __init__.py (architectural decision)
 "src/oda_data/__init__.py" = ["PLW0603", "PLW0602", "F811"]
+# Lazy module-level state (override flag, chained-root cache, auto-migrate gate, 5GB warning latch).
+"src/oda_data/cache/config.py" = ["PLW0603"]
+"src/oda_data/cache/api.py" = ["PLW0603"]
 # Allow tmpdir reassignment pattern (Path conversion)
 "src/oda_data/tools/cache.py" = ["PLW2901"]
+# Existing complexity in OECDClient._apply_filters — out of scope for refactor here.
+"src/oda_data/api/oecd.py" = ["PLR0912"]
 # Allow loop variable binding patterns (intentional for lambda closures)
 "src/oda_data/indicators/crs/crs_functions.py" = ["B023"]
 "src/oda_data/indicators/research/sector_imputations.py" = ["B023"]
@@ -132,3 +138,6 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect line endings
 line-ending = "auto"
+
+# Note: pytest configuration lives in `pytest.ini` (which takes precedence over
+# this file). Markers and addopts must be added there, not here.

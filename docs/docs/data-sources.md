@@ -39,9 +39,7 @@ DAC1 contains aggregate statistics for each donor—total ODA, multilateral ODA,
 ### Basic Usage
 
 ```python title="Download and Read Complete DAC1 Data"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
+from oda_data import DAC1Data
 
 # Instantiate DAC1 data source
 dac1 = DAC1Data()
@@ -56,9 +54,7 @@ print(data.head())
 ### Filtered Download
 
 ```python title="Download Specific Years and Donors"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
+from oda_data import DAC1Data
 
 # Download only what you need
 dac1 = DAC1Data(
@@ -76,9 +72,7 @@ print(data.head())
 ### Custom Read Filters
 
 ```python title="Filter Data When Reading"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
+from oda_data import DAC1Data
 
 dac1 = DAC1Data(years=2022)
 
@@ -102,9 +96,7 @@ DAC2A shows bilateral aid from each donor to each recipient country.
 ### Basic Usage
 
 ```python title="Download Complete DAC2A Data"
-from oda_data import DAC2AData, set_data_path
-
-set_data_path("data")
+from oda_data import DAC2AData
 
 dac2a = DAC2AData()
 
@@ -117,9 +109,7 @@ print(f"Shape: {data.shape}")
 ### Filtered by Donor and Recipient
 
 ```python title="Download France's Aid to African Countries"
-from oda_data import DAC2AData, recipient_groupings, set_data_path
-
-set_data_path("data")
+from oda_data import DAC2AData, recipient_groupings
 
 # Get African countries
 africa = list(recipient_groupings()["african_countries"])
@@ -139,9 +129,7 @@ print(data.head())
 ### Advanced Filtering
 
 ```python title="Filter by Flow Type and Prices"
-from oda_data import DAC2AData, set_data_path
-
-set_data_path("data")
+from oda_data import DAC2AData
 
 dac2a = DAC2AData(years=[2022], providers=[4])
 data = dac2a.read(
@@ -166,9 +154,7 @@ The Creditor Reporting System (CRS) contains detailed, project-level ODA data in
 ### Basic Usage
 
 ```python title="Download CRS Data (Always Use Bulk)"
-from oda_data import CRSData, set_data_path
-
-set_data_path("data")
+from oda_data import CRSData
 
 # CRS should ALWAYS use bulk download
 crs = CRSData(years=range(2020, 2023))
@@ -183,9 +169,7 @@ print(data.columns.tolist())
 ### Filtered CRS Query
 
 ```python title="Get Education Projects in East Africa"
-from oda_data import CRSData, set_data_path
-
-set_data_path("data")
+from oda_data import CRSData
 
 crs = CRSData(
     years=[2022],
@@ -208,9 +192,7 @@ print(data[["donor_name", "recipient_name", "sector_name", "project_title", "usd
 ### Analyze Project Characteristics
 
 ```python title="Analyze CRS Project Data"
-from oda_data import CRSData, set_data_path
-
-set_data_path("data")
+from oda_data import CRSData
 
 crs = CRSData(years=[2022])
 data = crs.read(using_bulk_download=True)
@@ -239,9 +221,7 @@ MultiSystemData tracks how donors provide aid to or through the multilateral sys
 ### Basic Usage
 
 ```python title="Download MultiSystem Data"
-from oda_data import MultiSystemData, set_data_path
-
-set_data_path("data")
+from oda_data import MultiSystemData
 
 multisystem = MultiSystemData(years=range(2020, 2023))
 
@@ -254,9 +234,7 @@ print(data.head())
 ### Filter by Aid Type
 
 ```python title="Analyze Aid Through Multilateral Organizations"
-from oda_data import MultiSystemData, set_data_path
-
-set_data_path("data")
+from oda_data import MultiSystemData
 
 multisystem = MultiSystemData(
     years=[2022],

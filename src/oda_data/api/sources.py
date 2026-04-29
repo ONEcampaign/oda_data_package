@@ -123,41 +123,37 @@ class Source:
 
     @property
     def bulk_cache(self) -> BulkCacheManager:
-        """Get bulk cache manager singleton.
-
-        Creates one bulk cache per process, recreating if data directory changes.
-        """
-        current_raw = Path(ODAPaths.raw_data).resolve()
-        # Fast-path without lock
-        bc = Source._shared_bulk_cache
-        if bc is not None and bc.base_dir.parent.resolve() == current_raw:
-            return bc
-
-        # Slow-path with lock
-        with Source._cache_lock:
-            bc = Source._shared_bulk_cache
-            if bc is None or bc.base_dir.parent.resolve() != current_raw:
-                Source._shared_bulk_cache = BulkCacheManager(current_raw)
-            return Source._shared_bulk_cache
+        """Get bulk cache manager singleton, recreating if the cache root changed."""
+        return self._shared_manager(BulkCacheManager, "_shared_bulk_cache")
 
     @property
     def query_cache(self) -> QueryCacheManager:
-        """Get query cache manager singleton.
+        """Get query cache manager singleton, recreating if the cache root changed."""
+        return self._shared_manager(QueryCacheManager, "_shared_query_cache")
 
-        Creates one query cache per process, recreating if data directory changes.
+    @classmethod
+    def _shared_manager(cls, manager_cls, slot: str):
+        """Return a process-wide manager rooted at ``cache_root / "oda-data"``.
+
+        The singleton is intentionally anchored on ``Source`` (not on the
+        runtime subclass) so that every subclass shares the same instance.
+
+        The unresolved equality check on the fast path avoids a ``realpath``
+        syscall on every property access; we only ``.resolve()`` when the
+        configured root visibly changed.
         """
-        current_raw = Path(ODAPaths.raw_data).resolve()
-        # Fast-path without lock
-        qc = Source._shared_query_cache
-        if qc is not None and qc.base_dir.parent.resolve() == current_raw:
-            return qc
-
-        # Slow-path with lock
-        with Source._cache_lock:
-            qc = Source._shared_query_cache
-            if qc is None or qc.base_dir.parent.resolve() != current_raw:
-                Source._shared_query_cache = QueryCacheManager(current_raw)
-            return Source._shared_query_cache
+        current = Path(ODAPaths.cache_root) / "oda-data"
+        existing = getattr(Source, slot)
+        if existing is not None and existing.base_dir.parent == current:
+            return existing
+        with cls._cache_lock:
+            existing = getattr(Source, slot)
+            if (
+                existing is None
+                or existing.base_dir.parent.resolve() != current.resolve()
+            ):
+                setattr(Source, slot, manager_cls(current))
+            return getattr(Source, slot)
 
     def _add_filter(self, column: str, predicate: str, value: str | int | list) -> None:
         """Adds a filter to the dataset, ensuring no duplicate columns.
@@ -348,14 +344,23 @@ class DACSource(Source):
             return "unknown"
 
     def _fetch_from_bulk_cache(
-        self, filters: list[tuple] | None, columns: list | None
+        self,
+        filters: list[tuple] | None,
+        columns: list | None,
+        *,
+        refresh: bool = False,
     ) -> pd.DataFrame:
         """Fetch data from bulk cache with download coordination.
 
-        This method uses FileLock via BulkCacheManager - if another thread is
+        This method uses FileLock via BulkCacheManager — if another thread is
         downloading, this call blocks until download completes.
 
         Uses PyArrow predicate pushdown and column projection for maximum efficiency.
+
+        Args:
+            filters: Optional parquet predicate filters.
+            columns: Optional column subset.
+            refresh: If True, bypass the bulk cache and re-download.
         """
         entry = BulkCacheEntry(
             key=f"{self.__class__.__name__}_bulk",
@@ -365,7 +370,7 @@ class DACSource(Source):
         )
 
         # This blocks if another thread is downloading (prevents concurrent waste)
-        bulk_path = self.bulk_cache.ensure(entry, refresh=False)
+        bulk_path = self.bulk_cache.ensure(entry, refresh=refresh)
 
         pyarrow_filters = filters if filters else None
 
@@ -396,6 +401,8 @@ class DACSource(Source):
         using_bulk_download: bool = False,
         additional_filters: list[tuple] | None = None,
         columns: list | None = None,
+        *,
+        refresh: bool = False,
     ):
         """Reads a dataset with 3-tier cache coordination.
 
@@ -408,6 +415,8 @@ class DACSource(Source):
             using_bulk_download: Whether to read from bulk cache
             additional_filters: Additional filters to apply
             columns: Subset of columns to read
+            refresh: If True, bypass the bulk cache and re-download. Only has
+                effect when ``using_bulk_download=True``.
 
         Returns:
             Filtered and cleaned DataFrame
@@ -416,45 +425,49 @@ class DACSource(Source):
         filters = self._get_read_filters(additional_filters=additional_filters)
         param_hash = generate_param_hash(filters if filters else [])
 
-        # 1. Try memory cache (thread-safe, fastest)
-        df = self.memory_cache.get(param_hash)
-        if df is not None:
+        # When refresh=True, skip the upper cache tiers entirely so the bulk
+        # fetcher's refresh=True actually re-downloads and the upper tiers see
+        # the fresh data. Without this guard a warm memory/query cache would
+        # short-circuit the refresh, returning stale data.
+        if not refresh:
+            # 1. Try memory cache (thread-safe, fastest)
+            df = self.memory_cache.get(param_hash)
             # Only use if all requested columns are available
-            if not columns or all(c in df.columns for c in columns):
+            if df is not None and (
+                not columns or all(c in df.columns for c in columns)
+            ):
                 logger.info("Cache hit: memory")
-                return self._apply_columns_and_clean(
-                    df, columns, already_cleaned=True
-                )
+                return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
-        # For projected reads, also check a projection-specific memory cache
-        if columns:
-            proj_hash = generate_projection_hash(param_hash, columns)
-            df = self.memory_cache.get(proj_hash)
+            # For projected reads, also check a projection-specific memory cache
+            if columns:
+                proj_hash = generate_projection_hash(param_hash, columns)
+                df = self.memory_cache.get(proj_hash)
+                if df is not None:
+                    logger.info("Cache hit: memory (projection)")
+                    return df
+
+            # 2. Try query cache (on-disk parquet, fast)
+            df = self.query_cache.load(
+                self.__class__.__name__, param_hash, None, columns
+            )
             if df is not None:
-                logger.info("Cache hit: memory (projection)")
+                logger.info("Cache hit: query cache")
+                # Only cache in memory if we loaded full data (no column selection)
+                # This way memory cache is reusable for queries with different column subsets
+                if not columns:
+                    self._cache_in_memory(param_hash, df)
+                # Data is already cleaned and column-selected at parquet read level
                 return df
-
-        # 2. Try query cache (on-disk parquet, fast)
-        df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
-        if df is not None:
-            logger.info("Cache hit: query cache")
-            # Only cache in memory if we loaded full data (no column selection)
-            # This way memory cache is reusable for queries with different column subsets
-            if not columns:
-                self._cache_in_memory(param_hash, df)
-            # Data is already cleaned and column-selected at parquet read level
-            return df
 
         # 3. Cache miss (query/memory) - need to fetch data
         if using_bulk_download:
             logger.info("Query cache miss - reading from bulk cache")
-            df = self._fetch_from_bulk_cache(filters, columns)
+            df = self._fetch_from_bulk_cache(filters, columns, refresh=refresh)
             if columns:
                 # Cache projected result under a projection-specific key
                 # so it doesn't pollute the shared filter-only cache
-                self._cache_in_memory(
-                    generate_projection_hash(param_hash, columns), df
-                )
+                self._cache_in_memory(generate_projection_hash(param_hash, columns), df)
                 return df
         else:
             # Download via API (uses init-time filters only)
@@ -802,12 +815,15 @@ class AidDataData(AidDataSource):
         self,
         additional_filters: list[tuple] | None = None,
         columns: list | None = None,
+        *,
+        refresh: bool = False,
     ):
         """Reads AidData from bulk cache with filtering.
 
         Args:
             additional_filters: Additional filters to apply
             columns: Subset of columns to read
+            refresh: If True, bypass the bulk cache and re-download.
 
         Returns:
             Filtered DataFrame
@@ -816,34 +832,38 @@ class AidDataData(AidDataSource):
         filters = self._get_read_filters(additional_filters=additional_filters)
         param_hash = generate_param_hash(filters if filters else [])
 
-        # 1. Try memory cache
-        df = self.memory_cache.get(param_hash)
-        if df is not None:
+        # When refresh=True, skip the upper cache tiers so the bulk fetcher's
+        # refresh=True actually re-downloads. See DACSource.read for context.
+        if not refresh:
+            # 1. Try memory cache
+            df = self.memory_cache.get(param_hash)
             # Only use if all requested columns are available
-            if not columns or all(c in df.columns for c in columns):
+            if df is not None and (
+                not columns or all(c in df.columns for c in columns)
+            ):
                 logger.info("Cache hit: memory")
-                return self._apply_columns_and_clean(
-                    df, columns, already_cleaned=True
-                )
+                return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
-        # For projected reads, also check a projection-specific memory cache
-        if columns:
-            proj_hash = generate_projection_hash(param_hash, columns)
-            df = self.memory_cache.get(proj_hash)
+            # For projected reads, also check a projection-specific memory cache
+            if columns:
+                proj_hash = generate_projection_hash(param_hash, columns)
+                df = self.memory_cache.get(proj_hash)
+                if df is not None:
+                    logger.info("Cache hit: memory (projection)")
+                    return df
+
+            # 2. Try query cache
+            # Use column selection at parquet read level for efficiency
+            df = self.query_cache.load(
+                self.__class__.__name__, param_hash, None, columns
+            )
             if df is not None:
-                logger.info("Cache hit: memory (projection)")
+                logger.info("Cache hit: query cache")
+                # Only cache in memory if we loaded full data (no column selection)
+                if not columns:
+                    self._cache_in_memory(param_hash, df)
+                # Data is already cleaned and column-selected at parquet read level
                 return df
-
-        # 2. Try query cache
-        # Use column selection at parquet read level for efficiency
-        df = self.query_cache.load(self.__class__.__name__, param_hash, None, columns)
-        if df is not None:
-            logger.info("Cache hit: query cache")
-            # Only cache in memory if we loaded full data (no column selection)
-            if not columns:
-                self._cache_in_memory(param_hash, df)
-            # Data is already cleaned and column-selected at parquet read level
-            return df
 
         # 3. Fetch from bulk cache (always bulk for AidData)
         entry = BulkCacheEntry(
@@ -853,7 +873,7 @@ class AidDataData(AidDataSource):
             version=self._get_package_version(),
         )
 
-        bulk_path = self.bulk_cache.ensure(entry, refresh=False)
+        bulk_path = self.bulk_cache.ensure(entry, refresh=refresh)
 
         # Use PyArrow predicate pushdown and column selection for maximum efficiency
         pyarrow_filters = filters if filters else None
@@ -868,9 +888,7 @@ class AidDataData(AidDataSource):
             )
             # Cache under projection-specific key to avoid polluting
             # the shared filter-only cache
-            self._cache_in_memory(
-                generate_projection_hash(param_hash, columns), df
-            )
+            self._cache_in_memory(generate_projection_hash(param_hash, columns), df)
             return df
         else:
             logger.info("Query cache miss - reading from bulk cache")
