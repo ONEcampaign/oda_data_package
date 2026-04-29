@@ -30,9 +30,8 @@ Each has its own web interface, API endpoint, and data format. Getting a complet
 **With this package:**
 
 ```python
-from oda_data import OECDClient, set_data_path
+from oda_data import OECDClient
 
-set_data_path("data")
 client = OECDClient(years=range(2020, 2023))
 data = client.get_indicators("DAC1.10.1010")  # Done in 3 lines
 ```
@@ -199,9 +198,8 @@ from oda_data import sector_imputations
 **With ODA Data Package:**
 
 ```python
-from oda_data import OECDClient, set_data_path
+from oda_data import OECDClient
 
-set_data_path("data")
 client = OECDClient(years=range(2020, 2023), providers=[4])
 data = client.get_indicators("DAC1.10.1010")
 # Result: 10 seconds

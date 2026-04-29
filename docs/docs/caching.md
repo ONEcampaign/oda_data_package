@@ -1,385 +1,399 @@
 # Cache Management
 
-The package uses intelligent caching to speed up data access. Understanding how caching works helps you optimize performance and manage disk space.
+This page covers how `oda_data` manages its cache from version 2.6 onward. For
+quick recovery commands, skip to [Recovery from a corrupt cache](#recovery-from-a-corrupt-cache).
 
-## How Caching Works
+!!! info "Pre-2.6 users"
+    The 2.6 release reorganises the cache layout, splits responsibility between
+    `oda_data` and `oda_reader`, and replaces the legacy `set_data_path()` /
+    `clear_cache()` helpers with a typed `oda_data.cache.*` namespace. Existing
+    caches are migrated automatically on the first call after upgrade — see
+    [Migration from older versions](#migration-from-older-versions).
 
-The package implements a three-tier caching system:
+## Overview
 
-```
-┌─────────────────┐
-│  Memory Cache   │  ← Fastest: In-RAM storage
-├─────────────────┤
-│   Query Cache   │  ← Fast: Filtered datasets
-├─────────────────┤
-│   Bulk Cache    │  ← Large: Complete database files
-└─────────────────┘
-```
+Starting in `oda_data 2.6`, the cache layer is split along responsibility lines:
 
-**When you request data:**
+- **`oda_reader`** owns the *raw bytes* layer: zip archives downloaded from the
+  OECD live in `oda_reader`'s raw cache.
+- **`oda_data`** owns the *cleaned parquet* layer: filtered, column-renamed
+  DataFrames ready for analysis live in `oda_data`'s bulk and query caches.
 
-1. **Check memory cache**: Is it already loaded in RAM?
-2. **Check query cache**: Is this exact filtered query cached?
-3. **Check bulk cache**: Is the bulk file downloaded?
-4. **Fetch from API**: Last resort, download from OECD
+Both layers are reachable through a single, version-stable public API at
+`oda_data.cache.*`. You do not need to interact with `oda_reader`'s cache
+directly unless you are a standalone `oda_reader` user (see
+[Standalone oda_reader users](#standalone-oda_reader-users)).
 
-## Setting Up Caching
+## Cache locations per OS
 
-### Set the Data Path
+The default cache root is determined by
+[`platformdirs`](https://github.com/platformdirs/platformdirs) and is
+version-segmented so that installs of different `oda_data` versions use
+separate directories automatically.
 
-```python title="Configure Cache Location"
-from oda_data import set_data_path
+| OS      | Default cache root                                                 |
+|---------|--------------------------------------------------------------------|
+| macOS   | `~/Library/Caches/oda-data/<version>/`                             |
+| Linux   | `~/.cache/oda-data/<version>/`                                     |
+| Windows | `C:\Users\<user>\AppData\Local\oda-data\oda-data\Cache\<version>\` |
 
-# All cached data goes here
-set_data_path("data")
+Inside that root, four subdirectories hold the respective cache scopes:
 
-# Creates directory structure:
-# data/
-# ├── bulk/          # Bulk downloads
-# ├── queries/       # Filtered query results
-# └── .pydeflate/    # Currency conversion data
-```
+| Subdirectory   | Scope   | Contents                                          |
+|----------------|---------|---------------------------------------------------|
+| `bulk_cache/`  | `bulk`  | Cleaned parquet files extracted from OECD zips    |
+| `query_cache/` | `query` | Filter-specific parquet slices                    |
+| `http/`        | `http`  | HTTP-level response cache (managed by oda_reader) |
+| `raw/`         | `raw`   | Raw OECD zip archives (managed by oda_reader)     |
 
-### Default Cache Location
+## Configuring the cache root
 
-If you don't set a path, the package uses a default:
+### Environment variable
 
-```python
-# Default: .raw_data/ in your working directory
-# Automatically created when needed
-```
-
-## Cache Tiers Explained
-
-### 1. Memory Cache
-
-Fast, temporary storage while your Python session runs.
-
-```python title="Memory Cache in Action"
-from oda_data import OECDClient
-
-client = OECDClient(years=[2022])
-
-# First call: Downloads and caches in memory
-data1 = client.get_indicators("DAC1.10.1010")  # Slow
-
-# Second call: Retrieved from memory
-data2 = client.get_indicators("DAC1.10.1010")  # Fast!
-
-# Memory cache clears when Python session ends
-```
-
-**Characteristics:**
-
-- Very fast access
-- Limited by available RAM
-- Cleared when Python exits
-- Shared across queries in same session
-
-### 2. Query Cache
-
-Stores filtered datasets on disk for reuse.
-
-```python title="Query Cache Persistence"
-from oda_data import OECDClient, set_data_path
-
-set_data_path("data")
-
-client = OECDClient(
-    years=[2022],
-    providers=[4, 12],
-    currency="EUR"
-)
-
-# First run: Processes and caches result
-data = client.get_indicators("DAC1.10.1010")
-
-# Next day, same query: Instant!
-# Loads from query cache, no processing needed
-```
-
-**Characteristics:**
-
-- Persists across sessions
-- Specific to filter combinations
-- Smaller than bulk files
-- Automatically managed
-
-### 3. Bulk Cache
-
-Stores complete database downloads.
-
-```python title="Bulk Cache for Large Datasets"
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
-
-dac1 = DAC1Data(years=range(2010, 2024))
-
-# First time: Downloads entire bulk file (few minutes)
-dac1.download(bulk=True)
-
-# Subsequent queries: Reads from cached file (seconds)
-data = dac1.read(using_bulk_download=True)
-```
-
-**Characteristics:**
-
-- Complete database tables
-- Large file size (100s of MB)
-- Persists across sessions
-- Shared across all queries using that database
-
-## Managing Cache
-
-### Clear All Caches
-
-```python title="Clear All Cached Data"
-from oda_data import clear_cache
-
-# Removes all cached data
-clear_cache()
-
-# Everything will be re-downloaded on next use
-```
-
-!!! warning "Disk Space"
-    Clearing cache means the next queries will download data again. Only clear cache when you need to free disk space or force fresh downloads.
-
-### Disable Caching Temporarily
-
-```python title="Disable Cache for Development"
-from oda_data import disable_cache, enable_cache
-
-# Turn off caching
-disable_cache()
-
-# Now every query fetches fresh data
-client = OECDClient(years=[2022])
-data = client.get_indicators("DAC1.10.1010")  # Always downloads
-
-# Re-enable caching
-enable_cache()
-```
-
-**Use cases for disabling cache:**
-
-- Testing with latest OECD data
-- Debugging cache-related issues
-- Development and testing
-- Ensuring data freshness
-
-### Check Cache Location
-
-```python title="Find Your Cache Directory"
-from oda_data.config import ODAPaths
-
-print(f"Cache directory: {ODAPaths.raw_data}")
-```
-
-### Manual Cache Cleanup
-
-You can manually manage cache files:
+Set `ODA_DATA_CACHE_DIR` before starting Python (or before the first
+cache-touching call in a session) to override the default location:
 
 ```bash
-# View cache size
-du -sh data/
-
-# Remove old bulk files
-rm data/bulk/*
-
-# Remove query cache
-rm -rf data/queries/
+export ODA_DATA_CACHE_DIR=/data/shared/oda-cache
 ```
 
-## Performance Optimization
-
-### Pattern: Use Bulk Downloads for Multiple Queries
-
-```python title="Optimize with Bulk Downloads"
-from oda_data import OECDClient, set_data_path
-
-set_data_path("data")
-
-# Enable bulk download once
-client = OECDClient(
-    years=range(2015, 2024),
-    use_bulk_download=True
-)
-
-# First call downloads bulk file (slow initial download)
-data1 = client.get_indicators("DAC1.10.1010")
-
-# Subsequent calls are very fast
-data2 = client.get_indicators("DAC1.10.1015")
-data3 = client.get_indicators("DAC1.10.1210")
-# All fast because they use the same cached bulk file
-```
-
-## Cache Lifetime and Refresh
-
-### When Cache is Invalidated
-
-Cache is automatically refreshed when:
-
-- Bulk file is older than 30 days (stale data check)
-- You explicitly clear cache
-- OECD releases new data versions
-
-### Force Fresh Data
-
-```python title="Force Download of Latest Data"
-from oda_data import clear_cache, OECDClient
-
-# Clear cache to force fresh download
-clear_cache()
-
-# Next query gets latest data
-client = OECDClient(years=[2023])
-fresh_data = client.get_indicators("DAC1.10.1010")
-```
-
-### Check Data Freshness
-
-```python title="Verify When Data Was Cached"
-import os
-from pathlib import Path
-from datetime import datetime
-from oda_data.config import ODAPaths
-
-# Check bulk file modification time
-bulk_dir = ODAPaths.raw_data / "bulk"
-
-if bulk_dir.exists():
-    for file in bulk_dir.glob("*.parquet"):
-        mtime = os.path.getmtime(file)
-        mod_date = datetime.fromtimestamp(mtime)
-        print(f"{file.name}: Last modified {mod_date}")
-```
-
-## Troubleshooting
-
-### Issue: Cache taking too much space
-
-**Solution:** Clear old caches or remove specific bulk files:
+### Python API
 
 ```python
-from oda_data import clear_cache
+import oda_data
 
-# Nuclear option: clear everything
-clear_cache()
-
-# Or manually remove large bulk files you don't need
-# rm data/bulk/CRS_*.parquet
+oda_data.set_cache_root("/data/shared/oda-cache")
 ```
 
-### Issue: Getting old data
+`set_cache_root` takes priority over `ODA_DATA_CACHE_DIR`. Both are respected
+lazily on the first cache access, so they work even if called after
+`import oda_data`.
 
-**Solution:** Force refresh:
+### Note on `set_data_path`
+
+`set_data_path()` governs only *data outputs* (parquet exports) as of 2.6. It no
+longer controls the cache location. Calling it emits a one-time
+`DeprecationWarning` pointing at `set_cache_root` and `ODA_DATA_CACHE_DIR`. The
+shim is preserved through `oda_data 2.x` and removed in `3.0`.
+
+## The Python API
+
+All public cache operations live under `oda_data.cache`. Import the namespace
+once and call functions directly:
 
 ```python
-from oda_data import clear_cache, OECDClient
-
-clear_cache()
-
-# Now get fresh data
-client = OECDClient(years=[2023])
-data = client.get_indicators("DAC1.10.1010")
+from oda_data import cache
 ```
 
-### Issue: Cache corrupted or causing errors
+`Scope` is one of `"all"`, `"bulk"`, `"query"`, `"http"`, `"raw"`. Every
+function that accepts a `scope` argument raises `ValueError` for unknown values.
 
-**Solution:** Clear and rebuild:
+### `cache.path(scope="all") -> Path`
+
+Return the cache root directory, or the subdirectory for a specific scope.
 
 ```python
-from oda_data import clear_cache, set_data_path
-
-# Clear all caches
-clear_cache()
-
-# Re-set path to ensure clean state
-set_data_path("data")
-
-# Cache will rebuild correctly on next use
+cache.path()          # e.g. ~/Library/Caches/oda-data/2.6.0/
+cache.path("bulk")    # e.g. ~/Library/Caches/oda-data/2.6.0/oda-data/bulk_cache/
+cache.path("raw")     # e.g. ~/Library/Caches/oda-data/2.6.0/oda-reader/raw/
 ```
 
-### Issue: Working across multiple projects
+### `cache.entries() -> dict[Scope, list[CacheRecord]]`
 
-**Solution:** Use project-specific cache paths:
+Return all cached files grouped by scope. Each `CacheRecord` has `key`, `path`,
+`size_bytes`, `age_days`, `version`, and `scope` fields.
 
 ```python
-# Project 1
-from oda_data import set_data_path
-set_data_path("project1/data")
-
-# Project 2
-from oda_data import set_data_path
-set_data_path("project2/data")
-
-# Each project has its own cache
+for scope, records in cache.entries().items():
+    for r in records:
+        print(r.scope, r.key, r.size_bytes, r.age_days)
 ```
 
-## Advanced: Multi-Process Safety
+`"all"` is never a key in the returned dict — only the four concrete scopes
+(`"bulk"`, `"query"`, `"http"`, `"raw"`) appear.
 
-The package uses file locks to prevent cache corruption in multi-process scenarios:
+### `cache.clear(scope="all", *, blocking=True) -> dict[Scope, int | None]`
 
-```python title="Safe for Parallel Processing"
-from multiprocessing import Pool
-from oda_data import OECDClient, set_data_path
+Delete cached files in the named scope. Returns the count of files deleted per
+scope. For the `"bulk"` and `"query"` scopes (which `oda_data` writes under a
+`FileLock`), the value is `None` if the scope was skipped because another
+process held the write lock and `blocking=False` was passed. The `"http"` and
+`"raw"` scopes always return an `int` — see the
+[Multi-process behavior](#multi-process-behavior) section for why.
 
-def fetch_indicator(indicator):
-    set_data_path("data")  # Same cache for all processes
-    client = OECDClient(years=[2022])
-    return client.get_indicators(indicator)
+```python
+# Clear everything, waiting for any write lock (default):
+cache.clear()
 
-# Safe: Multiple processes can share cache
-if __name__ == "__main__":
-    indicators = ["DAC1.10.1010", "DAC1.10.1015", "DAC1.10.1210"]
-    with Pool(3) as pool:
-        results = pool.map(fetch_indicator, indicators)
+# Clear only the raw zip cache:
+cache.clear("raw")
+
+# Non-blocking: skip contended scopes instead of waiting:
+result = cache.clear("bulk", blocking=False)
+if result.get("bulk") is None:
+    print("bulk cache is busy — try again later")
 ```
 
-File locks prevent:
+The distinction between `0` (scope was reachable but empty) and `None` (scope
+was locked by another writer) is intentional; it applies only to the `"bulk"`
+and `"query"` scopes, which `oda_data` manages under a `FileLock`.
 
-- Race conditions during downloads
-- Corrupted cache files
-- Duplicate downloads
+### `cache.size() -> dict[Scope, int]`
 
-## Best Practices
+Return on-disk usage in bytes per scope (the four concrete scopes; not `"all"`).
 
-**Do:**
+```python
+sizes = cache.size()
+for scope, nbytes in sizes.items():
+    print(f"{scope}: {nbytes / 2**20:.1f} MB")
+```
 
-- Set a persistent data path for your project
-- Use bulk downloads for multiple queries
-- Reuse client configurations
-- Clear cache periodically to free space
-- Pre-download bulk files for offline work
+As a side effect, if the combined size of the current cache root **and** any
+sibling version directories (caches from older `oda_data` installs) exceeds
+5 GB, one `WARNING` is logged per process with a pointer to the older
+directories and the `cache.clear(scope="raw")` recovery hint.
 
-**Don't:**
+### `cache.invalidate(dataset: type[Source] | str) -> None`
 
-- Clear cache unnecessarily (wastes time re-downloading)
-- Use different data paths for the same project
-- Disable caching in production code
-- Manually edit cache files (can corrupt them)
-- Keep very old cache files (may be stale)
+Remove bulk and query cache entries for a single dataset. The argument can be
+either the class itself or its name as an exact-match string (case-sensitive).
+Raises `ValueError` for unrecognised names.
 
-## Summary
+!!! warning "Blocking semantics"
+    `cache.invalidate` acquires the bulk and query write locks (60-second
+    timeout each) so the unlink sequence cannot race with concurrent writers.
+    Do not call `cache.invalidate` from inside a `BulkCacheManager` or
+    `QueryCacheManager` write context — the caller would deadlock against
+    itself. On `filelock.Timeout`, retry after the current writer completes;
+    persistent timeouts may require a manual `cache.clear()`.
 
-The caching system makes the package fast and efficient:
+```python
+from oda_data import cache, CRSData
 
-- **Memory cache**: Instant access during your session
-- **Query cache**: Fast retrieval of previous filtered queries
-- **Bulk cache**: Quick access to complete databases
+# By class:
+cache.invalidate(CRSData)
 
-Manage caches with:
+# By name string (exact, case-sensitive):
+cache.invalidate("CRSData")
+```
 
-- `set_data_path()` - Configure where cache is stored
-- `clear_cache()` - Remove all cached data
-- `disable_cache()`/`enable_cache()` - Control caching behavior
+### `cache.enable_cache(scope="all")` / `cache.disable_cache(scope="all")`
 
-Understanding caching helps you:
+Toggle caching for a specific scope, or all scopes at once. Disabling a scope
+causes reads to bypass the cache layer for that scope until it is re-enabled.
+Useful in tests or when disk space is constrained.
 
-- Optimize query performance
-- Manage disk space
-- Ensure data freshness
-- Work efficiently offline
+```python
+cache.disable_cache("bulk")   # subsequent reads skip the bulk parquet cache
+# ... do work ...
+cache.enable_cache("bulk")    # restore normal behaviour
+```
+
+!!! note "Coupled http/raw toggle"
+    `"http"` and `"raw"` share a single underlying enable/disable toggle managed
+    by `oda_reader`. Enabling or disabling either scope toggles both: for
+    example, `cache.disable_cache("http")` will also disable `"raw"`, and vice
+    versa. `oda_data` mirrors this coupling in its own per-scope flags so
+    `is_scope_enabled` reports a consistent state on both sides. To toggle only
+    the `oda_data`-owned scopes without affecting `oda_reader`, use `"bulk"` or
+    `"query"` explicitly.
+
+### `cache.migrate(*, force=False) -> list[MigrationResult]`
+
+Manually re-run migration from pre-2.6 cache layouts (normally triggered
+automatically on the first cache-touching call). Pass `force=True` to override
+the synced-drive guard. Returns one `MigrationResult` per detected source root.
+
+```python
+results = cache.migrate(force=True)
+for r in results:
+    print(r.source, r.status, r.files_moved, r.bytes_moved)
+```
+
+### Scope reference
+
+| Scope   | Owner        | What it holds                                                              |
+|---------|--------------|----------------------------------------------------------------------------|
+| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`.   |
+| `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                       |
+| `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                    |
+| `http`  | `oda_reader` | HTTP-level response cache.                                                 |
+| `raw`   | `oda_reader` | Raw OECD zip archives before extraction.                                   |
+
+When troubleshooting corrupt downloads, start with `cache.clear("raw")` — it
+removes the raw zip archives without touching the cleaned parquet files.
+Clearing `"bulk"` or `"query"` forces parquet re-extraction without
+re-downloading the underlying zip.
+
+### `read(refresh=True)` — per-call bypass
+
+Pass `refresh=True` to any dataset read call to bypass the bulk cache and
+re-download fresh data on that specific call. This is equivalent to calling
+`cache.invalidate(dataset)` before reading, but scoped to the single call and
+without permanently removing the cache entry.
+
+```python
+from oda_data import CRSData
+
+crs = CRSData(years=[2023])
+df = crs.read(using_bulk_download=True, refresh=True)
+```
+
+This works on all dataset classes: `CRSData`, `DAC1Data`, `DAC2AData`,
+`MultiSystemData`, and `AidDataData`.
+
+## Migration from older versions
+
+On the first cache-touching call after upgrading to `oda_data 2.6`, the package
+automatically detects pre-2.6 cache trees in the following locations and
+migrates them to the new layout:
+
+- `<cwd>/.raw_data/` (the old CWD-relative default)
+- `~/Library/Caches/oda-reader/<old-version>/` (macOS)
+- `~/.cache/oda-reader/<old-version>/` (Linux)
+- `%LOCALAPPDATA%\oda-reader\Cache\` (Windows)
+
+Migration rules:
+
+- **Same-volume**: files are moved via `shutil.move` (fast, no extra disk space
+  needed).
+- **Cross-volume**: files are copied with `shutil.copy2`, size-verified, then
+  the original is deleted. A progress message is logged because this can take
+  several minutes for large caches (~1 GB).
+- **Synced drive** (Dropbox, iCloud Drive, OneDrive): migration is skipped and
+  a clear message is logged. The old cache remains readable for that session.
+  Run `oda_data.cache.migrate(force=True)` in Python to override the guard.
+- **Disk full** (`errno 28`): migration is skipped and a `WARNING` is logged.
+  Both old and new locations are left intact.
+
+After a successful migration, a `.migrated_to` breadcrumb file is written at
+the old root containing the absolute new path. Running `oda_data 2.5.x`
+against a migrated tree will raise a `RuntimeError` directing you to upgrade.
+
+### Manual migration
+
+```python
+from oda_data import cache
+
+# Re-run migration with the synced-drive guard disabled:
+results = cache.migrate(force=True)
+for r in results:
+    print(r.source, r.status, r.files_moved, r.bytes_moved)
+```
+
+`cache.migrate()` returns a `list[MigrationResult]`, one per detected source
+root. Each `MigrationResult` has `source`, `status`, `files_moved`,
+`bytes_moved`, and `message` fields.
+
+## Recovery from a corrupt cache
+
+If `oda_data` raises `BulkPayloadCorrupt` or you see stale/corrupt data, clear
+the raw cache and retry:
+
+```python
+from oda_data import cache, CRSData
+
+# Wipe the raw zip cache managed by oda_reader:
+cache.clear("raw")
+# Or wipe everything: cache.clear("all")
+
+# Re-read normally — the zip will be re-downloaded:
+df = CRSData(years=[2023]).read(using_bulk_download=True)
+```
+
+`BulkPayloadCorrupt` is raised when a freshly downloaded zip fails
+`is_zipfile()` or `ZipFile.testzip()` integrity checks. The exception carries
+`.path` (the corrupt file's location) and `.reason` (which check failed).
+`oda_data` automatically clears the bad entry and retries the download once;
+the exception only surfaces to the caller if both the original download and
+the retry fail.
+
+If you want to skip the raw cache entirely for a single call (useful when the
+network feed may be temporarily corrupt but you do not want to wipe the whole
+cache), pass `use_raw_cache=False` to the underlying `oda_reader` bulk
+functions directly, or call `read` with `refresh=True` to bypass at the
+`oda_data` level:
+
+```python
+# Skip the raw zip cache for this call only; no disk footprint, re-downloads every time:
+from oda_reader import bulk_download_crs
+bulk_download_crs(save_to_path="/tmp/crs", use_raw_cache=False)
+```
+
+## Multi-process behavior
+
+`oda_data` uses `filelock.FileLock` to coordinate cache writes across
+processes. Concurrent reads are always safe because readers never hold a write
+lock.
+
+Write coordination:
+
+- **`BulkCacheManager`** acquires the lock before writing a new zip download.
+  If two notebooks start `crs.read(using_bulk_download=True)` at the same
+  time, the second blocks until the first completes and then reads from the
+  already-written cache entry — only one network download occurs.
+- **`cache.clear(blocking=True)`** (the default): acquires the lock and waits
+  up to 1200 s for any in-progress write to finish.
+- **`cache.clear(blocking=False)`**: skips scopes under contention instead of
+  blocking. Returns `None` for each contended `"bulk"` / `"query"` scope
+  (rather than `0`, which means the scope was reachable but empty). The
+  `"http"` and `"raw"` scopes always return an `int` — `oda_reader` does not
+  expose a public lock path for those caches, so contention cannot be
+  detected; every reachable file is unlinked unconditionally. This distinction
+  matters when the caller needs to confirm whether a clear was actually
+  attempted.
+
+!!! note "Crash recovery"
+    If a process is SIGKILLed mid-write, the incomplete file is left at a
+    `.tmp-<host>-<pid>` path. On the next `CacheManager` initialisation
+    (which happens at the start of every read session), any `*.tmp-*` file
+    with an mtime older than 24 hours is automatically removed. The `<host>`
+    component in the suffix prevents PID collisions on NFS or other shared
+    mounts across multiple machines.
+
+## Standalone `oda_reader` users
+
+Users who import `oda_reader` directly without `oda_data` can continue to use
+the four legacy helpers unchanged:
+
+```python
+import oda_reader
+
+oda_reader.set_cache_dir("/my/cache")
+oda_reader.clear_cache()
+oda_reader.enable_cache()
+oda_reader.disable_cache()
+```
+
+These functions are fully functional and will not be removed until
+`oda_reader 2.0`.
+
+**If `oda_data` is also imported in the same process**, each of these functions
+emits a one-time `DeprecationWarning` (once per function per session)
+directing you to the equivalent `oda_data.cache.*` call:
+
+| Legacy call                         | `oda_data` equivalent                    |
+|-------------------------------------|------------------------------------------|
+| `oda_reader.set_cache_dir(path)`    | `oda_data.set_cache_root(path)`          |
+| `oda_reader.clear_cache()`          | `oda_data.cache.clear("all")`            |
+| `oda_reader.enable_cache()`         | `oda_data.cache.enable_cache("all")`     |
+| `oda_reader.disable_cache()`        | `oda_data.cache.disable_cache("all")`    |
+
+Standalone `oda_reader` users who do **not** also import `oda_data` will never
+see these warnings. The shims are preserved through `oda_reader 1.x` and
+removed in `2.0`.
+
+## Top-level back-compat helpers
+
+For `oda_data` users who relied on the v1.x / early-v2.x top-level helpers, the
+following names continue to work and are now thin wrappers over the
+`cache.*` API:
+
+| Top-level call          | New equivalent                       |
+|-------------------------|--------------------------------------|
+| `clear_cache()`         | `cache.clear("all")`                 |
+| `enable_cache()`        | `cache.enable_cache("all")`          |
+| `disable_cache()`       | `cache.disable_cache("all")`         |
+
+Prefer the `cache.*` namespace in new code — it is scope-aware and returns
+structured results.

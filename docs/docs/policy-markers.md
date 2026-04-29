@@ -27,9 +27,7 @@ Each project receives a score indicating the priority of that objective:
 ### Get Gender-Focused ODA
 
 ```python title="Analyze Gender Equality ODA"
-from oda_data import bilateral_policy_marker, set_data_path
-
-set_data_path("data")
+from oda_data import bilateral_policy_marker
 
 # Get bilateral ODA with gender as principal objective
 gender_data = bilateral_policy_marker(

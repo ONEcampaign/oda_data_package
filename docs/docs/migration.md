@@ -193,9 +193,7 @@ data = read_dac1(
 
 **v2.x:**
 ```python
-from oda_data import DAC1Data, set_data_path
-
-set_data_path("data")
+from oda_data import DAC1Data
 
 dac1 = DAC1Data(
     years=range(2020, 2023),
@@ -219,9 +217,7 @@ data = read_crs(
 
 **v2.x:**
 ```python
-from oda_data import CRSData, set_data_path
-
-set_data_path("data")
+from oda_data import CRSData
 
 crs = CRSData(
     years=[2022],
@@ -277,32 +273,43 @@ data = add_gni_share_column(client, "DAC1.10.1010")
 ```python
 from oda_data import set_data_path
 
+# Used to control where downloads were cached
 set_data_path("path/to/data")
 ```
 
-**v2.x:**
+**v2.x (2.6 and later):**
 ```python
-# Same!
-from oda_data import set_data_path
+# Cache is now per-user by default — no setup required for most users.
+# To override the cache location:
+from oda_data import set_cache_root
 
-set_data_path("path/to/data")
+set_cache_root("path/to/cache")
+
+# Or set the environment variable before starting Python:
+#   export ODA_DATA_CACHE_DIR=/path/to/cache
 ```
+
+`set_data_path()` still exists but, as of 2.6, only governs where the package
+writes parquet *exports* (data you explicitly save out) — not where downloads
+are cached. Calling it for cache purposes prints a one-time deprecation
+warning. See [Cache Management](caching.md) for the full picture.
 
 ### Cache Clearing
 
-**v1.x:**
+**v1.x and v2.x (back-compat):**
 ```python
 from oda_data import clear_cache
 
-clear_cache()
+clear_cache()  # still works, clears everything
 ```
 
-**v2.x:**
+**v2.x preferred (2.6 and later):**
 ```python
-# Same!
-from oda_data import clear_cache
+from oda_data import cache
 
-clear_cache()
+cache.clear()           # clear everything (same as clear_cache())
+cache.clear("raw")      # clear only the raw OECD zips
+cache.invalidate("CRSData")  # forget a single dataset
 ```
 
 ## Complete Migration Example
@@ -340,9 +347,7 @@ print(data.head())
 ### v2.x Equivalent
 
 ```python title="New v2.x Script"
-from oda_data import OECDClient, set_data_path, add_names_columns, add_gni_share_column
-
-set_data_path("data")
+from oda_data import OECDClient, add_names_columns, add_gni_share_column
 
 # Create client
 client = OECDClient(

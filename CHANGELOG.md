@@ -5,6 +5,71 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-04-28
+
+This release reorganises how `oda_data` stores downloaded data on disk.
+Caches now live in a standard per-user location instead of inside your
+project folder, and a new `oda_data.cache.*` namespace gives you a clear,
+typed way to inspect and manage them. Existing caches are migrated
+automatically on first run. See [CACHING.md](CACHING.md) for the full
+walkthrough.
+
+### Added
+- **Per-user cache by default.** Downloads now live under your OS's standard
+  cache directory (`~/Library/Caches/oda-data/` on macOS, `~/.cache/oda-data/`
+  on Linux, `%LOCALAPPDATA%\oda-data\` on Windows), versioned per release.
+  This means cache is shared across projects instead of duplicated in every
+  `.raw_data/` folder, and old versions don't silently get re-used after an
+  upgrade.
+- **Override the cache location** with `oda_data.set_cache_root(path)` or the
+  `ODA_DATA_CACHE_DIR` environment variable — useful for shared volumes or
+  CI runners with limited home-directory space.
+- **One place to manage the cache: `oda_data.cache`.** Inspect what's cached,
+  clear specific parts, or invalidate a single dataset without touching the
+  rest:
+
+    ```python
+    from oda_data import cache, CRSData
+
+    cache.size()                # bytes per scope
+    cache.clear("raw")          # drop only raw OECD zips
+    cache.invalidate(CRSData)   # forget cached CRS, keep everything else
+    ```
+
+- **Per-call `refresh=True`** on every dataset's `read()` to force a fresh
+  download for one call without permanently clearing the cache.
+- **Automatic recovery from corrupt downloads.** When a freshly downloaded
+  zip fails its integrity check, the bad file is removed and the download is
+  retried once. If both attempts fail, you get a clear `BulkPayloadCorrupt`
+  error pointing at the file and the reason.
+
+### Changed
+- **`set_data_path()` no longer controls the cache.** It now only sets where
+  the package writes parquet *exports* (data you explicitly save out). If you
+  used it to redirect cache storage, switch to `set_cache_root()` or
+  `ODA_DATA_CACHE_DIR` — the package will print a one-time deprecation
+  warning to remind you. The old call still works through 2.x and is removed
+  in 3.0.
+- **`clear_cache()`, `enable_cache()`, and `disable_cache()` still work**
+  unchanged. They now delegate to the new `cache.*` namespace, so existing
+  scripts keep running without edits.
+
+### Migration
+On the first cache-touching call after upgrading, the package looks for
+pre-2.6 caches in their old locations (`./.raw_data/`, the per-OS
+`oda-reader` directory) and moves them into the new layout. Caches on
+synced drives (Dropbox, iCloud, OneDrive) are skipped with a clear log
+message — re-run with `oda_data.cache.migrate(force=True)` to override.
+
+## [2.5.1] - 2026-04-28
+
+### Fixed
+- OECD CRS bulk downloads using the newer PKZIP Deflate64 compression method
+  no longer fail with `BadZipFile: File is not a zip file`. Pulled in via
+  `oda-reader >= 1.5.1`. If you saw this error before upgrading, delete any
+  stale file under your `oda-reader` bulk cache (path varies by OS) before
+  retrying.
+
 ## [2.5.0] - 2026-04-09
 
 ### Changed

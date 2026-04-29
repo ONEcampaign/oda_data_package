@@ -11,10 +11,8 @@ This package simplifies that entire process. Whether you need total ODA flows, b
 **Easily get ODA data**
 
 ```python
-from oda_data import OECDClient, set_data_path
+from oda_data import OECDClient
 
-# Set a folder where to store the raw data
-set_data_path("data")
 client = OECDClient(years=range(2018, 2023), providers=[4, 302])  # France and USA
 data = client.get_indicators("DAC1.10.1010")  # Total ODA
 ```

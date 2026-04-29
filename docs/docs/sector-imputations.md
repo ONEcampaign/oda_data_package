@@ -67,10 +67,7 @@ The package uses **gross disbursements** throughout (not commitments), following
 This is the primary function for calculating imputed multilateral aid by sector:
 
 ```python title="Calculate Imputed Multilateral Aid by Sector"
-from oda_data import set_data_path
 from oda_data.indicators.research import sector_imputations
-
-set_data_path("data")
 
 # Get imputed multilateral aid for France
 # Note: Need 3 years for rolling average calculation
@@ -119,12 +116,10 @@ imputed_multilateral_by_purpose(
 Combine bilateral and imputed multilateral aid for total sectoral spending:
 
 ```python title="Total Sectoral ODA: Bilateral + Imputed Multilateral"
-from oda_data import CRSData, set_data_path
+from oda_data import CRSData
 from oda_data.indicators.research import sector_imputations
 from oda_data.tools.names.add import add_names_columns
 import pandas as pd
-
-set_data_path("data")
 
 # Step 1: Get bilateral aid by sector (from CRS)
 bilateral = sector_imputations.spending_by_purpose(
@@ -197,10 +192,7 @@ This shows France's top 5 ODA categories in 2021 (in millions USD, constant 2021
 For researchers needing more control, use the lower-level functions:
 
 ```python title="Custom Imputation Analysis"
-from oda_data import set_data_path
 from oda_data.indicators.research import sector_imputations
-
-set_data_path("data")
 
 # Get multilateral spending shares (3-year smoothed)
 spending_shares = sector_imputations.multilateral_spending_shares_by_channel_and_purpose_smoothed(
@@ -311,11 +303,8 @@ education = imputed[imputed["purpose_name"] == "Education"]  # May fail
 **Solution**: Use the `add_names_columns()` function to add human-readable names:
 
 ```python title="Add Names to Imputations"
-from oda_data import set_data_path
 from oda_data.indicators.research import sector_imputations
 from oda_data.tools.names.add import add_names_columns
-
-set_data_path("data")
 
 # Get imputed data
 imputed = sector_imputations.imputed_multilateral_by_purpose(years=[2021], providers=[4])
@@ -421,11 +410,9 @@ Different organizations use different imputation approaches. This package implem
 Reveal donors' **total** sectoral commitments across all channels:
 
 ```python title="Compare Bilateral vs Total Sectoral Support"
-from oda_data import CRSData, set_data_path
+from oda_data import CRSData
 from oda_data.indicators.research import sector_imputations
 from oda_data.tools.names.add import add_names_columns
-
-set_data_path("data")
 
 bilateral = sector_imputations.spending_by_purpose(
     years=[2021],

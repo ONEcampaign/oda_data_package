@@ -13,11 +13,14 @@ import contextlib
 import hashlib
 import json
 import os
+import socket
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import pandas as pd
@@ -29,6 +32,47 @@ from oda_data.tools.names.create_mapping import snake_to_pascal
 
 # ISO format for timestamps
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+
+# Hostname cached at module load — used in tmp-file suffixes so NFS/multi-host
+# writes don't collide on the same PID.
+_HOSTNAME: str = socket.gethostname()
+
+# Major version of the installed oda_data package, used in query-cache filenames
+# to auto-invalidate on major upgrades.
+try:
+    _PACKAGE_MAJOR_VERSION: str = _pkg_version("oda_data").split(".")[0]
+except PackageNotFoundError:
+    _PACKAGE_MAJOR_VERSION = "0"
+
+# Sweep threshold: tmp files older than this are removed on manager __init__.
+_TMP_SWEEP_MAX_AGE_SECONDS: int = 86400  # 24 hours
+
+
+def _tmp_path(path: Path, suffix: str = "") -> Path:
+    """Return a sibling temp path tagged with hostname + pid (+ optional suffix).
+
+    The hostname segment guards NFS / shared-volume scenarios where two hosts
+    can share a PID; the suffix allows multiple concurrent temp files in the
+    same atomic-write sequence (e.g. ``"retry"``, ``"nocache"``).
+    """
+    tail = f"-{suffix}" if suffix else ""
+    return Path(f"{path}.tmp-{_HOSTNAME}-{os.getpid()}{tail}")
+
+
+def _sweep_old_tmp_files(base_dir: Path) -> None:
+    """Remove ``*.tmp-*`` files in *base_dir* older than 24 hours.
+
+    Cleans up orphan temp files left by SIGKILL or other abnormal terminations
+    on any host. Errors are swallowed — a stale temp file is not worth raising.
+    """
+    cutoff = time.time() - _TMP_SWEEP_MAX_AGE_SECONDS
+    for f in base_dir.glob("*.tmp-*"):
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+                logger.debug(f"Swept stale tmp file: {f}")
+        except OSError:
+            pass
 
 
 def generate_param_hash(filters: list[tuple]) -> str:
@@ -163,6 +207,8 @@ class BulkCacheManager:
         self._lock = FileLock(self.lock_path, timeout=1200)  # 20 min timeout
         self.ttl_seconds = ttl_seconds
 
+        _sweep_old_tmp_files(self.base_dir)
+
     def _get_path(self, entry: BulkCacheEntry) -> Path:
         """Get file path for a cache entry."""
         return self.base_dir / f"{entry.key}.parquet"
@@ -178,9 +224,9 @@ class BulkCacheManager:
             logger.warning(f"Failed to load manifest: {e}. Creating new manifest.")
             return {}
 
-    def _save_manifest(self, manifest: dict):
+    def _save_manifest(self, manifest: dict) -> None:
         """Save manifest to disk (atomic write)."""
-        tmp_path = Path(f"{self.manifest_path}.tmp-{os.getpid()}")
+        tmp_path = _tmp_path(self.manifest_path)
         try:
             with open(tmp_path, "w") as f:
                 json.dump(manifest, f, indent=2)
@@ -207,9 +253,21 @@ class BulkCacheManager:
     def ensure(self, entry: BulkCacheEntry, refresh: bool = False) -> Path:
         """Get cached bulk file or download if needed.
 
-        This method blocks with FileLock - if another thread/process is downloading
-        the same dataset, this call will wait for it to complete. This prevents
-        multiple concurrent downloads of the same data.
+        This method blocks with FileLock — if another thread/process is
+        downloading the same dataset, this call will wait for it to complete,
+        preventing concurrent duplicate downloads.
+
+        If the fetcher raises ``BulkPayloadCorruptError`` (e.g. a truncated zip
+        on disk), the corrupt entry is cleared and the fetch is retried once.
+        On a second failure the exception is re-raised with an actionable
+        message naming the cache path and the recovery hint.
+
+        If the ``bulk`` scope is disabled via ``oda_data.cache.disable_cache``,
+        every call re-fetches: the FileLock still serializes concurrent callers
+        and the parquet is written atomically to the canonical path, but the
+        manifest is NOT updated — so any later read with bulk enabled sees no
+        record and re-fetches as well, preserving the "no trusted cache"
+        semantic.
 
         Args:
             entry: Cache entry descriptor
@@ -218,68 +276,135 @@ class BulkCacheManager:
         Returns:
             Path to cached parquet file
         """
+        from oda_data.cache.api import is_scope_enabled
+
         with self._lock:
-            path = self._get_path(entry)
-            manifest = self._load_manifest()
-            record = manifest.get(entry.key)
+            bulk_path = self._ensure_inner(
+                entry,
+                refresh=refresh,
+                skip_manifest=not is_scope_enabled("bulk"),
+            )
+        return bulk_path
 
-            # Check if we have a fresh cached version
-            if (
-                not refresh
-                and record
-                and path.exists()
-                and not self._is_stale(record, entry)
-            ):
-                logger.info(f"Using cached bulk data for {entry.key}")
-                return path
+    def _ensure_inner(
+        self,
+        entry: BulkCacheEntry,
+        *,
+        refresh: bool,
+        skip_manifest: bool = False,
+    ) -> Path:
+        """Core fetch logic; assumes ``self._lock`` is already held.
 
-            # Need to download - use atomic write pattern
-            logger.info(f"Downloading bulk data for {entry.key}")
-            tmp_path = Path(f"{path}.tmp-{os.getpid()}")
+        ``skip_manifest=True`` is the disabled-scope path: re-fetch every time,
+        write the canonical file atomically, but leave the manifest alone so the
+        next enabled read still sees no trusted record.
+        """
+        from oda_reader import BulkPayloadCorruptError
+
+        path = self._get_path(entry)
+        manifest = self._load_manifest()
+        record = manifest.get(entry.key)
+
+        # Check if we have a fresh cached version.
+        if (
+            not refresh
+            and record
+            and path.exists()
+            and not self._is_stale(record, entry)
+        ):
+            logger.info(f"Using cached bulk data for {entry.key}")
+            return path
+
+        # Need to download — use atomic write pattern.
+        logger.info(f"Downloading bulk data for {entry.key}")
+        tmp_path = _tmp_path(path, "nocache" if skip_manifest else "")
+        manifest_dirty = False
+        try:
             try:
                 entry.fetcher(tmp_path)
-                tmp_path.replace(path)  # Atomic on POSIX systems
+            except BulkPayloadCorruptError as exc:
+                # First corruption: clear the stale entry and retry once.
+                logger.warning(
+                    f"Corrupt bulk payload for {entry.key}: {exc}. "
+                    "Clearing cache and retrying once."
+                )
+                self._clear_locked(entry.key)
+                manifest_dirty = True
+                tmp_path.unlink(missing_ok=True)
+                tmp_path2 = _tmp_path(
+                    path, "nocache-retry" if skip_manifest else "retry"
+                )
+                try:
+                    entry.fetcher(tmp_path2)
+                    tmp_path2.replace(path)
+                except Exception as exc2:
+                    tmp_path2.unlink(missing_ok=True)
+                    raise RuntimeError(
+                        f"Bulk payload at {path} failed integrity validation after "
+                        "retry. Run oda_data.cache.clear('raw') to wipe the raw "
+                        "cache and try again."
+                    ) from exc2
+            else:
+                tmp_path.replace(path)  # Atomic on POSIX systems.
 
-                # Update manifest
-                file_size = path.stat().st_size / (1024 * 1024)  # MB
-                manifest[entry.key] = {
-                    "filename": path.name,
-                    "downloaded_at": datetime.now(UTC).isoformat(),
-                    "version": entry.version,
-                    "size_mb": round(file_size, 2),
-                }
-                self._save_manifest(manifest)
-
-                logger.info(f"Cached bulk data for {entry.key} ({file_size:.1f} MB)")
+            if skip_manifest:
+                # Disabled-scope path: leave the manifest alone so the next
+                # enabled read sees no trusted record and re-fetches.
+                logger.info(
+                    f"Bulk scope disabled — fetched {entry.key} without "
+                    "updating manifest"
+                )
                 return path
 
-            finally:
-                tmp_path.unlink(missing_ok=True)
+            # Update manifest. If _clear_locked ran, our local copy is stale —
+            # re-read so we don't resurrect cleared keys.
+            if manifest_dirty:
+                manifest = self._load_manifest()
+            file_size = path.stat().st_size / (1024 * 1024)  # MB
+            manifest[entry.key] = {
+                "filename": path.name,
+                "downloaded_at": datetime.now(UTC).isoformat(),
+                "version": entry.version,
+                "size_mb": round(file_size, 2),
+            }
+            self._save_manifest(manifest)
 
-    def clear(self, key: str | None = None):
+            logger.info(f"Cached bulk data for {entry.key} ({file_size:.1f} MB)")
+            return path
+
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    def _clear_locked(self, key: str | None = None) -> None:
+        """Remove cached entries — assumes ``self._lock`` is already held.
+
+        Args:
+            key: Specific entry to remove, or None to remove all.
+        """
+        manifest = self._load_manifest()
+
+        if key is None:
+            for record in manifest.values():
+                filepath = self.base_dir / record["filename"]
+                filepath.unlink(missing_ok=True)
+            manifest.clear()
+            logger.info("Cleared all bulk cache entries")
+        elif key in manifest:
+            filepath = self.base_dir / manifest[key]["filename"]
+            filepath.unlink(missing_ok=True)
+            del manifest[key]
+            logger.info(f"Cleared bulk cache entry: {key}")
+
+        self._save_manifest(manifest)
+
+    def clear(self, key: str | None = None) -> None:
         """Remove cached entries.
 
         Args:
-            key: Specific entry to remove, or None to remove all
+            key: Specific entry to remove, or None to remove all.
         """
         with self._lock:
-            manifest = self._load_manifest()
-
-            if key is None:
-                # Clear all
-                for record in manifest.values():
-                    filepath = self.base_dir / record["filename"]
-                    filepath.unlink(missing_ok=True)
-                manifest.clear()
-                logger.info("Cleared all bulk cache entries")
-            # Clear specific entry
-            elif key in manifest:
-                filepath = self.base_dir / manifest[key]["filename"]
-                filepath.unlink(missing_ok=True)
-                del manifest[key]
-                logger.info(f"Cleared bulk cache entry: {key}")
-
-            self._save_manifest(manifest)
+            self._clear_locked(key)
 
     def stats(self) -> dict:
         """Get cache statistics.
@@ -355,10 +480,13 @@ class QueryCacheManager:
 
     Storage structure:
         {base_dir}/query_cache/
-        ├── .query.lock                    # FileLock for writes
-        ├── CRSData-abc123.parquet
-        ├── DAC1Data-def456.parquet
+        ├── .query.lock                         # FileLock for writes
+        ├── CRSData-abc123-v2.parquet
+        ├── DAC1Data-def456-v2.parquet
         └── ...
+
+    The ``-v{major}`` suffix in filenames auto-invalidates cached results when
+    the oda_data major version changes.
 
     Args:
         base_dir: Root directory for cache storage
@@ -373,9 +501,18 @@ class QueryCacheManager:
         self._lock = FileLock(self.lock_path, timeout=60)
         self.ttl_seconds = ttl_seconds
 
+        _sweep_old_tmp_files(self.base_dir)
+
     def get_file_path(self, dataset_name: str, param_hash: str) -> Path:
-        """Get file path for a cached query result."""
-        return self.base_dir / f"{dataset_name}-{param_hash}.parquet"
+        """Get file path for a cached query result.
+
+        Filename pattern: ``{dataset_name}-{param_hash}-v{major}.parquet``.
+        The ``-v{major}`` segment ensures cross-version isolation.
+        """
+        return (
+            self.base_dir
+            / f"{dataset_name}-{param_hash}-v{_PACKAGE_MAJOR_VERSION}.parquet"
+        )
 
     def _is_expired(self, path: Path) -> bool:
         """Check if a cached file has expired based on mtime."""
@@ -397,6 +534,9 @@ class QueryCacheManager:
         No lock needed - files are immutable after write. If file doesn't exist
         or is expired, returns None.
 
+        If the ``query`` scope is disabled via ``oda_data.cache.disable_cache``,
+        always returns None (forces re-compute).
+
         Args:
             dataset_name: Name of the dataset class
             param_hash: Hash of query parameters
@@ -406,6 +546,11 @@ class QueryCacheManager:
         Returns:
             DataFrame if cached and fresh, None otherwise
         """
+        from oda_data.cache.api import is_scope_enabled
+
+        if not is_scope_enabled("query"):
+            return None
+
         path = self.get_file_path(dataset_name, param_hash)
 
         # Handle MultiSystemData special case (PascalCase columns)
@@ -440,20 +585,28 @@ class QueryCacheManager:
                 path.unlink()
             return None
 
-    def save(self, dataset_name: str, param_hash: str, df: pd.DataFrame):
+    def save(self, dataset_name: str, param_hash: str, df: pd.DataFrame) -> None:
         """Save DataFrame to query cache.
 
         Uses FileLock + atomic write (temp file then rename) to prevent
         corruption from concurrent writes.
+
+        If the ``query`` scope is disabled via ``oda_data.cache.disable_cache``,
+        this is a no-op.
 
         Args:
             dataset_name: Name of the dataset class
             param_hash: Hash of query parameters
             df: DataFrame to cache
         """
+        from oda_data.cache.api import is_scope_enabled
+
+        if not is_scope_enabled("query"):
+            return
+
         with self._lock:
             path = self.get_file_path(dataset_name, param_hash)
-            tmp_path = Path(f"{path}.tmp-{os.getpid()}")
+            tmp_path = _tmp_path(path)
             try:
                 df.to_parquet(tmp_path)
                 tmp_path.replace(path)  # Atomic
@@ -462,7 +615,7 @@ class QueryCacheManager:
             finally:
                 tmp_path.unlink(missing_ok=True)
 
-    def clear(self):
+    def clear(self) -> None:
         """Remove all cached query results."""
         with self._lock:
             count = 0
@@ -474,7 +627,7 @@ class QueryCacheManager:
                     logger.warning(f"Failed to delete {file}: {e}")
             logger.info(f"Cleared {count} query cache entries")
 
-    def cleanup_expired(self):
+    def cleanup_expired(self) -> None:
         """Remove expired cache files (no lock - best effort)."""
         count = 0
         for file in self.base_dir.glob("*.parquet"):
@@ -513,6 +666,7 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
     """
     from oda_reader import bulk_download_crs
 
+    from oda_data.cache.api import is_scope_enabled
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
@@ -523,11 +677,16 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
             download_dir = tmpdir / "crs_download"
 
             try:
-                # Download from oda_reader (creates directory with parquet files)
+                # Download from oda_reader (creates directory with parquet files).
+                # Honour cache.disable_cache("raw"): the per-call use_raw_cache
+                # flag is the only way to bypass oda_reader's bulk_files cache.
                 logger.info(
                     "Starting CRS bulk download (this may take several minutes)"
                 )
-                bulk_download_crs(save_to_path=download_dir)
+                bulk_download_crs(
+                    save_to_path=download_dir,
+                    use_raw_cache=is_scope_enabled("raw"),
+                )
 
                 # Find parquet files in the download directory
                 parquet_files = list(download_dir.glob("*.parquet"))
@@ -581,6 +740,7 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
     """
     from oda_reader import bulk_download_multisystem
 
+    from oda_data.cache.api import is_scope_enabled
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
     def fetcher(target_path: Path):
@@ -591,11 +751,15 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
             download_dir = tmpdir / "multisystem_download"
 
             try:
-                # Download from oda_reader (creates directory with parquet files)
+                # Download from oda_reader (creates directory with parquet files).
+                # Honour cache.disable_cache("raw") via the per-call flag.
                 logger.info(
                     "Starting MultiSystem bulk download (this may take several minutes)"
                 )
-                bulk_download_multisystem(save_to_path=download_dir)
+                bulk_download_multisystem(
+                    save_to_path=download_dir,
+                    use_raw_cache=is_scope_enabled("raw"),
+                )
 
                 # Find parquet files in the download directory
                 parquet_files = list(download_dir.glob("*.parquet"))

@@ -5,7 +5,7 @@ This module provides reusable fixtures for testing the oda-data package,
 including sample DataFrames, mock objects, and test utilities.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from pathlib import Path
 
 import pandas as pd
@@ -410,6 +410,55 @@ def assert_series_equal(
         check_dtype=check_dtype,
         rtol=rtol,
     )
+
+
+# ============================================================================
+# Cache Module Isolation
+# ============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _reset_cache_module_flags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[None, None, None]:
+    """Reset module-level cache flags before every test.
+
+    Guarantees test isolation for three mutable globals the cache
+    subsystem keeps:
+
+    - ``cache.config._AUTO_MIGRATED``
+    - ``cache.config._LAST_CHAINED_ROOT``
+    - ``cache.api._WARNED_STALE_5GB``
+
+    ``cache.config._cache_root_override`` is intentionally NOT reset here:
+    ``tmp_cache_root`` already manages it via ``set_cache_root`` +
+    monkeypatch. Resetting it here would race with that fixture's setup
+    (autouse fixtures + `tmp_cache_root` share the same ``monkeypatch``,
+    and resetting the override after `set_cache_root` would null out the
+    installed value mid-test).
+
+    Uses ``monkeypatch.setattr`` so resets are reverted automatically on
+    teardown — guards against tests that mutate the flags but forget to
+    restore them. Falls back to a no-op when ``oda_data.cache`` is not
+    importable (e.g. during early scaffolding), mirroring the
+    ``tmp_cache_root`` fixture's tolerance pattern.
+
+    MAINTAINER NOTE: Adding a new module-level mutable flag to
+    ``cache.config`` or ``cache.api`` requires updating this fixture
+    to reset it. Otherwise tests that mutate the flag will leak state to
+    subsequent tests in the same worker.
+    """
+    try:
+        import oda_data.cache.api as _api
+        import oda_data.cache.config as _cfg
+    except ImportError:
+        yield
+        return
+
+    monkeypatch.setattr(_cfg, "_AUTO_MIGRATED", False, raising=False)
+    monkeypatch.setattr(_cfg, "_LAST_CHAINED_ROOT", None, raising=False)
+    monkeypatch.setattr(_api, "_WARNED_STALE_5GB", False, raising=False)
+    yield
 
 
 # ============================================================================

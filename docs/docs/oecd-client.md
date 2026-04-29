@@ -56,9 +56,7 @@ This creates a CSV file with all indicators, their descriptions, and sources. Op
 The simplest use case: get an indicator for specific years.
 
 ```python title="Get Total ODA for Recent Years"
-from oda_data import OECDClient, set_data_path
-
-set_data_path("data")
+from oda_data import OECDClient
 
 client = OECDClient(years=range(2018, 2023))
 data = client.get_indicators("DAC1.10.1010")
@@ -262,9 +260,7 @@ data = client.get_indicators(indicators)
 Here's a fully configured client showing all common options:
 
 ```python title="Fully Configured OECDClient"
-from oda_data import OECDClient, set_data_path
-
-set_data_path("data")
+from oda_data import OECDClient
 
 client = OECDClient(
     # Time period

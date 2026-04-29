@@ -70,9 +70,7 @@ Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 ### Get Data in Euros
 
 ```python title="Convert USD Data to EUR"
-from oda_data import OECDClient, set_data_path
-
-set_data_path("data")
+from oda_data import OECDClient
 
 # Default is USD, current prices
 client_usd = OECDClient(years=[2022])
