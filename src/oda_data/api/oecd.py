@@ -1,6 +1,8 @@
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
@@ -29,7 +31,7 @@ source_to_module = {
     "CRS": crs_functions,
 }
 
-READERS: dict[str, callable] = {
+READERS: dict[str, Callable] = {
     "DAC1": DAC1Data,
     "DAC2A": DAC2AData,
     "CRS": CRSData,
@@ -63,7 +65,7 @@ def load_indicators() -> dict[str, dict]:
 
     # Merge each inner dictionary into the combined dictionary
     for indicators in (dac1_indicators, dac2a_indicators, crs_indicators):
-        for _k, v in indicators.items():
+        for v in indicators.values():
             combined |= v
 
     return combined
@@ -122,9 +124,9 @@ class OECDClient:
                     continue
                 if self.use_bulk_download and source == "DAC2A":
                     continue
-                to_filter = []
-                for measure in self.measure:
-                    to_filter.append(get_measure_filter(source, measure))
+                to_filter = [
+                    get_measure_filter(source, measure) for measure in self.measure
+                ]
                 if to_filter is not None:
                     filters[source].append((col, "in", to_filter))
 
@@ -170,7 +172,7 @@ class OECDClient:
     def _process_data(self, indicator: str) -> None:
         """Apply custom processing functions to the loaded data."""
         custom_function = self._indicators[indicator].get("custom_function")
-        if (len(custom_function) < 1) or custom_function is None:
+        if custom_function is None or len(custom_function) < 1:
             return
 
         main_source = self._indicators[indicator]["sources"][0]
@@ -193,7 +195,7 @@ class OECDClient:
             self.indicators_data[indicator]
         )
 
-    def _group_data(self, indicator: str):
+    def _group_data(self, indicator: str) -> None:
         """Group the data to create semi-aggregated indicators (for valid sources)"""
         main_source = self._indicators[indicator]["sources"][0]
 
@@ -203,7 +205,7 @@ class OECDClient:
         self.indicators_data[indicator] = group_data_based_on_indicator(
             data=self.indicators_data[indicator],
             indicator_code=indicator,
-            measures=self.measure,
+            measures=cast("list[str] | Measure", self.measure),
         )
 
     def _convert_units(self, indicator: str) -> None:
@@ -217,7 +219,7 @@ class OECDClient:
         )
 
     @property
-    def arguments(self):
+    def arguments(self) -> dict:
         """Returns the arguments used by the object"""
         return {
             "years": self.years,
@@ -306,7 +308,7 @@ class OECDClient:
 
         return pd.concat(
             [
-                d.assign(one_indicator=i).dropna(axis=1, how="all")
+                cast(pd.DataFrame, d).assign(one_indicator=i).dropna(axis=1, how="all")
                 for i, d in self.indicators_data.items()
                 if i in indicators
             ],

@@ -40,6 +40,7 @@ print(gender_data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 **Output:**
+
 ```
  donor_code donor_name  year    value
           1    Austria  2018 0.100909
@@ -50,7 +51,7 @@ print(gender_data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 !!! note "Values in Millions"
-    Values shown use `unit_multiplier='6'`, meaning they're in millions of USD.
+Values shown use `unit_multiplier='6'`, meaning they're in millions of USD.
 
 ### Get Climate Mitigation ODA
 
@@ -72,6 +73,7 @@ print(annual)
 ```
 
 **Output:**
+
 ```
 Climate mitigation ODA (USD billions, constant 2021):
 year
@@ -219,6 +221,7 @@ for donor, amount in ranking.items():
 ```
 
 **Output (values in millions of USD):**
+
 ```
 Gender equality ODA by donor (2022):
 United States.................. $3,450M
@@ -255,6 +258,7 @@ print(f"Gender-targeted ODA in 2022: {share:.1f}% of total allocable bilateral O
 ```
 
 **Output:**
+
 ```
 Gender-targeted ODA in 2022: 42.3% of total allocable bilateral ODA
 ```
@@ -359,6 +363,7 @@ for marker, amount in sorted(results.items(), key=lambda x: x[1], reverse=True):
 ```
 
 **Output (values in millions of USD):**
+
 ```
 Bilateral ODA by policy marker (2022):
 Gender............... $45,670M

@@ -50,6 +50,7 @@ print(f"Available currencies: {currencies}")
 ```
 
 **Output:**
+
 ```
 Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 ```
@@ -63,7 +64,7 @@ Available currencies: ['USD', 'EUR', 'GBP', 'CAD', 'LCU']
 - **LCU**: Local Currency Units (donor's own currency)
 
 !!! note "Adding Currencies"
-    Need a specific DAC donor currency? [Request it via GitHub issues](https://github.com/ONEcampaign/oda_data_package/issues). The package can add any donor currency used in DAC reporting.
+Need a specific DAC donor currency? [Request it via GitHub issues](https://github.com/ONEcampaign/oda_data_package/issues). The package can add any donor currency used in DAC reporting.
 
 ## Currency Conversion
 
@@ -92,13 +93,14 @@ print(f"Total ODA in EUR: €{dac_eur:,.0f}M")
 ```
 
 **Output:**
+
 ```
 Total ODA in USD: $240,675M
 Total ODA in EUR: €228,858M
 ```
 
 !!! note "Values in Millions"
-    Values use `unit_multiplier='6'`, meaning they're in millions. So $240,675M = $240.7 billion USD.
+Values use `unit_multiplier='6'`, meaning they're in millions. So $240,675M = $240.7 billion USD.
 
 ### Get Data in Provider's Own Currency
 
@@ -120,6 +122,7 @@ print(data[["donor_name", "value"]])
 ```
 
 **Output:**
+
 ```
          donor_name        value
 0            France  13500000.0  # Euros (millions)
@@ -128,7 +131,7 @@ print(data[["donor_name", "value"]])
 ```
 
 !!! note "Values in Millions"
-    Remember that values use `unit_multiplier='6'`, meaning they're in millions of the specified currency.
+Remember that values use `unit_multiplier='6'`, meaning they're in millions of the specified currency.
 
 ## Constant Prices: Adjusting for Inflation
 
@@ -182,6 +185,7 @@ for year in years:
 ```
 
 **Output:**
+
 ```
 Year | Current Prices | Constant 2021 Prices
 2018 | $167.3B | $179.1B
@@ -260,6 +264,7 @@ print(ranking)
 ```
 
 **Output (values in millions of EUR):**
+
 ```
 donor_name
 United States     56234.57
@@ -375,6 +380,7 @@ client2 = OECDClient(years=[2022], currency="EUR", base_year=2021)  # Constant p
 
 # These aren't directly comparable!
 ```
+
 ## Next Steps
 
 - **Advanced filtering**: See [Working with Indicators](oecd-client.md)

@@ -7,7 +7,7 @@ Sector imputations help answer the question: **"When donors give core contributi
 DAC data divides ODA into two categories:
 
 1. **Bilateral aid**: Direct aid to developing countries with clear sector classifications
-2. **Multilateral aid**: Core (unearmarked) contributions to organizations like the World Bank or UNICEF
+1. **Multilateral aid**: Core (unearmarked) contributions to organizations like the World Bank or UNICEF
 
 The challenge: Core multilateral contributions don't have sector codes—they're unrestricted funding pooled with other donors' contributions. However, these organizations do spend money on specific sectors. **Sector imputations estimate how much of each donor's multilateral contribution reaches each sector based on how multilateral agencies actually spend their resources.**
 
@@ -18,6 +18,7 @@ The challenge: Core multilateral contributions don't have sector codes—they're
 Sectoral imputed multilateral aid estimates what proportion of each donor's core contributions to multilateral agencies can be attributed to specific sectors (like education or health).
 
 **Example**:
+
 - France provides $444 million to the World Bank's IDA as core resources in 2019
 - IDA allocated 8.5% of its resources to the Education sector over 2017-2019
 - France's imputed multilateral aid to Education through IDA = $444M × 8.5% = **$37.8 million**
@@ -85,6 +86,7 @@ print(imputed_2021.head())
 ```
 
 **Output:**
+
 ```
    purpose_code  recipient_code  channel_code  year  donor_code     value currency    prices
 0           100             730         42001  2021           4  0.060808      USD  constant
@@ -95,7 +97,7 @@ print(imputed_2021.head())
 ```
 
 !!! note "Three Years Required"
-    The function uses a 3-year rolling average to smooth spending patterns, so you must provide at least 3 years of data. Using a single year will cause an error.
+The function uses a 3-year rolling average to smooth spending patterns, so you must provide at least 3 years of data. Using a single year will cause an error.
 
 ### Function Parameters
 
@@ -175,6 +177,7 @@ print(sector_totals.head())
 ```
 
 **Output:**
+
 ```
 purpose_name
 Refugees/asylum seekers  in donor countries (non-sector allocable)     1156.48431
@@ -217,6 +220,7 @@ print(core_contributions[core_contributions["channel_code"] == 901])
 ```
 
 **Output:**
+
 ```
 IDA sectoral spending shares:
    channel_code  year  purpose_code  purpose_name      share
@@ -262,11 +266,13 @@ print(len(imputed))
 ```
 
 **Output:**
+
 ```
 0
 ```
 
 **Why this happens**:
+
 - The year may not have complete data yet (CRS data has reporting delays)
 - The provider code doesn't exist or has no core contributions that year
 - The multilateral agencies haven't reported spending data for that period
@@ -321,6 +327,7 @@ print(f"Education rows: {len(education)}")
 ```
 
 **Output:**
+
 ```
 Education rows: 12
 ```
@@ -330,6 +337,7 @@ Education rows: 12
 **Problem**: Your imputed values seem too high or too low.
 
 **Why this happens**:
+
 - You might be using different measure types (commitments vs disbursements)
 - Currency or price year conversions may not match your expectations
 - You're comparing against bilateral data with different filters
@@ -365,6 +373,7 @@ print(f"Imputed total: ${imputed['value'].sum():,.2f}")
 **1. Imputations Are Estimates**
 
 Imputations assume donor contributions are used proportionally to agency spending patterns. In reality:
+
 - Multilateral agencies pool resources from multiple donors
 - Spending patterns may not perfectly match contribution timing
 - Some donors have specific influence on multilateral priorities
@@ -450,6 +459,7 @@ print(f"\nMultilateral represents {100*imputed_edu/total_edu:.1f}% of total educ
 ```
 
 **Output:**
+
 ```
 France's Education Support in 2021 (USD millions, 2020 prices):
   Bilateral:               $273.80
@@ -485,6 +495,7 @@ print(delivery_analysis[["bilateral_pct", "multilateral_pct"]].head())
 ```
 
 **Output:**
+
 ```
 channel                                      bilateral_pct  multilateral_pct
 purpose_name
@@ -496,6 +507,7 @@ Agricultural alternative development             57.419105         42.580895
 ```
 
 **Insights:**
+
 - Some sectors (e.g., Action relating to debt at 99.9%) are almost entirely bilateral
 - Others (e.g., Agrarian reform at 72.0% multilateral) flow mainly through multilaterals
 - Advanced technical training (54.7% multilateral) shows balanced delivery across both channels
@@ -518,6 +530,7 @@ print(health_channels.head())
 ```
 
 **Output:**
+
 ```
 Top 5 multilateral channels for health:
 channel_name

@@ -113,7 +113,7 @@ def multilateral_spending_by_purpose_shares() -> Indicator:
     )
 
 
-def crs_one_indicators():
+def crs_one_indicators() -> dict:
     """
     Generate a dictionary defining the CRS indicator codes and their filtering logic.
 

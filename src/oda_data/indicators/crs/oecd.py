@@ -4,6 +4,8 @@ for CRS indicators, mappings, and filtering, as well as updating indicator mappi
 """
 
 from collections import OrderedDict
+from collections.abc import Callable
+from typing import Protocol
 
 import pandas as pd
 
@@ -17,6 +19,17 @@ from oda_data.indicators.crs.common import (
     read_crs_type_of_flow,
 )
 from oda_data.indicators.indicator import SEPARATOR, Indicator
+
+
+class _CRSRow(Protocol):
+    """Protocol for rows produced by indicators_data.itertuples()."""
+
+    source: str
+    perspective: str
+    type_of_flow: int | str
+    type_of_finance: int | str
+    modality: str
+    purpose_code: int | str
 
 
 def generate_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
@@ -83,7 +96,10 @@ def generate_partial_totals(crs_indicators: pd.DataFrame) -> pd.DataFrame:
 
 
 def map_column(
-    data: pd.DataFrame, column: str, mapping_func: callable, fill_value=None
+    data: pd.DataFrame,
+    column: str,
+    mapping_func: Callable[[], dict],
+    fill_value: object = None,
 ) -> pd.Series:
     """Map a column using a specified mapping function and fill missing values.
 
@@ -194,7 +210,7 @@ def unique_crs_indicator_rows(crs: pd.DataFrame) -> pd.DataFrame:
     return crs
 
 
-def load_mapping(mapping_func: callable) -> dict:
+def load_mapping(mapping_func: Callable[[], dict]) -> dict:
     """Load and process mapping data using a specified function.
 
     Args:
@@ -222,7 +238,7 @@ def mappings() -> dict:
     }
 
 
-def indicator_code(row) -> str:
+def indicator_code(row: _CRSRow) -> str:
     """Generate an indicator code for a given row.
 
     Args:
@@ -237,7 +253,7 @@ def indicator_code(row) -> str:
     ).rstrip(".T")
 
 
-def indicator_name(row) -> str:
+def indicator_name(row: _CRSRow) -> str:
     """Generate a descriptive name for an indicator.
 
     Args:
@@ -274,7 +290,7 @@ def format_description(*parts: str, perspective: str) -> str:
     return f"Bilateral {description} ({perspective})"
 
 
-def indicator_description(row, mapping: dict | None = None) -> str:
+def indicator_description(row: _CRSRow, mapping: dict) -> str:
     """Generate a detailed description for an indicator.
 
     Args:
@@ -300,7 +316,9 @@ def indicator_description(row, mapping: dict | None = None) -> str:
 
 
 def apply_filter(
-    row_value, mapping_func: callable, special_case: str | None = None
+    row_value: int | str | float | None,
+    mapping_func: Callable[[], dict],
+    special_case: str | None = None,
 ) -> tuple | None:
     """Generate a filter for a specific field based on the mapping function.
 
@@ -319,7 +337,7 @@ def apply_filter(
         return ("in", mapped_values)
 
 
-def filters(row) -> dict:
+def filters(row: _CRSRow) -> dict:
     """Generate filters for an indicator based on row data.
 
     Args:

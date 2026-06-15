@@ -10,7 +10,7 @@ IndicatorType = Literal["DAC", "ONE"]
 class Indicator:
     code: str
     name: str
-    description: str = field(default=str)
+    description: str = field(default="")
     sources: list[str] = field(default_factory=list)
     type: IndicatorType = field(default="DAC")
     filters: dict = field(default_factory=dict)

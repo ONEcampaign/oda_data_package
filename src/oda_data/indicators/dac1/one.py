@@ -96,7 +96,7 @@ def core_oda() -> Indicator:
     )
 
 
-def dac1_one_indicators():
+def dac1_one_indicators() -> dict[str, dict]:
     """
     Generate a dictionary defining the DAC1 indicator codes and their filtering logic.
 

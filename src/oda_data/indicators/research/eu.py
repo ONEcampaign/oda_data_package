@@ -9,7 +9,7 @@ from oda_data.clean_data.schema import ODASchema
 
 
 def _load_dac1_eui_data(
-    years: list[int] | int | range,
+    years: list[int] | int | range | None,
     measure: Measure | str,
     use_bulk_download: bool,
 ) -> pd.DataFrame:
@@ -56,11 +56,14 @@ def _compute_spending_by_eui(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_inflows_by_providers(
-    df: pd.DataFrame, providers: list[int]
+    df: pd.DataFrame, providers: list[int] | int | None
 ) -> pd.DataFrame:
     """Computes inflows for given providers for aid type 2102."""
+    if isinstance(providers, int):
+        providers = [providers]
+    provider_list: list[int] = providers or []
     return (
-        df.loc[df[ODASchema.PROVIDER_CODE].isin(providers)]
+        df.loc[df[ODASchema.PROVIDER_CODE].isin(provider_list)]
         .loc[df[ODASchema.AIDTYPE_CODE] == 2102]
         .groupby(
             [
@@ -133,6 +136,10 @@ def get_eui_plus_bilateral_providers_indicator(
         use_bulk_download=client_obj.use_bulk_download,
     )
 
+    if not isinstance(client_obj.providers, list):
+        client_obj.providers = (
+            [client_obj.providers] if isinstance(client_obj.providers, int) else []
+        )
     if 918 not in client_obj.providers:
         client_obj.providers.append(918)
 

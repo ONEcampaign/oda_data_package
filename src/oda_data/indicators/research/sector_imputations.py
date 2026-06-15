@@ -13,7 +13,7 @@ from oda_data.tools.groupings import provider_groupings
 
 
 def rolling_period_total(
-    df: pd.DataFrame, period_length=3, grouper: list[str] | None = None
+    df: pd.DataFrame, period_length: int = 3, grouper: list[str] | None = None
 ) -> pd.DataFrame:
     """Calculates a rolling total over a specified period length.
 

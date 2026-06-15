@@ -28,7 +28,7 @@ data = oda.load_indicator("total_oda_flow_net")
 ```
 
 !!! warning "Compatibility Layer Limitations"
-    The compatibility layer supports basic v1.x patterns but may not include all features. Migrate to v2.x API for full functionality.
+The compatibility layer supports basic v1.x patterns but may not include all features. Migrate to v2.x API for full functionality.
 
 ### Option 2: Stay on v1.5.x
 
@@ -44,6 +44,7 @@ pip install oda-data==1.5.0
 ### Main Class Rename
 
 **v1.x:**
+
 ```python
 from oda_data import ODAData
 
@@ -51,6 +52,7 @@ oda = ODAData(years=range(2020, 2023))
 ```
 
 **v2.x:**
+
 ```python
 from oda_data import OECDClient
 
@@ -60,23 +62,25 @@ client = OECDClient(years=range(2020, 2023))
 ### Method Rename
 
 **v1.x:**
+
 ```python
 data = oda.load_indicator("total_oda_flow_net")
 ```
 
 **v2.x:**
+
 ```python
 data = client.get_indicators("DAC1.10.1010")  # New indicator code format
 ```
 
 ### Parameter Changes
 
-| v1.x | v2.x | Notes |
-|------|------|-------|
-| `donors` | `providers` | More accurate terminology |
-| `base_year` | `base_year` | Unchanged |
-| `currency` | `currency` | Unchanged |
-| `prices` | Use `base_year` | Set base_year for constant prices |
+| v1.x        | v2.x            | Notes                             |
+| ----------- | --------------- | --------------------------------- |
+| `donors`    | `providers`     | More accurate terminology         |
+| `base_year` | `base_year`     | Unchanged                         |
+| `currency`  | `currency`      | Unchanged                         |
+| `prices`    | Use `base_year` | Set base_year for constant prices |
 
 ## Indicator Code Changes
 
@@ -110,18 +114,19 @@ data = client.get_indicators("DAC1.10.1010")  # Total ODA
 
 ### Common v1.x to v2.x Mappings
 
-| v1.x Indicator Name | v2.x Code | Description |
-|---------------------|-----------|-------------|
-| `total_oda_flow_net` | `DAC1.10.1010` | Total ODA, net disbursements |
-| `bilateral_oda_flow_net` | `DAC1.10.1015` | Bilateral ODA |
-| `multilateral_oda_flow_net` | `DAC1.10.1210` | Multilateral ODA |
-| `total_oda_ge` | `DAC1.20.1010` | Total ODA, grant equivalent |
+| v1.x Indicator Name         | v2.x Code      | Description                  |
+| --------------------------- | -------------- | ---------------------------- |
+| `total_oda_flow_net`        | `DAC1.10.1010` | Total ODA, net disbursements |
+| `bilateral_oda_flow_net`    | `DAC1.10.1015` | Bilateral ODA                |
+| `multilateral_oda_flow_net` | `DAC1.10.1210` | Multilateral ODA             |
+| `total_oda_ge`              | `DAC1.20.1010` | Total ODA, grant equivalent  |
 
 ## Parameter Migration
 
 ### Donors → Providers
 
 **v1.x:**
+
 ```python
 oda = ODAData(
     years=range(2020, 2023),
@@ -130,6 +135,7 @@ oda = ODAData(
 ```
 
 **v2.x:**
+
 ```python
 client = OECDClient(
     years=range(2020, 2023),
@@ -140,6 +146,7 @@ client = OECDClient(
 ### Prices Parameter
 
 **v1.x:**
+
 ```python
 oda = ODAData(
     years=range(2020, 2023),
@@ -149,6 +156,7 @@ oda = ODAData(
 ```
 
 **v2.x:**
+
 ```python
 client = OECDClient(
     years=range(2020, 2023),
@@ -159,6 +167,7 @@ client = OECDClient(
 ### Currency Conversion
 
 **v1.x:**
+
 ```python
 oda = ODAData(
     years=range(2020, 2023),
@@ -167,6 +176,7 @@ oda = ODAData(
 ```
 
 **v2.x:**
+
 ```python
 # Same syntax!
 client = OECDClient(
@@ -182,6 +192,7 @@ Direct database access has a cleaner API in v2.x.
 ### DAC1 Access
 
 **v1.x:**
+
 ```python
 from oda_data import read_dac1
 
@@ -192,6 +203,7 @@ data = read_dac1(
 ```
 
 **v2.x:**
+
 ```python
 from oda_data import DAC1Data
 
@@ -206,6 +218,7 @@ data = dac1.read(using_bulk_download=True)
 ### CRS Access
 
 **v1.x:**
+
 ```python
 from oda_data import read_crs
 
@@ -216,6 +229,7 @@ data = read_crs(
 ```
 
 **v2.x:**
+
 ```python
 from oda_data import CRSData
 
@@ -232,6 +246,7 @@ data = crs.read(using_bulk_download=True)
 ### Adding Names
 
 **v1.x:**
+
 ```python
 from oda_data import add_names
 
@@ -239,6 +254,7 @@ data = add_names(data)
 ```
 
 **v2.x:**
+
 ```python
 from oda_data import add_names_columns
 
@@ -249,6 +265,7 @@ data = add_names_columns(data, ["donor_code", "recipient_code"])
 ### GNI Calculations
 
 **v1.x:**
+
 ```python
 oda = ODAData(years=range(2020, 2023))
 data = oda.load_indicator("total_oda_flow_net")
@@ -256,6 +273,7 @@ data = oda.add_share_indicator(data, "gni")
 ```
 
 **v2.x:**
+
 ```python
 from oda_data import OECDClient, add_gni_share_column
 
@@ -270,6 +288,7 @@ data = add_gni_share_column(client, "DAC1.10.1010")
 ### Data Path Setting
 
 **v1.x:**
+
 ```python
 from oda_data import set_data_path
 
@@ -278,6 +297,7 @@ set_data_path("path/to/data")
 ```
 
 **v2.x (2.6 and later):**
+
 ```python
 # Cache is now per-user by default — no setup required for most users.
 # To override the cache location:
@@ -297,6 +317,7 @@ warning. See [Cache Management](caching.md) for the full picture.
 ### Cache Clearing
 
 **v1.x and v2.x (back-compat):**
+
 ```python
 from oda_data import clear_cache
 
@@ -304,6 +325,7 @@ clear_cache()  # still works, clears everything
 ```
 
 **v2.x preferred (2.6 and later):**
+
 ```python
 from oda_data import cache
 
@@ -450,11 +472,13 @@ print(data.columns.tolist())
 ### Issue: Import errors
 
 **If you see:**
+
 ```
 ImportError: cannot import name 'ODAData'
 ```
 
 **Solution:**
+
 ```python
 # Old import (v1.x only):
 from oda_data import ODAData  # Won't work in v2.x default
@@ -471,9 +495,9 @@ from oda_data import OECDClient
 If you encounter migration issues:
 
 1. **Check available indicators**: Use `OECDClient.available_indicators()` to find codes
-2. **Use compatibility layer**: Import `ODAData` for gradual migration
-3. **Review examples**: See other documentation pages for v2.x patterns
-4. **Report issues**: [Open an issue on GitHub](https://github.com/ONEcampaign/oda_data_package/issues)
+1. **Use compatibility layer**: Import `ODAData` for gradual migration
+1. **Review examples**: See other documentation pages for v2.x patterns
+1. **Report issues**: [Open an issue on GitHub](https://github.com/ONEcampaign/oda_data_package/issues)
 
 ## Version Support Timeline
 

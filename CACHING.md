@@ -3,7 +3,7 @@
 This document covers how `oda_data` manages its cache from version 2.6 onward.
 For quick recovery commands, skip to [Recovery from a corrupt cache](#recovery-from-a-corrupt-cache).
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -19,7 +19,7 @@ Both layers are reachable through a single, version-stable public API at
 unless you are a standalone `oda_reader` user (see
 [Standalone oda_reader users](#standalone-oda_reader-users)).
 
----
+______________________________________________________________________
 
 ## Cache locations per OS
 
@@ -28,22 +28,22 @@ The default cache root is determined by
 version-segmented so that installs of different `oda_data` versions use separate
 directories automatically.
 
-| OS      | Default cache root                                                               |
-|---------|----------------------------------------------------------------------------------|
-| macOS   | `~/Library/Caches/oda-data/<version>/`                                           |
-| Linux   | `~/.cache/oda-data/<version>/`                                                   |
-| Windows | `C:\Users\<user>\AppData\Local\oda-data\oda-data\Cache\<version>\`               |
+| OS      | Default cache root                                                 |
+| ------- | ------------------------------------------------------------------ |
+| macOS   | `~/Library/Caches/oda-data/<version>/`                             |
+| Linux   | `~/.cache/oda-data/<version>/`                                     |
+| Windows | `C:\Users\<user>\AppData\Local\oda-data\oda-data\Cache\<version>\` |
 
 Inside that root, four subdirectories hold the respective cache scopes:
 
-| Subdirectory  | Scope     | Contents                                         |
-|---------------|-----------|--------------------------------------------------|
-| `bulk_cache/` | `bulk`    | Cleaned parquet files extracted from OECD zips   |
-| `query_cache/`| `query`   | Filter-specific parquet slices                   |
-| `http/`       | `http`    | HTTP-level response cache (managed by oda_reader)|
-| `raw/`        | `raw`     | Raw OECD zip archives (managed by oda_reader)    |
+| Subdirectory   | Scope   | Contents                                          |
+| -------------- | ------- | ------------------------------------------------- |
+| `bulk_cache/`  | `bulk`  | Cleaned parquet files extracted from OECD zips    |
+| `query_cache/` | `query` | Filter-specific parquet slices                    |
+| `http/`        | `http`  | HTTP-level response cache (managed by oda_reader) |
+| `raw/`         | `raw`   | Raw OECD zip archives (managed by oda_reader)     |
 
----
+______________________________________________________________________
 
 ## Configuring the cache root
 
@@ -74,7 +74,7 @@ longer controls the cache location. Calling it emits a one-time `DeprecationWarn
 pointing at `set_cache_root` and `ODA_DATA_CACHE_DIR`. The shim is preserved through
 `oda_data 2.x` and removed in `3.0`.
 
----
+______________________________________________________________________
 
 ## The Python API
 
@@ -209,13 +209,13 @@ for r in results:
 
 ### Scope reference
 
-| Scope   | Owner        | What it holds                                                              |
-|---------|--------------|----------------------------------------------------------------------------|
-| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`.  |
-| `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                       |
-| `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                    |
-| `http`  | `oda_reader` | HTTP-level response cache.                                                 |
-| `raw`   | `oda_reader` | Raw OECD zip archives before extraction.                                   |
+| Scope   | Owner        | What it holds                                                            |
+| ------- | ------------ | ------------------------------------------------------------------------ |
+| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`. |
+| `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                     |
+| `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                  |
+| `http`  | `oda_reader` | HTTP-level response cache.                                               |
+| `raw`   | `oda_reader` | Raw OECD zip archives before extraction.                                 |
 
 **Note:** `"http"` and `"raw"` are independent on disk but share a single
 enable/disable toggle (managed by `oda_reader`); see the
@@ -243,7 +243,7 @@ df = crs.read(using_bulk_download=True, refresh=True)
 This works on all dataset classes: `CRSData`, `DAC1Data`, `DAC2AData`,
 `MultiSystemData`, and `AidDataData`.
 
----
+______________________________________________________________________
 
 ## Migration from older versions
 
@@ -287,7 +287,7 @@ for r in results:
 Each `MigrationResult` has `source`, `status`, `files_moved`, `bytes_moved`, and
 `message` fields.
 
----
+______________________________________________________________________
 
 ## Recovery from a corrupt cache
 
@@ -322,7 +322,7 @@ from oda_reader import bulk_download_crs
 bulk_download_crs(save_to_path="/tmp/crs", use_raw_cache=False)
 ```
 
----
+______________________________________________________________________
 
 ## Multi-process behavior
 
@@ -351,7 +351,7 @@ happens at the start of every read session), any `*.tmp-*` file with an mtime
 older than 24 hours is automatically removed. The `<host>` component in the suffix
 prevents PID collisions on NFS or other shared mounts across multiple machines.
 
----
+______________________________________________________________________
 
 ## Standalone `oda_reader` users
 
@@ -373,12 +373,12 @@ These functions are fully functional and will not be removed until `oda_reader 2
 a one-time `DeprecationWarning` (once per function per session) directing you to the
 equivalent `oda_data.cache.*` call:
 
-| Legacy call                         | `oda_data` equivalent                    |
-|-------------------------------------|------------------------------------------|
-| `oda_reader.set_cache_dir(path)`    | `oda_data.set_cache_root(path)`          |
-| `oda_reader.clear_cache()`          | `oda_data.cache.clear("all")`            |
-| `oda_reader.enable_cache()`         | `oda_data.cache.enable_cache("all")`     |
-| `oda_reader.disable_cache()`        | `oda_data.cache.disable_cache("all")`    |
+| Legacy call                      | `oda_data` equivalent                 |
+| -------------------------------- | ------------------------------------- |
+| `oda_reader.set_cache_dir(path)` | `oda_data.set_cache_root(path)`       |
+| `oda_reader.clear_cache()`       | `oda_data.cache.clear("all")`         |
+| `oda_reader.enable_cache()`      | `oda_data.cache.enable_cache("all")`  |
+| `oda_reader.disable_cache()`     | `oda_data.cache.disable_cache("all")` |
 
 Standalone `oda_reader` users who do **not** also import `oda_data` will never see
 these warnings. The shims are preserved through `oda_reader 1.x` and removed in `2.0`.

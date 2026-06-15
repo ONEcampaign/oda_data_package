@@ -124,36 +124,36 @@ class ThreadSafeMemoryCache:
         ttl: Time-to-live in seconds for cache entries
     """
 
-    def __init__(self, maxsize: int, ttl: int):
+    def __init__(self, maxsize: int, ttl: int) -> None:
         self._cache = TTLCache(maxsize=maxsize, ttl=ttl)
         self._lock = threading.RLock()  # Reentrant lock for nested calls
 
-    def get(self, key, default=None):
+    def get(self, key: object, default: object = None) -> object:
         """Get item from cache (thread-safe)."""
         with self._lock:
             return self._cache.get(key, default)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: object, value: object) -> None:
         """Set item in cache (thread-safe)."""
         with self._lock:
             self._cache[key] = value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: object) -> object:
         """Get item from cache with KeyError on miss (thread-safe)."""
         with self._lock:
             return self._cache[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         """Check if key exists in cache (thread-safe)."""
         with self._lock:
             return key in self._cache
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all entries from cache (thread-safe)."""
         with self._lock:
             self._cache.clear()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of items in cache (thread-safe)."""
         with self._lock:
             return len(self._cache)
@@ -198,7 +198,7 @@ class BulkCacheManager:
         ttl_seconds: Time-to-live in seconds (default: 30 days)
     """
 
-    def __init__(self, base_dir: Path, ttl_seconds: int = 2592000):
+    def __init__(self, base_dir: Path, ttl_seconds: int = 2592000) -> None:
         self.base_dir = Path(base_dir) / "bulk_cache"
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -493,7 +493,7 @@ class QueryCacheManager:
         ttl_seconds: Time-to-live in seconds (default: 1 day)
     """
 
-    def __init__(self, base_dir: Path, ttl_seconds: int = 86400):
+    def __init__(self, base_dir: Path, ttl_seconds: int = 86400) -> None:
         self.base_dir = Path(base_dir) / "query_cache"
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -669,7 +669,7 @@ def create_crs_bulk_fetcher() -> Callable[[Path], None]:
     from oda_data.cache.api import is_scope_enabled
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
-    def fetcher(target_path: Path):
+    def fetcher(target_path: Path) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -743,7 +743,7 @@ def create_multisystem_bulk_fetcher() -> Callable[[Path], None]:
     from oda_data.cache.api import is_scope_enabled
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
-    def fetcher(target_path: Path):
+    def fetcher(target_path: Path) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -817,7 +817,7 @@ def create_aiddata_bulk_fetcher() -> Callable[[Path], None]:
 
     from oda_data.clean_data.common import clean_parquet_file_in_batches
 
-    def fetcher(target_path: Path):
+    def fetcher(target_path: Path) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:

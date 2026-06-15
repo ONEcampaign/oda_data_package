@@ -163,7 +163,7 @@
     "1625": "Arcus Foundation",
     "919": "European Investment Bank [EIB]",
     "1044": "New Development Bank",
-    "1041" :"Eurasian Fund for Stabilization and Development"
+    "1041": "Eurasian Fund for Stabilization and Development"
   },
   "de_donorcode": {},
   "agency_code": {
@@ -776,8 +776,8 @@
     "500": "VI. Commodity Aid / General Programme Assistance",
     "60063": "Debt buy-back",
     "400": "IV. Multi-Sector / Cross-Cutting",
-        "331": "III.3.a. Trade Policies & Regulations",
-        "930": "Refugees in Donor Countries",
+    "331": "III.3.a. Trade Policies & Regulations",
+    "930": "Refugees in Donor Countries",
     "700": "VIII. Humanitarian Aid"
   },
   "sector_code": {
@@ -834,8 +834,7 @@
     "150": "I.5. Government & Civil Society",
     "500": "VI. Commodity Aid / General Programme Assistance",
     "400": "IV. Multi-Sector / Cross-Cutting",
-        "700": "VIII. Humanitarian Aid"
-
+    "700": "VIII. Humanitarian Aid"
   },
   "channel_code": {
     "41114": "United Nations Development Programme",

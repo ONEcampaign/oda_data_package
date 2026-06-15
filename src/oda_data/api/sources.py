@@ -2,6 +2,7 @@ import threading
 from abc import abstractmethod
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from oda_reader import (
@@ -41,7 +42,9 @@ from oda_data.tools.cache import (
 )
 
 
-def translate_cols_and_filters_to_raw(columns, filters) -> tuple[list, list]:
+def translate_cols_and_filters_to_raw(
+    columns: list | None, filters: list[tuple] | None
+) -> tuple[list | None, list[tuple] | None]:
     crs_mapping = {v: k for k, v in CORE_CRS_MAPPING.items()}
     cols = [crs_mapping.get(col, col) for col in columns] if columns else columns
     filters = (
@@ -112,27 +115,37 @@ class Source:
     _shared_query_cache: QueryCacheManager | None = None
     _cache_lock = threading.Lock()
 
-    def __init__(self):
-        self.de_providers = None
-        self.de_recipients = None
-        self.de_indicators = None
-        self.filters = None
-        self.de_sectors = None
-        self.schema = None
-        self._param_hash = None
+    def __init__(self) -> None:
+        self.de_providers: list | None = None
+        self.de_recipients: list | None = None
+        self.de_indicators: list | None = None
+        self.filters: list[tuple] | None = None
+        self.de_sectors: list | None = None
+        self.schema: type | None = None
+        self._param_hash: str | None = None
 
     @property
     def bulk_cache(self) -> BulkCacheManager:
         """Get bulk cache manager singleton, recreating if the cache root changed."""
-        return self._shared_manager(BulkCacheManager, "_shared_bulk_cache")
+        return cast(
+            BulkCacheManager,
+            self._shared_manager(BulkCacheManager, "_shared_bulk_cache"),
+        )
 
     @property
     def query_cache(self) -> QueryCacheManager:
         """Get query cache manager singleton, recreating if the cache root changed."""
-        return self._shared_manager(QueryCacheManager, "_shared_query_cache")
+        return cast(
+            QueryCacheManager,
+            self._shared_manager(QueryCacheManager, "_shared_query_cache"),
+        )
 
     @classmethod
-    def _shared_manager(cls, manager_cls, slot: str):
+    def _shared_manager(
+        cls,
+        manager_cls: type[BulkCacheManager] | type[QueryCacheManager],
+        slot: str,
+    ) -> BulkCacheManager | QueryCacheManager:
         """Return a process-wide manager rooted at ``cache_root / "oda-data"``.
 
         The singleton is intentionally anchored on ``Source`` (not on the
@@ -165,6 +178,7 @@ class Source:
             predicate (str): The condition to apply (e.g., "in").
             value (str | int | list): The value(s) to filter by.
         """
+        assert self.filters is not None, "_add_filter called before _init_filters"
         existing_filter = next((f for f in self.filters if f[0] == column), None)
 
         if existing_filter:
@@ -178,10 +192,9 @@ class Source:
 
     def _get_read_filters(
         self, additional_filters: list[tuple] | None = None
-    ) -> list[tuple[str, str, list]] | None:
-        filters = (
-            self.filters + additional_filters if additional_filters else self.filters
-        )
+    ) -> list[tuple] | None:
+        base = self.filters or []
+        filters = base + additional_filters if additional_filters else list(base)
         return filters or None
 
     def _cache_in_memory(self, param_hash: str, df: pd.DataFrame) -> None:
@@ -241,7 +254,9 @@ class DACSource(Source):
         maxsize=Source.MEMORY_CACHE_MAXSIZE, ttl=Source.MEMORY_CACHE_TTL
     )
 
-    def __init__(self):
+    schema: type[ODASchema]
+
+    def __init__(self) -> None:
         super().__init__()
 
         self.schema = ODASchema
@@ -252,7 +267,7 @@ class DACSource(Source):
         providers: list[int] | int | None = None,
         recipients: list[int] | int | None = None,
         sectors: list[int] | int | None = None,
-    ):
+    ) -> None:
         self.years, self.providers, self.recipients = (
             validate_years_providers_recipients(
                 years=years, providers=providers, recipients=recipients
@@ -293,7 +308,7 @@ class DACSource(Source):
             )
             self.de_sectors = check_strings(sectors)
 
-    def _get_filtered_download_filters(self):
+    def _get_filtered_download_filters(self) -> dict:
         """Generates a dictionary of filters for downloading the dataset.
 
         Returns:
@@ -403,7 +418,7 @@ class DACSource(Source):
         columns: list | None = None,
         *,
         refresh: bool = False,
-    ):
+    ) -> pd.DataFrame:
         """Reads a dataset with 3-tier cache coordination.
 
         Cache tiers:
@@ -431,21 +446,22 @@ class DACSource(Source):
         # short-circuit the refresh, returning stale data.
         if not refresh:
             # 1. Try memory cache (thread-safe, fastest)
-            df = self.memory_cache.get(param_hash)
+            _cached = self.memory_cache.get(param_hash)
             # Only use if all requested columns are available
-            if df is not None and (
-                not columns or all(c in df.columns for c in columns)
+            if isinstance(_cached, pd.DataFrame) and (
+                not columns or all(c in _cached.columns for c in columns)
             ):
+                df = _cached
                 logger.info("Cache hit: memory")
                 return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
             # For projected reads, also check a projection-specific memory cache
             if columns:
                 proj_hash = generate_projection_hash(param_hash, columns)
-                df = self.memory_cache.get(proj_hash)
-                if df is not None:
+                _proj_cached = self.memory_cache.get(proj_hash)
+                if isinstance(_proj_cached, pd.DataFrame):
                     logger.info("Cache hit: memory (projection)")
-                    return df
+                    return _proj_cached
 
             # 2. Try query cache (on-disk parquet, fast)
             df = self.query_cache.load(
@@ -491,7 +507,7 @@ class DACSource(Source):
         return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
     @abstractmethod
-    def download(self, **kwargs) -> pd.DataFrame:
+    def download(self) -> pd.DataFrame:
         """Abstract method to download the dataset."""
         pass
 
@@ -504,7 +520,7 @@ class DAC1Data(DACSource):
         years: list[int] | range | int | None = None,
         providers: list[int] | int | None = None,
         indicators: list[int] | int | None = None,
-    ):
+    ) -> None:
         """Initializes the DAC1 data handler.
 
         Args:
@@ -530,7 +546,7 @@ class DAC1Data(DACSource):
         Column names are cleaned before caching.
         """
 
-        def fetcher(target_path: Path):
+        def fetcher(target_path: Path) -> None:
             logger.info("Downloading DAC1 bulk data")
             df = download_dac1()  # No filters = full dataset
             df = df.pipe(clean_raw_df)  # Clean column names before caching
@@ -539,7 +555,7 @@ class DAC1Data(DACSource):
 
         return fetcher
 
-    def download(self):
+    def download(self) -> pd.DataFrame:
         """Downloads DAC1 data via API (filtered query).
 
         Note: For bulk downloads, use read(using_bulk_download=True) instead.
@@ -564,7 +580,7 @@ class DAC2AData(DACSource):
         providers: list[int] | int | None = None,
         recipients: list[int] | int | None = None,
         indicators: list[int] | int | None = None,
-    ):
+    ) -> None:
         """Initializes the DAC2A data handler.
 
         Args:
@@ -591,16 +607,16 @@ class DAC2AData(DACSource):
         Column names are cleaned before caching.
         """
 
-        def fetcher(target_path: Path):
+        def fetcher(target_path: Path) -> None:
             logger.info("Downloading DAC2A bulk data")
-            df = bulk_download_dac2a()  # No filters = full dataset
+            df: pd.DataFrame = bulk_download_dac2a()  # No filters = full dataset
             df = df.pipe(clean_raw_df)  # Clean column names before caching
             logger.info("Writing DAC2A bulk data to cache")
             df.to_parquet(target_path)
 
         return fetcher
 
-    def download(self):
+    def download(self) -> pd.DataFrame:
         """Downloads DAC2A data via API (filtered query).
 
         Note: For bulk downloads, use read(using_bulk_download=True) instead.
@@ -624,7 +640,7 @@ class CRSData(DACSource):
         years: list[int] | range | int | None = None,
         providers: list[int] | int | None = None,
         recipients: list[int] | int | None = None,
-    ):
+    ) -> None:
         """
         Initialize CRSData.
 
@@ -644,7 +660,7 @@ class CRSData(DACSource):
         """
         return create_crs_bulk_fetcher()
 
-    def download(self):
+    def download(self) -> pd.DataFrame:
         """Downloads CRS data via API (filtered query).
 
         Note: For bulk downloads, use read(using_bulk_download=True) instead.
@@ -669,7 +685,7 @@ class MultiSystemData(DACSource):
         recipients: list[int] | int | None = None,
         indicators: list[str] | str | None = None,
         sectors: list[int] | int | None = None,
-    ):
+    ) -> None:
         """
         Initialize Multisystem data.
 
@@ -691,7 +707,13 @@ class MultiSystemData(DACSource):
             self._add_filter(
                 column=self.schema.AID_TO_THRU, predicate="in", value=self.indicators
             )
-            self.de_indicators = indicators
+            self.de_indicators = (
+                list(indicators)
+                if isinstance(indicators, list)
+                else [indicators]
+                if indicators is not None
+                else None
+            )
 
     def _create_bulk_fetcher(self) -> Callable[[Path], None]:
         """Create fetcher for MultiSystem bulk download.
@@ -700,7 +722,7 @@ class MultiSystemData(DACSource):
         """
         return create_multisystem_bulk_fetcher()
 
-    def download(self):
+    def download(self) -> pd.DataFrame:
         """Downloads MultiSystem data via API (filtered query).
 
         Note: For bulk downloads, use read(using_bulk_download=True) instead.
@@ -727,7 +749,9 @@ class AidDataSource(Source):
         maxsize=Source.MEMORY_CACHE_MAXSIZE, ttl=Source.MEMORY_CACHE_TTL
     )
 
-    def __init__(self):
+    schema: type[AidDataSchema]
+
+    def __init__(self) -> None:
         super().__init__()
 
         self.schema = AidDataSchema
@@ -737,9 +761,12 @@ class AidDataSource(Source):
         years: list[int] | range | int | None = None,
         recipients: list[str] | str | None = None,
         sectors: list[int] | int | None = None,
-    ):
-        self.years = check_integers(years)
-        self.recipients = check_strings(recipients)
+    ) -> None:
+        years_arg: list[int] | int | None = (
+            list(years) if isinstance(years, range) else years
+        )
+        self.years = check_integers(years_arg)
+        self.recipients = check_strings(recipients) if recipients is not None else None
         self.sectors = check_integers(sectors)
 
         self.filters = []
@@ -777,7 +804,7 @@ class AidDataData(AidDataSource):
         years: list[int] | range | int | None = None,
         recipients: list[str] | str | None = None,
         sectors: list[int] | int | None = None,
-    ):
+    ) -> None:
         """Initializes the AidData data handler.
 
         Args:
@@ -817,7 +844,7 @@ class AidDataData(AidDataSource):
         columns: list | None = None,
         *,
         refresh: bool = False,
-    ):
+    ) -> pd.DataFrame:
         """Reads AidData from bulk cache with filtering.
 
         Args:
@@ -836,21 +863,22 @@ class AidDataData(AidDataSource):
         # refresh=True actually re-downloads. See DACSource.read for context.
         if not refresh:
             # 1. Try memory cache
-            df = self.memory_cache.get(param_hash)
+            _cached = self.memory_cache.get(param_hash)
             # Only use if all requested columns are available
-            if df is not None and (
-                not columns or all(c in df.columns for c in columns)
+            if isinstance(_cached, pd.DataFrame) and (
+                not columns or all(c in _cached.columns for c in columns)
             ):
+                df = _cached
                 logger.info("Cache hit: memory")
                 return self._apply_columns_and_clean(df, columns, already_cleaned=True)
 
             # For projected reads, also check a projection-specific memory cache
             if columns:
                 proj_hash = generate_projection_hash(param_hash, columns)
-                df = self.memory_cache.get(proj_hash)
-                if df is not None:
+                _proj_cached = self.memory_cache.get(proj_hash)
+                if isinstance(_proj_cached, pd.DataFrame):
                     logger.info("Cache hit: memory (projection)")
-                    return df
+                    return _proj_cached
 
             # 2. Try query cache
             # Use column selection at parquet read level for efficiency

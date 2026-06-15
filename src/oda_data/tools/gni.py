@@ -53,6 +53,8 @@ def _get_gni_data(client_obj: OECDClient) -> pd.DataFrame:
     # Fetch GNI data for the specified indicators
     gni_df = gni_obj.get_indicators("DAC1.40.1")
     providers = client_obj.providers or []
+    if isinstance(providers, int):
+        providers = [providers]
 
     # Check if EU Institutions (provider code 918) is in the list of providers
     # If it is, aggregate GNI for EU27 countries and assign it to provider 918

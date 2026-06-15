@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: main
+_src_path: gh:ONEcampaign/bblocks-projects
+author_email: jorge.rivera@one.org
+author_name: Jorge Rivera
+github_username: ONEcampaign
+license: mit
+project_description: A python package to work with Official Development Assistance data from the OECD DAC.
+project_name: oda_data
+project_slug: oda_data
+project_type: package
+python_version: '3.11'

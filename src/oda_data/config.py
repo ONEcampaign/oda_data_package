@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 
@@ -8,7 +10,7 @@ class _CacheRootDescriptor:
     honour env-var / set_cache_root() overrides that may arrive after import.
     """
 
-    def __get__(self, obj, objtype=None) -> Path:
+    def __get__(self, obj: object, objtype: type | None = None) -> Path:
         from oda_data.cache.config import oda_data_cache_root
 
         return oda_data_cache_root()
@@ -31,4 +33,4 @@ class ODAPaths:
 
     # Lazy cache-root: delegates to cache/config.py on every access so that
     # env-var and set_cache_root() overrides are always honoured.
-    cache_root: Path = _CacheRootDescriptor()  # type: ignore[assignment]
+    cache_root: Path = _CacheRootDescriptor()  # type: ignore[assignment]  # ty: ignore[invalid-assignment]

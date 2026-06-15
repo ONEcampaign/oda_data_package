@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import warnings
+from pathlib import Path
 
 from oda_data import cache
 from oda_data.api.oecd import OECDClient
@@ -51,7 +54,7 @@ def enable_cache() -> None:
     _enable("all")
 
 
-def set_data_path(path) -> None:
+def set_data_path(path: str | Path) -> None:
     """Set the path for data outputs (parquet exports).
 
     Deprecated: cache location is now controlled via set_cache_root() or
@@ -59,8 +62,6 @@ def set_data_path(path) -> None:
     on first call. Shim preserved through 2.x, removed in 3.0.
     """
     global _DEPRECATION_WARNED_SET_DATA_PATH
-
-    from pathlib import Path
 
     from pydeflate import set_pydeflate_path
 

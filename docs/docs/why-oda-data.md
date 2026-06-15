@@ -43,11 +43,11 @@ OECD publishes data in USD only. Want to analyze European aid in Euros? Need con
 **Without this package:**
 
 1. Download exchange rate data
-2. Find the right deflators (or build your own)
-3. Write conversion logic
-4. Handle missing data
-5. Validate results
-6. Hope you got the methodology right
+1. Find the right deflators (or build your own)
+1. Write conversion logic
+1. Handle missing data
+1. Validate results
+1. Hope you got the methodology right
 
 **With this package:**
 
@@ -133,7 +133,7 @@ eu_data = client.get_indicators("DAC1.10.1010")
 
 ### 3. Performance Through Smart Caching
 
-The OECD data-explorer API has extremely low rate limits, which make it difficult 
+The OECD data-explorer API has extremely low rate limits, which make it difficult
 to build production-ready tools and applications. The oda-data package manages caches
 so you can avoid hitting the API rate limits:
 
@@ -184,16 +184,16 @@ from oda_data import sector_imputations
 **Manual approach (without package):**
 
 1. Go to OECD Data Explorer
-2. Navigate to DAC1 database
-3. Select years 2020, 2021, 2022
-4. Filter for France (donor code 4)
-5. Filter for Total ODA (flow code 1010)
-6. Export CSV
-7. Open in Python or Excel
-8. Clean column names
-9. Handle encoding issues
-10. Convert to DataFrame
-11. **Result: 10+ minutes, if you know exactly where to look**
+1. Navigate to DAC1 database
+1. Select years 2020, 2021, 2022
+1. Filter for France (donor code 4)
+1. Filter for Total ODA (flow code 1010)
+1. Export CSV
+1. Open in Python or Excel
+1. Clean column names
+1. Handle encoding issues
+1. Convert to DataFrame
+1. **Result: 10+ minutes, if you know exactly where to look**
 
 **With ODA Data Package:**
 
@@ -241,7 +241,7 @@ Ready to simplify your ODA data workflow? Check out [Getting Started](getting-st
 
 ## Questions?
 
-- **How is this different from the OECD's tools?** This package programmatic access with data cleaning, currency conversion, and research features built-in. OECD provides raw data through web interfaces and APIs. 
+- **How is this different from the OECD's tools?** This package programmatic access with data cleaning, currency conversion, and research features built-in. OECD provides raw data through web interfaces and APIs.
 
 - **Is the data official?** Yes, all data comes directly from OECD DAC official sources. The package just makes it easier to access and use. Note that ODA Data is not affiliated with nor endorsed by the OECD.
 

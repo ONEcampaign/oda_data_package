@@ -13,7 +13,7 @@ from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
 
 
-def _marker_score_map(marker: PolicyMarker | str) -> list:
+def _marker_score_map(marker: PolicyMarker | str) -> list[int] | None:
     return {
         "significant": [1],
         "principal": [2],
@@ -22,7 +22,7 @@ def _marker_score_map(marker: PolicyMarker | str) -> list:
     }.get(marker)
 
 
-def _marker_modality_filter() -> list:
+def _marker_modality_filter() -> list[tuple[str, str, list]]:
     return [
         (
             ODASchema.FLOW_MODALITY,

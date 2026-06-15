@@ -51,7 +51,7 @@ def _code_name(df: pd.DataFrame, code_col: str, name_col: str) -> dict:
     )
 
 
-def dac1_codes_names():
+def dac1_codes_names() -> None:
     """Return a dictionary of code to name mappings for DAC1 columns."""
     from oda_data import DAC1Data
 
@@ -83,7 +83,7 @@ def dac1_codes_names():
     update_mapping_file(data, ODAPaths.names / "dac1_names.json")
 
 
-def dac2a_codes_names():
+def dac2a_codes_names() -> None:
     """Return a dictionary of code to name mappings for DAC2a columns."""
     from oda_data import DAC2AData
 
@@ -115,7 +115,7 @@ def dac2a_codes_names():
     update_mapping_file(data, ODAPaths.names / "dac2a_names.json")
 
 
-def crs_codes_names():
+def crs_codes_names() -> None:
     """Return a dictionary of code to name mappings for CRS columns."""
     from oda_data import CRSData
 
@@ -187,7 +187,7 @@ def crs_codes_names():
     update_mapping_file(data, ODAPaths.names / "crs_names.json")
 
 
-def get_merged_names_mapping():
+def get_merged_names_mapping() -> dict[str, dict[str, str]]:
     files = ["dac1_names.json", "dac2a_names.json", "crs_names.json"]
 
     merged_mapping = {}
