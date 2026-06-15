@@ -144,10 +144,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.5": {
-      "code": "DAC1.50.5",
+    "DAC1.5.5": {
+      "code": "DAC1.5.5",
       "name": "Official and private flows",
-      "description": "DAC1 data for Official and private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Official and private flows [Total official and private flows]",
       "sources": [
         "DAC1"
       ],
@@ -450,10 +450,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.359": {
-      "code": "DAC1.50.359",
+    "DAC1.37.359": {
+      "code": "DAC1.37.359",
       "name": "Multilateral private flows",
-      "description": "DAC1 data for Multilateral private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Multilateral private flows [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -486,10 +486,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.37.415": {
-      "code": "DAC1.37.415",
+    "DAC1.30.415": {
+      "code": "DAC1.30.415",
       "name": "Private grants, net",
-      "description": "DAC1 data for Private grants, net [Other private market]",
+      "description": "DAC1 data for Private grants, net [Private development finance]",
       "sources": [
         "DAC1"
       ],
@@ -504,10 +504,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.420": {
-      "code": "DAC1.50.420",
+    "DAC1.30.420": {
+      "code": "DAC1.30.420",
       "name": "Support received from official sector",
-      "description": "DAC1 data for Support received from official sector [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Support received from official sector [Private development finance]",
       "sources": [
         "DAC1"
       ],
@@ -522,10 +522,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.425": {
-      "code": "DAC1.50.425",
+    "DAC1.30.425": {
+      "code": "DAC1.30.425",
       "name": "Gross outflow from private sources",
-      "description": "DAC1 data for Gross outflow from private sources [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Gross outflow from private sources [Private development finance]",
       "sources": [
         "DAC1"
       ],
@@ -625,6 +625,24 @@
           "aidtype_code": [
             "==",
             1020
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC1.37.1030": {
+      "code": "DAC1.37.1030",
+      "name": "Offsetting entry for debt relief (private claims, principal)",
+      "description": "DAC1 data for Offsetting entry for debt relief (private claims, principal) [Other private market]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1030
           ]
         }
       },
@@ -1201,6 +1219,24 @@
           "aidtype_code": [
             "==",
             1622
+          ]
+        }
+      },
+      "custom_function": ""
+    },
+    "DAC1.10.1623": {
+      "code": "DAC1.10.1623",
+      "name": "Debt buybacks",
+      "description": "DAC1 data for Debt buybacks [ODA]",
+      "sources": [
+        "DAC1"
+      ],
+      "type": "DAC",
+      "filters": {
+        "DAC1": {
+          "aidtype_code": [
+            "==",
+            1623
           ]
         }
       },
@@ -1818,10 +1854,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.2231": {
-      "code": "DAC1.50.2231",
+    "DAC1.1021.2231": {
+      "code": "DAC1.1021.2231",
       "name": "Memo: 1. Development finance in blended finance packages",
-      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages [Memo items (mobilisation and blended finance)]",
       "sources": [
         "DAC1"
       ],
@@ -1836,10 +1872,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.2232": {
-      "code": "DAC1.50.2232",
+    "DAC1.1021.2232": {
+      "code": "DAC1.1021.2232",
       "name": "Memo: 1. Development finance in blended finance packages, of which through funds and facilities",
-      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages, of which through funds and facilities [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Memo: 1. Development finance in blended finance packages, of which through funds and facilities [Memo items (mobilisation and blended finance)]",
       "sources": [
         "DAC1"
       ],
@@ -1854,10 +1890,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.2233": {
-      "code": "DAC1.50.2233",
+    "DAC1.1021.2233": {
+      "code": "DAC1.1021.2233",
       "name": "Memo: 2. Amounts mobilised from the private sector",
-      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector [Memo items (mobilisation and blended finance)]",
       "sources": [
         "DAC1"
       ],
@@ -1872,10 +1908,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.2234": {
-      "code": "DAC1.50.2234",
+    "DAC1.1021.2234": {
+      "code": "DAC1.1021.2234",
       "name": "Memo: 2. Amounts mobilised from the private sector, of which through guarantees",
-      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector, of which through guarantees [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Memo: 2. Amounts mobilised from the private sector, of which through guarantees [Memo items (mobilisation and blended finance)]",
       "sources": [
         "DAC1"
       ],
@@ -2016,10 +2052,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3300": {
-      "code": "DAC1.50.3300",
+    "DAC1.37.3300": {
+      "code": "DAC1.37.3300",
       "name": "Private flows at market terms",
-      "description": "DAC1 data for Private flows at market terms [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Private flows at market terms [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2034,10 +2070,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3320": {
-      "code": "DAC1.50.3320",
+    "DAC1.37.3320": {
+      "code": "DAC1.37.3320",
       "name": "Bilateral private flows",
-      "description": "DAC1 data for Bilateral private flows [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Bilateral private flows [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2052,10 +2088,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3530": {
-      "code": "DAC1.50.3530",
+    "DAC1.37.3530": {
+      "code": "DAC1.37.3530",
       "name": "Other securities and claims",
-      "description": "DAC1 data for Other securities and claims [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Other securities and claims [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2070,10 +2106,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3840": {
-      "code": "DAC1.50.3840",
+    "DAC1.37.3840": {
+      "code": "DAC1.37.3840",
       "name": "Total banks (long-term)",
-      "description": "DAC1 data for Total banks (long-term) [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Total banks (long-term) [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2088,10 +2124,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3860": {
-      "code": "DAC1.50.3860",
+    "DAC1.37.3860": {
+      "code": "DAC1.37.3860",
       "name": "Non-banks",
-      "description": "DAC1 data for Non-banks [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Non-banks [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2106,10 +2142,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.3890": {
-      "code": "DAC1.50.3890",
+    "DAC1.37.3890": {
+      "code": "DAC1.37.3890",
       "name": "Other securities (incl. equities)",
-      "description": "DAC1 data for Other securities (incl. equities) [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Other securities (incl. equities) [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2124,10 +2160,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.50.7530": {
-      "code": "DAC1.50.7530",
+    "DAC1.37.7530": {
+      "code": "DAC1.37.7530",
       "name": "Other bank",
-      "description": "DAC1 data for Other bank [Other flows (e.g. the non ODA component of peacekeeping operations)]",
+      "description": "DAC1 data for Other bank [Other private market]",
       "sources": [
         "DAC1"
       ],
@@ -2196,10 +2232,10 @@
       },
       "custom_function": ""
     },
-    "DAC1.10.11002": {
-      "code": "DAC1.10.11002",
+    "DAC1.40.11002": {
+      "code": "DAC1.40.11002",
       "name": "ODA as percent of GNI, grant equivalent",
-      "description": "DAC1 data for ODA as percent of GNI, grant equivalent [ODA]",
+      "description": "DAC1 data for ODA as percent of GNI, grant equivalent [Non flow]",
       "sources": [
         "DAC1"
       ],

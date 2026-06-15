@@ -29,7 +29,7 @@ def dac1_oecd_indicators() -> dict[str, dict]:
         indicator_ = Indicator(
             code=f"{dac1_base}{SEPARATOR}{flow}{SEPARATOR}{aid}",
             name=f"{aid_names[aid]}",
-            description=f"{dac1_base} data for {aid_names[aid]} [{flow_names[int(flow)]}]",
+            description=f"{dac1_base} data for {aid_names[aid]} [{flow_names[flow]}]",
             sources=["DAC1"],
             type="DAC",
             filters={"DAC1": {"aidtype_code": ("==", aid)}},

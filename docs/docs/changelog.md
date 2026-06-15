@@ -5,6 +5,58 @@ All notable changes to the oda_data package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-06-15
+
+This release refreshes the DAC1 indicator catalogue to match the current
+OECD DAC1 flow-type classification. A number of aid types were reassigned to
+different flow types upstream, which changes their indicator codes (the
+`DAC1.<flowtype>.<aidtype>` middle segment). The underlying data is unchanged —
+only the codes used to address it. If you reference any of the codes below
+directly, update them.
+
+This also fixes a bug that made the DAC1 indicator generator unrunnable
+(`dac1_aid_flow_type_mapping()` read a non-existent `flow_type` key instead of
+`flowtype_code`), and adds test coverage for the previously-untested generator.
+
+### Changed
+
+- **17 DAC1 indicator codes changed** (same data, new flow-type segment):
+
+  | Old code        | New code         | Indicator                                             |
+  | --------------- | ---------------- | ----------------------------------------------------- |
+  | `DAC1.50.5`     | `DAC1.5.5`       | Official and private flows                            |
+  | `DAC1.37.415`   | `DAC1.30.415`    | (reassigned to Private development finance)           |
+  | `DAC1.50.420`   | `DAC1.30.420`    | (reassigned to Private development finance)           |
+  | `DAC1.50.425`   | `DAC1.30.425`    | (reassigned to Private development finance)           |
+  | `DAC1.50.3300`  | `DAC1.37.3300`   | (reassigned to Other private market)                  |
+  | `DAC1.50.3320`  | `DAC1.37.3320`   | (reassigned to Other private market)                  |
+  | `DAC1.50.3530`  | `DAC1.37.3530`   | (reassigned to Other private market)                  |
+  | `DAC1.50.359`   | `DAC1.37.359`    | (reassigned to Other private market)                  |
+  | `DAC1.50.3840`  | `DAC1.37.3840`   | (reassigned to Other private market)                  |
+  | `DAC1.50.3860`  | `DAC1.37.3860`   | (reassigned to Other private market)                  |
+  | `DAC1.50.3890`  | `DAC1.37.3890`   | (reassigned to Other private market)                  |
+  | `DAC1.50.7530`  | `DAC1.37.7530`   | (reassigned to Other private market)                  |
+  | `DAC1.10.11002` | `DAC1.40.11002`  | (reassigned to Non flow)                              |
+  | `DAC1.50.2231`  | `DAC1.1021.2231` | Memo: development finance in blended finance packages |
+  | `DAC1.50.2232`  | `DAC1.1021.2232` | Memo: … through funds and facilities                  |
+  | `DAC1.50.2233`  | `DAC1.1021.2233` | Memo: amounts mobilised from the private sector       |
+  | `DAC1.50.2234`  | `DAC1.1021.2234` | Memo: … of which through guarantees                   |
+
+- Two flow types added to the DAC1 flow-type vocabulary: `5`
+  ("Total official and private flows") and `1021`
+  ("Memo items (mobilisation and blended finance)").
+
+### Added
+
+- Two new DAC1 indicators: `DAC1.10.1623` (Debt buybacks) and `DAC1.37.1030`
+  (Offsetting entry for debt relief — private claims, principal).
+- Test coverage for the DAC1 indicator generator and its mapping loaders.
+
+### Fixed
+
+- `dac1_aid_flow_type_mapping()` raised `KeyError` (read `flow_type` instead of
+  `flowtype_code`), which broke DAC1 indicator regeneration.
+
 ## [2.6.0] - 2026-04-28
 
 This release reorganises how `oda_data` stores downloaded data on disk.
