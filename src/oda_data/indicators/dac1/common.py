@@ -14,16 +14,16 @@ def flow_types() -> dict[int, str]:
     return {int(k): v for k, v in mapping.items()}
 
 
-def dac1_aid_flow_type_mapping() -> dict[int, str]:
+def dac1_aid_flow_type_mapping() -> dict[int, int]:
     """
     Load and return the DAC1 aid flow type mapping from `dac1_aid_flow_types.json`.
 
     Returns:
-        dict[int, str]: Mapping of flow type IDs to flow types.
+        dict[int, int]: Mapping of aid type codes to their flow type codes.
     """
     file_path = ODAPaths.settings / "dac1_aid_flow_types.json"
     mapping = load_json_file(file_path)
-    return {int(k): v["flow_type"] for k, v in mapping.items()}
+    return {int(k): v["flowtype_code"] for k, v in mapping.items()}
 
 
 def dac1_aid_name_mapping() -> dict[int, str]:
