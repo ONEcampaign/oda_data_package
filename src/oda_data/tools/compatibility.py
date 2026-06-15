@@ -17,7 +17,7 @@ class ODAData:
     base_year: int | None = None
     use_bulk_download: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         warnings.warn(
             "This feature is provided for partial compatibility. It will be "
             "removed when the package exits the beta stage",
@@ -31,7 +31,7 @@ class ODAData:
 
         self.indicators = {}
 
-    def load_indicator(self, indicators: str | list[str]):
+    def load_indicator(self, indicators: str | list[str]) -> "ODAData":
         if isinstance(indicators, str):
             indicators = [indicators]
 
@@ -64,12 +64,14 @@ class ODAData:
 
         # if indicators is a list, load all the dataframes into a list
         if isinstance(indicators, list):
-            indicators = [
+            frames = [
                 self.indicators[_] for _ in indicators if _ in list(self.indicators)
             ]
 
         # if indicator is "all", use all indicators
         elif indicators == "all":
-            indicators = self.indicators.values()
+            frames = list(self.indicators.values())
+        else:
+            frames = []
 
-        return pd.concat(indicators, ignore_index=True)
+        return pd.concat(frames, ignore_index=True)

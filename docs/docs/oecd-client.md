@@ -31,6 +31,7 @@ for code, info in list(all_indicators.items())[:3]:
 ```
 
 **Output:**
+
 ```
 ONE.10.1010_11010: Total ODA (Official Definition)
 ONE.40.1010_11010_1: Total ODA (official definition) as a percentage of GNI
@@ -65,6 +66,7 @@ print(data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 **Output:**
+
 ```
  donor_code  donor_name  year     value
       20000 DAC Members  2018 167308.20
@@ -75,7 +77,7 @@ print(data[["donor_code", "donor_name", "year", "value"]].head())
 ```
 
 !!! note "Values in Millions"
-    Values use `unit_multiplier='6'`, meaning they're in millions of USD.
+Values use `unit_multiplier='6'`, meaning they're in millions of USD.
 
 ### Filter by Providers
 
@@ -202,6 +204,7 @@ print(data.groupby("one_indicator")["value"].sum())
 ```
 
 **Output:**
+
 ```
 one_indicator
 DAC1.10.1010    244839.77
@@ -215,7 +218,7 @@ Name: value, dtype: float64
 When fetching many indicators or large datasets, use bulk downloads for much better performance.
 
 !!! warning "Rate Limits"
-    The OECD Data Explorer API has rate limits. If you're downloading multiple indicators or many years of data, bulk downloads are strongly recommended.
+The OECD Data Explorer API has rate limits. If you're downloading multiple indicators or many years of data, bulk downloads are strongly recommended.
 
 ### Enable Bulk Downloads
 
@@ -236,9 +239,9 @@ data = client.get_indicators(indicators)
 **What happens:**
 
 1. The package downloads a complete bulk file (takes a few minutes initially)
-2. The file is cached locally
-3. Subsequent queries are nearly instant
-4. Much faster than making many API calls
+1. The file is cached locally
+1. Subsequent queries are nearly instant
+1. Much faster than making many API calls
 
 ### When to Use Bulk Downloads
 
@@ -361,8 +364,8 @@ matching = {k: v for k, v in indicators.items() if "bilateral" in v["name"].lowe
 **Possible causes:**
 
 1. **No data for those filters**: Try broader filters (more years, more providers)
-2. **Indicator doesn't support that measure**: Check the indicator's supported measures
-3. **Recipient filter on DAC1**: DAC1 indicators don't have recipient data
+1. **Indicator doesn't support that measure**: Check the indicator's supported measures
+1. **Recipient filter on DAC1**: DAC1 indicators don't have recipient data
 
 ```python
 # Check what data exists

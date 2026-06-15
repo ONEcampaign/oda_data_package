@@ -7,6 +7,7 @@
 [![Downloads](https://static.pepy.tech/badge/oda-data)](https://pepy.tech/project/oda-data)
 
 # The ODA Data Package
+
 This is a Python package designed for accessing, processing, and analyzing Official Development Assistance (ODA) data from OECD DAC. With an intuitive API, it simplifies common tasks like retrieving ODA indicators, converting currencies, filtering data, and handling bulk downloads.
 
 **Note: This is the new version of the package (V2). This release includes many breaking changes and previous workflows
@@ -39,6 +40,7 @@ The package is compatible with Python 3.11 and above.
 Most users can get the data they need by using the `OECDClient` class.
 
 An object of this class can handle:
+
 - getting data for specific indicators (one or more)
 - filtering the data for specific donors, recipients(if relevant), years.
 - returning the data in a variety of currency/prices combinations.
@@ -128,6 +130,7 @@ OECDClient.export_available_indicators(export_folder="path/to/folder/")
 ```
 
 ### Providers
+
 You can get a dictionary with all available providers, with their code and name, by using the `.available_providers()` method:
 
 ```python
@@ -137,6 +140,7 @@ providers = OECDClient.available_providers()
 ```
 
 ### Recipients
+
 You can get a dictionary with all available recipients, with their code and name, by using the `.available_recipients()` method:
 
 ```python
@@ -146,6 +150,7 @@ recipients = OECDClient.available_recipients()
 ```
 
 ### Currencies
+
 You can get a dictionary with all available currencies, with their code and name, by using the `.available_currencies()` method:
 
 ```python
@@ -159,6 +164,7 @@ currencies = OECDClient.available_currencies()
 Different measures are available depending on the data source. Here's what each source supports:
 
 **DAC1 Measures:**
+
 - `commitment` - Total commitments
 - `commitment_grant` - Grant commitments only
 - `commitment_non_grant` - Non-grant commitments
@@ -170,10 +176,12 @@ Different measures are available depending on the data source. Here's what each 
 - `received` - Amounts received
 
 **DAC2A Measures:**
+
 - `net_disbursement` - Net disbursements (default)
 - `gross_disbursement` - Gross disbursements
 
 **CRS Measures:**
+
 - `commitment` - Commitment amounts
 - `grant_equivalent` - Grant equivalent values
 - `gross_disbursement` - Gross disbursement amounts
@@ -183,16 +191,20 @@ Different measures are available depending on the data source. Here's what each 
 - `export_credit` - Export credits
 
 **MultiSystem Measures:**
+
 - `commitment` - Commitments
 - `gross_disbursement` - Gross disbursements
 
 ## Accessing the data
+
 For more advanced users, you can use this package to get and work with different tables and databases from the OECD DAC.
 
 ### DAC 1
+
 The `DAC1Data` class can retrieve and return DAC 1 data.
 
 You can optionally specify:
+
 - years: to filter the data for specific years
 - providers: to filter the data for specific providers (based on their code).
 - indicators: to filter the data for a specific indicator (for DAC1 this means AIDTYPE_CODE)
@@ -200,6 +212,7 @@ You can optionally specify:
 Not specifying any or all of these parameters will return all the available data.
 
 After instantiating the object, you can call:
+
 - `download`: to download the data from the data-explorer API or the bulk download service. This method returns a DataFrame.
 - `read`: to read data as stored in the specified folder. If the data is not available, it will be downloaded.
 
@@ -239,11 +252,12 @@ data = dac1.read(
 )
 ```
 
-
 ### DAC 2A
+
 The `DAC2AData` class can retrieve and return DAC2a data.
 
 You can optionally specify:
+
 - years: to filter the data for specific years
 - providers: to filter the data for specific providers (based on their code).
 - recipients: to filter the data for specific recipients (based on their code).
@@ -252,6 +266,7 @@ You can optionally specify:
 Not specifying any or all of these parameters will return all the available data.
 
 After instantiating the object, you can call:
+
 - `download`: to download the data from the data-explorer API or the bulk download service. This method returns a DataFrame.
 - `read`: to read data as stored in the specified folder. If the data is not available, it will be downloaded.
 
@@ -301,9 +316,11 @@ data = dac2a.read(
 ```
 
 ### CRS
+
 The `CRSData` class can retrieve and return CRS data.
 
 You can optionally specify:
+
 - years: to filter the data for specific years
 - providers: to filter the data for specific providers (based on their code).
 - recipients: to filter the data for specific recipients (based on their code).
@@ -327,11 +344,12 @@ crs = CRSData(years=range(2010, 2024))
 data = crs.read(using_bulk_download=True)
 ```
 
-
 ### MultiSystem
+
 The `MultiSystemData` class can retrieve and return Providers Total Use of the Multilateral System data.
 
 You can optionally specify:
+
 - years: to filter the data for specific years
 - providers: to filter the data for specific providers (based on their code).
 - recipients: to filter the data for specific recipients (based on their code).
@@ -343,7 +361,6 @@ Not specifying any or all of these parameters will return all the available data
 You can refer to the examples above for DAC1 and DAC2a to understand the usage of these classes.
 **Note**: given the speed and rate-limiting of the dac-explorer APIs, consider using the bulk option
 unless you're looking for something very specific.
-
 
 ## Utility Functions
 
@@ -511,11 +528,12 @@ data = aiddata.read()
 ## Key features
 
 - **Speed up analysis** - The package handles downloading, cleaning and loading all the data, so you can focus on the
-analysis.
+  analysis.
 - **Get data in the currency and prices you need** - ODA data is only available in US dollars (current or constant
-prices) and local currency units (current prices). The package allows you to view the data in US dollars, Euros,
-British Pounds and Canadian dollars, in both current and constant prices. We can add any other DAC currency if you
-request it via the [issues page](https://github.com/ONEcampaign/oda_data_package/issues)
+  prices) and local currency units (current prices). The package allows you to view the data in US dollars, Euros,
+  British Pounds and Canadian dollars, in both current and constant prices. We can add any other DAC currency if you
+  request it via the [issues page](https://github.com/ONEcampaign/oda_data_package/issues)
 
 ## Contributing
+
 Interested in contributing to the package? Please reach out.

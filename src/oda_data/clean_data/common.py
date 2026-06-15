@@ -219,11 +219,11 @@ def keep_multi_donors_only(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def convert_units(
-    data,
+    data: pd.DataFrame,
     indicator: str | None = None,
     currency: str = "USD",
     base_year: int | None = None,
-):
+) -> pd.DataFrame:
     # Ensure pydeflate has the current data path and directory exists (lazy init)
     # In read-only environments, let downstream functions surface meaningful errors
     with contextlib.suppress(Exception):

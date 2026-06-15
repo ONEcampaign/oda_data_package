@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 from oda_data.api.constants import CURRENCIES
 
 
-def validate_providers(providers: list | int | None, as_int: bool = False) -> list:
+def validate_providers(
+    providers: list | int | None, as_int: bool = False
+) -> list | None:
     """Validate the providers parameter."""
     if as_int:
         return check_integers(providers) if providers else None
     return check_strings(providers) if providers else None
 
 
-def validate_recipients(recipients: list | int | None) -> list:
+def validate_recipients(recipients: list | int | None) -> list[int] | None:
     """Validate the recipients parameter."""
     return check_integers(recipients) if recipients else None
 
@@ -26,7 +30,7 @@ def validate_measure(measure: list | str) -> list:
 
 
 def validate_years_providers_recipients(
-    years: list[int] | int | range,
+    years: list[int] | int | range | None,
     providers: list | int | None,
     recipients: list | int | None,
 ) -> tuple:
@@ -65,10 +69,10 @@ def _checktype(values: list | int | float, type_: type) -> list:
         raise ValueError("Invalid values passed. Please check the type and try again.")
 
 
-def check_integers(values: list | int | None) -> list[int] | None:
+def check_integers(values: list | int | range | None) -> list[int] | None:
     """Take a list or int and return a list of integers."""
     if values is None:
-        return
+        return None
 
     if isinstance(values, range):
         return list(values)
@@ -76,10 +80,17 @@ def check_integers(values: list | int | None) -> list[int] | None:
     return _checktype(values, int)
 
 
-def check_strings(values: list | int | str) -> list[str]:
-    """Take a list or int and return a list of integers."""
+def check_strings(values: list | int | str | None) -> list[str] | None:
+    """Take a list or int and return a list of strings.
+
+    Falsy inputs (None, empty containers, 0, False, "") are returned unchanged
+    (a long-standing contract — see test_check_strings_with_false_returns_false).
+    Callers (validate_providers/recipients) only invoke this on truthy values, so
+    the falsy branch is unreachable from them; the broad falsy return is typed
+    away here rather than widening every caller's signature.
+    """
     if not values:
-        return values
+        return values  # ty: ignore[invalid-return-type]
 
     if isinstance(values, range):
         return [str(i) for i in list(values)]

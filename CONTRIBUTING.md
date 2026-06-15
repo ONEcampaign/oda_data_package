@@ -25,13 +25,16 @@ Thank you for your interest in contributing to the ODA Data Package! This guide 
 ### Fork and Clone
 
 1. Fork the repository on GitHub
-2. Clone your fork locally:
+
+1. Clone your fork locally:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/oda_data_package.git
    cd oda_data_package
    ```
 
-3. Add the upstream repository:
+1. Add the upstream repository:
+
    ```bash
    git remote add upstream https://github.com/ONEcampaign/oda_data_package.git
    ```
@@ -47,6 +50,7 @@ uv sync --all-groups
 ```
 
 This will install:
+
 - Core package dependencies
 - Development tools (pre-commit, etc.)
 - Testing dependencies (pytest, etc.)
@@ -60,6 +64,7 @@ uv run pre-commit install
 ```
 
 The hooks will:
+
 - Format code with Ruff
 - Check for common Python mistakes
 - Validate JSON/YAML files
@@ -90,6 +95,7 @@ git checkout -b fix/issue-description
 ```
 
 Use descriptive branch names:
+
 - `feature/add-new-indicator`
 - `fix/caching-bug`
 - `docs/update-readme`
@@ -97,9 +103,9 @@ Use descriptive branch names:
 ### Making Changes
 
 1. Make your changes in the appropriate files
-2. Add tests for new functionality
-3. Update documentation if needed
-4. Run tests locally (see below)
+1. Add tests for new functionality
+1. Update documentation if needed
+1. Run tests locally (see below)
 
 ### Committing Changes
 
@@ -113,15 +119,17 @@ git commit -m "Add feature: description of your changes"
 #### What Happens During Commit
 
 The pre-commit hooks will:
+
 1. **Format your code** with Ruff (auto-fixes)
-2. **Lint your code** with Ruff (auto-fixes when possible)
-3. **Check file quality** (trailing whitespace, EOF, line endings)
-4. **Validate JSON/YAML** files
-5. **Check for secrets** (private keys, etc.)
+1. **Lint your code** with Ruff (auto-fixes when possible)
+1. **Check file quality** (trailing whitespace, EOF, line endings)
+1. **Validate JSON/YAML** files
+1. **Check for secrets** (private keys, etc.)
 
 **Note:** Tests are NOT run during commit to keep commits fast. Instead, tests run automatically in CI when you open or update a pull request.
 
 If any hook fails:
+
 - Review the error messages
 - Make necessary fixes
 - Stage the fixes: `git add .`
@@ -136,11 +144,13 @@ git commit --no-verify -m "Your message"
 ```
 
 **Only skip hooks when:**
+
 - You're committing work-in-progress that you'll fix later
 - You're reverting a commit
 - The hook is incorrectly flagging something (and you'll fix the hook later)
 
 **Never skip hooks when:**
+
 - Submitting a pull request
 - Committing to main/master
 - The failure indicates a real issue with your code
@@ -148,16 +158,19 @@ git commit --no-verify -m "Your message"
 ### Running Pre-commit Manually
 
 Run all hooks on all files:
+
 ```bash
 uv run pre-commit run --all-files
 ```
 
 Run a specific hook:
+
 ```bash
 uv run pre-commit run ruff --all-files
 ```
 
 Update hooks to latest versions:
+
 ```bash
 uv run pre-commit autoupdate
 ```
@@ -290,20 +303,23 @@ def test_bulk_download():
 ### Adding a New Indicator
 
 1. **Add indicator definition** to the appropriate JSON file:
+
    - DAC1: `src/oda_data/indicators/dac1/dac1_indicators.json`
    - DAC2A: `src/oda_data/indicators/dac2a/dac2a_indicators.json`
    - CRS: `src/oda_data/indicators/crs/crs_indicators.json`
 
-2. **If custom processing is needed**, add a function:
+1. **If custom processing is needed**, add a function:
+
    - DAC1: `src/oda_data/indicators/dac1/dac1_functions.py`
    - DAC2A: `src/oda_data/indicators/dac2a/dac2a_functions.py`
    - CRS: `src/oda_data/indicators/crs/crs_functions.py`
 
-3. **Reference the function** in the indicator's `custom_function` field
+1. **Reference the function** in the indicator's `custom_function` field
 
-4. **Add tests** for the new indicator
+1. **Add tests** for the new indicator
 
 Example indicator definition:
+
 ```json
 {
   "code": "DAC1.NEW.INDICATOR",
@@ -325,15 +341,16 @@ Example indicator definition:
 When modifying source classes in `src/oda_data/api/sources.py`:
 
 1. **Override methods** as needed:
+
    - `__init__()` - Define filter parameters
    - `_create_bulk_fetcher()` - Bulk download logic
    - `download()` - API-based retrieval
 
-2. **Use `_init_filters()`** for standard filters (years, providers, recipients)
+1. **Use `_init_filters()`** for standard filters (years, providers, recipients)
 
-3. **Test with both API and bulk downloads**
+1. **Test with both API and bulk downloads**
 
-4. **Update documentation** if the API changes
+1. **Update documentation** if the API changes
 
 ## Submitting Changes
 
@@ -349,19 +366,21 @@ When modifying source classes in `src/oda_data/api/sources.py`:
 ### Creating a Pull Request
 
 1. **Push your branch** to your fork:
+
    ```bash
    git push origin feature/your-feature-name
    ```
 
-2. **Create a pull request** on GitHub
+1. **Create a pull request** on GitHub
 
-3. **Describe your changes**:
+1. **Describe your changes**:
+
    - What does this PR do?
    - Why is this change needed?
    - How has it been tested?
    - Are there any breaking changes?
 
-4. **Link related issues** if applicable
+1. **Link related issues** if applicable
 
 ### PR Review Process
 
@@ -414,7 +433,6 @@ oda_data_package/
 - **Issues**: Check existing [issues](https://github.com/ONEcampaign/oda_data_package/issues) or create a new one
 - **Discussions**: Start a discussion for questions or ideas
 - **Documentation**: See [README.md](README.md)
-
 
 ## License
 

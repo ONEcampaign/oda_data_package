@@ -25,12 +25,12 @@ The package provides access to four main OECD databases:
 from oda_data import DAC1Data, DAC2AData, CRSData, MultiSystemData
 ```
 
-| Source | Description | Level | Best For |
-|--------|-------------|-------|----------|
-| **DAC1Data** | Aggregate donor flows | Donor totals | Overall ODA trends, donor comparisons |
-| **DAC2AData** | Bilateral flows by recipient | Donor-recipient pairs | Country-level aid allocation |
-| **CRSData** | Creditor Reporting System | Project-level | Detailed project analysis, sectors |
-| **MultiSystemData** | Multilateral system usage | Donor-agency | Multilateral aid analysis |
+| Source              | Description                  | Level                 | Best For                              |
+| ------------------- | ---------------------------- | --------------------- | ------------------------------------- |
+| **DAC1Data**        | Aggregate donor flows        | Donor totals          | Overall ODA trends, donor comparisons |
+| **DAC2AData**       | Bilateral flows by recipient | Donor-recipient pairs | Country-level aid allocation          |
+| **CRSData**         | Creditor Reporting System    | Project-level         | Detailed project analysis, sectors    |
+| **MultiSystemData** | Multilateral system usage    | Donor-agency          | Multilateral aid analysis             |
 
 ## DAC1: Aggregate Donor Flows
 
@@ -149,7 +149,7 @@ print(data)
 The Creditor Reporting System (CRS) contains detailed, project-level ODA data including sectors, purposes, and modalities.
 
 !!! warning "CRS Data Size"
-    CRS is a very large dataset. Always use bulk downloads and filter aggressively to manage data size.
+CRS is a very large dataset. Always use bulk downloads and filter aggressively to manage data size.
 
 ### Basic Usage
 
@@ -199,7 +199,7 @@ data = crs.read(using_bulk_download=True)
 
 # Available columns include:
 # - sector_code, sector_name, purpose_code, purpose_name
-# - channel_code, channel_name 
+# - channel_code, channel_name
 # - project_title, project_description
 
 # Example: Top implementing channels

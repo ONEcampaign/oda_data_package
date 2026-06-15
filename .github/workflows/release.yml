@@ -1,68 +1,58 @@
-name: release & publish
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # Required for PyPI trusted publishing
 
 jobs:
-  test:
-    name: Run Tests
+  build:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-versions: ["3.11"]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Set up uv (and Python)
-        uses: astral-sh/setup-uv@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache uv
+        uses: actions/cache@v5
         with:
-          python-version: ${{ matrix.python-versions }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
 
-      - name: Install dependencies
-        run: uv sync --group test
+      - name: Set up Python 3.11
+        run: uv python install '3.11'
 
-      - name: Run pytest
-        run: uv run pytest
+      - name: Build package
+        run: uv build
 
-  release:
-    name: Create Release
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
     runs-on: ubuntu-latest
-    needs: test
-
-    strategy:
-      matrix:
-        python-versions: ["3.11"]
-
-    permissions:
-      contents: write  # needed by action-gh-release
-
+    environment:
+      name: pypi
+      url: https://pypi.org/project/oda_data
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
 
-      - name: Extract version from tag
-        id: tag_name
-        run: echo "current_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-        shell: bash
-
-      - name: Set up uv (and Python)
-        uses: astral-sh/setup-uv@v6
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
         with:
-          python-version: ${{ matrix.python-versions }}
+          name: dist
+          path: dist/
 
-      - name: Build sdist and wheel (uv)
-        run: uv build --no-sources
-
-      - name: Show dist/
-        run: ls -l dist
-
-      - name: Publish to PyPI (uv)
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI
         run: uv publish

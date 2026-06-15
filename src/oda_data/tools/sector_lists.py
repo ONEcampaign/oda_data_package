@@ -113,7 +113,7 @@ refugees = [*list(range(930 * 100, 931 * 100)), 930]
 unspecified = [*list(range(998 * 100, 999 * 100)), 998, 99810, 99820]
 
 
-def get_sector_groups():
+def get_sector_groups() -> dict[str, list[int]]:
     return {
         "Education": edu,
         "Education, Level Unspecified": edu_unspecified,
@@ -188,7 +188,7 @@ def get_sector_groups():
     }
 
 
-def get_broad_sector_groups():
+def get_broad_sector_groups() -> dict[str, str]:
     return {
         "Education, Level Unspecified": "Education",
         "Basic Education": "Education",

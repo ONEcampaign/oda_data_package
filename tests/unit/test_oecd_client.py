@@ -577,7 +577,7 @@ class TestOECDClientClassMethods:
 
         assert isinstance(indicators, dict)
         # Each indicator should have name, description, sources
-        for _code, info in indicators.items():
+        for info in indicators.values():
             assert "name" in info or "description" in info or "sources" in info
 
     def test_arguments_property_returns_dict(self):

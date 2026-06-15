@@ -50,6 +50,7 @@ print(data.head())
 ```
 
 **Output:**
+
 ```
    donor_code   donor_name  year      value
 0       20000  DAC Members  2020  183776.35
@@ -58,7 +59,7 @@ print(data.head())
 ```
 
 !!! note "Understanding the Data"
-    The data includes values in millions of USD (current prices) by default. This is indicated by the `unit_multiplier` column (typically '6'). For example, a value of 3245.68 with unit_multiplier '6' means $3.246 billion.
+The data includes values in millions of USD (current prices) by default. This is indicated by the `unit_multiplier` column (typically '6'). For example, a value of 3245.68 with unit_multiplier '6' means $3.246 billion.
 
 ### Example 2: Filter by Specific Donors
 
@@ -78,6 +79,7 @@ print(data[["donor_code", "year", "value"]])
 ```
 
 **Output:**
+
 ```
    donor_code  year      value
 0           4  2021   10312.19
@@ -87,7 +89,7 @@ print(data[["donor_code", "year", "value"]])
 ```
 
 !!! note "Values in Millions"
-    The values shown are in millions of USD (unit_multiplier='6'). To get actual amounts, multiply by 1,000,000.
+The values shown are in millions of USD (unit_multiplier='6'). To get actual amounts, multiply by 1,000,000.
 
 ## What's Next?
 
@@ -135,8 +137,8 @@ print(f"Available currencies: {currencies}")
 ```
 
 !!! tip "Currency Codes"
-    - **USD**: United States Dollars (default)
-    - **EUR**: Euros
-    - **GBP**: British Pounds
-    - **CAD**: Canadian Dollars
-    - **LCU**: Local Currency Units (donor's own currency)
+\- **USD**: United States Dollars (default)
+\- **EUR**: Euros
+\- **GBP**: British Pounds
+\- **CAD**: Canadian Dollars
+\- **LCU**: Local Currency Units (donor's own currency)

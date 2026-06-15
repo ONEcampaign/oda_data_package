@@ -4,7 +4,7 @@ from oda_data.indicators.dac2a.common import aid_type
 from oda_data.indicators.indicator import SEPARATOR, Indicator
 
 
-def dac2a_oecd_indicators():
+def dac2a_oecd_indicators() -> dict[str, dict]:
     """Generate a json file which defines the DAC1 indicator codes, and the filtering process
     to generate them."""
 

@@ -18,7 +18,7 @@ def one_bilateral_plus_imputed() -> Indicator:
     )
 
 
-def dac2a_one_indicators():
+def dac2a_one_indicators() -> dict[str, dict]:
     """Generate a json file which defines the DAC2a indicator codes, and the filtering process
     to generate them."""
 

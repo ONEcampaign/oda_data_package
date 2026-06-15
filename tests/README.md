@@ -125,6 +125,7 @@ Integration tests validate complete workflows with multiple components:
 ### Slow Tests
 
 Some tests are marked as `@pytest.mark.slow` because they:
+
 - Manipulate time using freezegun
 - Perform file I/O operations
 - Test concurrent access with threading
@@ -167,6 +168,7 @@ test_<function_or_method>_<scenario>_<expected_outcome>
 ```
 
 Examples:
+
 - `test_validate_currency_invalid_currency_raises_value_error`
 - `test_clean_column_name_camelcase_returns_snake_case`
 - `test_bulk_cache_manager_ensure_uses_cache_when_fresh`
@@ -248,6 +250,7 @@ pytest -l  # Show local variables in tracebacks
 ## 📈 Coverage Goals
 
 Current coverage targets:
+
 - **Overall**: 70-85% (meaningful coverage, not 100%)
 - **Priority modules**: 80%+ coverage
   - `tools/cache.py`
@@ -256,6 +259,7 @@ Current coverage targets:
   - `api/oecd.py`
 
 Coverage reports exclude:
+
 - `__init__.py` files
 - `config.py`
 - `logger.py`
@@ -298,9 +302,10 @@ pip install -e .
 ### Fixture Not Found
 
 Fixtures must be either:
+
 1. Defined in `conftest.py` (available to all tests)
-2. Defined in the same test file
-3. Imported from pytest fixtures
+1. Defined in the same test file
+1. Imported from pytest fixtures
 
 ### Slow Test Execution
 
@@ -316,6 +321,6 @@ Or skip slow tests during development:
 pytest -m "not slow"
 ```
 
----
+______________________________________________________________________
 
 **Last Updated**: 2025-10-16

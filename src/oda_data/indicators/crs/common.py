@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -9,13 +10,13 @@ from oda_data.clean_data.schema import ODASchema
 from oda_data.config import ODAPaths
 
 
-def load_json(file_path: str) -> dict:
+def load_json(file_path: str | Path) -> dict:
     """Load a JSON file and return its content."""
     with open(file_path) as f:
         return json.load(f)
 
 
-def save_json(data: dict, file_path: str) -> None:
+def save_json(data: dict, file_path: str | Path) -> None:
     """Save a dictionary to a JSON file."""
     with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
@@ -25,8 +26,8 @@ def create_mapping_file(
     crs: pd.DataFrame,
     column: str,
     mapping_func: Callable[[Any], dict[str, Any]],
-    output_file: str,
-    fill_value: Any = None,
+    output_file: str | Path,
+    fill_value: object = None,
 ) -> None:
     """Generate a mapping file from a CRS DataFrame.
 
@@ -61,7 +62,7 @@ def generate_crs_type_of_flow_mapping(crs: pd.DataFrame) -> None:
     """Generate a mapping of CRS flow types to category names."""
     flow_types = load_json(ODAPaths.settings / "flow_types.json")
 
-    def mapping_func(category):
+    def mapping_func(category: int | str) -> dict[str, int | str]:
         return {
             "code": int(category),
             "name": flow_types[str(int(category))],

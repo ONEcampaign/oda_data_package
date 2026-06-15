@@ -29,7 +29,7 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _rolling_period_total(df: pd.DataFrame, period_length=3) -> pd.DataFrame:
+def _rolling_period_total(df: pd.DataFrame, period_length: int = 3) -> pd.DataFrame:
     """Calculate a rolling total of Y period length"""
     values = list(crs_value_cols().values())
     cols = [c for c in df.columns if c not in [ODASchema.YEAR, *values]]

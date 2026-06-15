@@ -7,7 +7,7 @@ http/raw caches into a single Scope-keyed view.
 import contextlib
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from oda_data.cache.config import oda_data_cache_root
 from oda_data.cache.types import CacheRecord, Scope, _validate_scope
@@ -24,7 +24,7 @@ _SCOPE_SUBDIR: dict[str, str] = {
     "query": "query_cache",
 }
 # All concrete scopes (never "all") — immutable constant, not rebuilt on each call.
-_ALL_SCOPES: tuple[str, ...] = ("bulk", "query", "http", "raw")
+_ALL_SCOPES: tuple[Scope, ...] = ("bulk", "query", "http", "raw")
 
 # ── Per-scope enable/disable flags ──────────────────────────────────────────
 _SCOPE_ENABLED: dict[str, bool] = {
@@ -144,13 +144,13 @@ def entries() -> dict[Scope, list[CacheRecord]]:
                             size_bytes=st.st_size,
                             age_days=round(age_days, 3),
                             version="",
-                            scope=scope_name,  # type: ignore[arg-type]
+                            scope=scope_name,
                         )
                     )
                 except OSError:
                     pass
 
-        result[scope_name] = scope_records  # type: ignore[index]
+        result[scope_name] = scope_records
 
     return result
 
@@ -186,15 +186,16 @@ def clear(scope: Scope = "all", *, blocking: bool = True) -> dict[Scope, int | N
 
     for s in scopes_to_clear:
         count = _clear_one_scope(s, blocking=blocking)
-        result[s] = count  # type: ignore[index]
+        result[s] = count
 
     # clear("all") must leave nothing behind under the oda-reader sub-tree;
     # sweep extras (e.g. dataframes) and fold their count into "raw" so the
     # public return type stays unchanged.
     if scope == "all":
         extra = _clear_oda_reader_extra_subdirs()
-        if extra and isinstance(result.get("raw"), int):
-            result["raw"] = result["raw"] + extra  # type: ignore[operator]
+        raw_count = result.get("raw")
+        if extra and isinstance(raw_count, int):
+            result["raw"] = raw_count + extra
 
     return result
 
@@ -304,7 +305,7 @@ def size() -> dict[Scope, int]:
             d = oda_data_dir / _SCOPE_SUBDIR[s]
         else:
             d = reader_dir / _ODA_READER_SUBDIR[s]
-        result[s] = _dir_size(d)  # type: ignore[index]
+        result[s] = _dir_size(d)
 
     if not _WARNED_STALE_5GB:
         total = _stale_total_bytes(root)
@@ -385,9 +386,12 @@ def invalidate(dataset: "type[Source] | str") -> None:
     _invalidate_query_entries(name)
 
 
-def _all_source_subclasses(base: type) -> list[type]:
+_T = TypeVar("_T")
+
+
+def _all_source_subclasses(base: type[_T]) -> list[type[_T]]:
     """Recursively collect all concrete subclasses of *base*."""
-    result = []
+    result: list[type[_T]] = []
     for sub in base.__subclasses__():
         result.append(sub)
         result.extend(_all_source_subclasses(sub))

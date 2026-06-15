@@ -8,7 +8,7 @@ from oda_data.indicators.dac1.common import (
 from oda_data.indicators.indicator import SEPARATOR, Indicator
 
 
-def dac1_oecd_indicators():
+def dac1_oecd_indicators() -> dict[str, dict]:
     """Generate a json file which defines the DAC1 indicator codes, and the filtering process
     to generate them."""
 
@@ -29,7 +29,7 @@ def dac1_oecd_indicators():
         indicator_ = Indicator(
             code=f"{dac1_base}{SEPARATOR}{flow}{SEPARATOR}{aid}",
             name=f"{aid_names[aid]}",
-            description=f"{dac1_base} data for {aid_names[aid]} [{flow_names[flow]}]",
+            description=f"{dac1_base} data for {aid_names[aid]} [{flow_names[int(flow)]}]",
             sources=["DAC1"],
             type="DAC",
             filters={"DAC1": {"aidtype_code": ("==", aid)}},

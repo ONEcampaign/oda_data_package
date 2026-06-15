@@ -151,6 +151,13 @@ dmypy.json
 dev_tests.py
 
 CLAUDE.md
+AGENTS.md
 /.raw_data
 /src/oda_data/.raw_data
 /.claude
+
+# Ruff
+.ruff_cache/
+
+# Test pollution: some tests write to a MagicMock's stringified attribute path
+MagicMock/

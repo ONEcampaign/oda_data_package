@@ -4,11 +4,11 @@ This page covers how `oda_data` manages its cache from version 2.6 onward. For
 quick recovery commands, skip to [Recovery from a corrupt cache](#recovery-from-a-corrupt-cache).
 
 !!! info "Pre-2.6 users"
-    The 2.6 release reorganises the cache layout, splits responsibility between
-    `oda_data` and `oda_reader`, and replaces the legacy `set_data_path()` /
-    `clear_cache()` helpers with a typed `oda_data.cache.*` namespace. Existing
-    caches are migrated automatically on the first call after upgrade — see
-    [Migration from older versions](#migration-from-older-versions).
+The 2.6 release reorganises the cache layout, splits responsibility between
+`oda_data` and `oda_reader`, and replaces the legacy `set_data_path()` /
+`clear_cache()` helpers with a typed `oda_data.cache.*` namespace. Existing
+caches are migrated automatically on the first call after upgrade — see
+[Migration from older versions](#migration-from-older-versions).
 
 ## Overview
 
@@ -32,7 +32,7 @@ version-segmented so that installs of different `oda_data` versions use
 separate directories automatically.
 
 | OS      | Default cache root                                                 |
-|---------|--------------------------------------------------------------------|
+| ------- | ------------------------------------------------------------------ |
 | macOS   | `~/Library/Caches/oda-data/<version>/`                             |
 | Linux   | `~/.cache/oda-data/<version>/`                                     |
 | Windows | `C:\Users\<user>\AppData\Local\oda-data\oda-data\Cache\<version>\` |
@@ -40,7 +40,7 @@ separate directories automatically.
 Inside that root, four subdirectories hold the respective cache scopes:
 
 | Subdirectory   | Scope   | Contents                                          |
-|----------------|---------|---------------------------------------------------|
+| -------------- | ------- | ------------------------------------------------- |
 | `bulk_cache/`  | `bulk`  | Cleaned parquet files extracted from OECD zips    |
 | `query_cache/` | `query` | Filter-specific parquet slices                    |
 | `http/`        | `http`  | HTTP-level response cache (managed by oda_reader) |
@@ -160,12 +160,12 @@ either the class itself or its name as an exact-match string (case-sensitive).
 Raises `ValueError` for unrecognised names.
 
 !!! warning "Blocking semantics"
-    `cache.invalidate` acquires the bulk and query write locks (60-second
-    timeout each) so the unlink sequence cannot race with concurrent writers.
-    Do not call `cache.invalidate` from inside a `BulkCacheManager` or
-    `QueryCacheManager` write context — the caller would deadlock against
-    itself. On `filelock.Timeout`, retry after the current writer completes;
-    persistent timeouts may require a manual `cache.clear()`.
+`cache.invalidate` acquires the bulk and query write locks (60-second
+timeout each) so the unlink sequence cannot race with concurrent writers.
+Do not call `cache.invalidate` from inside a `BulkCacheManager` or
+`QueryCacheManager` write context — the caller would deadlock against
+itself. On `filelock.Timeout`, retry after the current writer completes;
+persistent timeouts may require a manual `cache.clear()`.
 
 ```python
 from oda_data import cache, CRSData
@@ -190,13 +190,13 @@ cache.enable_cache("bulk")    # restore normal behaviour
 ```
 
 !!! note "Coupled http/raw toggle"
-    `"http"` and `"raw"` share a single underlying enable/disable toggle managed
-    by `oda_reader`. Enabling or disabling either scope toggles both: for
-    example, `cache.disable_cache("http")` will also disable `"raw"`, and vice
-    versa. `oda_data` mirrors this coupling in its own per-scope flags so
-    `is_scope_enabled` reports a consistent state on both sides. To toggle only
-    the `oda_data`-owned scopes without affecting `oda_reader`, use `"bulk"` or
-    `"query"` explicitly.
+`"http"` and `"raw"` share a single underlying enable/disable toggle managed
+by `oda_reader`. Enabling or disabling either scope toggles both: for
+example, `cache.disable_cache("http")` will also disable `"raw"`, and vice
+versa. `oda_data` mirrors this coupling in its own per-scope flags so
+`is_scope_enabled` reports a consistent state on both sides. To toggle only
+the `oda_data`-owned scopes without affecting `oda_reader`, use `"bulk"` or
+`"query"` explicitly.
 
 ### `cache.migrate(*, force=False) -> list[MigrationResult]`
 
@@ -212,13 +212,13 @@ for r in results:
 
 ### Scope reference
 
-| Scope   | Owner        | What it holds                                                              |
-|---------|--------------|----------------------------------------------------------------------------|
-| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`.   |
-| `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                       |
-| `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                    |
-| `http`  | `oda_reader` | HTTP-level response cache.                                                 |
-| `raw`   | `oda_reader` | Raw OECD zip archives before extraction.                                   |
+| Scope   | Owner        | What it holds                                                            |
+| ------- | ------------ | ------------------------------------------------------------------------ |
+| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`. |
+| `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                     |
+| `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                  |
+| `http`  | `oda_reader` | HTTP-level response cache.                                               |
+| `raw`   | `oda_reader` | Raw OECD zip archives before extraction.                                 |
 
 When troubleshooting corrupt downloads, start with `cache.clear("raw")` — it
 removes the raw zip archives without touching the cleaned parquet files.
@@ -344,12 +344,12 @@ Write coordination:
   attempted.
 
 !!! note "Crash recovery"
-    If a process is SIGKILLed mid-write, the incomplete file is left at a
-    `.tmp-<host>-<pid>` path. On the next `CacheManager` initialisation
-    (which happens at the start of every read session), any `*.tmp-*` file
-    with an mtime older than 24 hours is automatically removed. The `<host>`
-    component in the suffix prevents PID collisions on NFS or other shared
-    mounts across multiple machines.
+If a process is SIGKILLed mid-write, the incomplete file is left at a
+`.tmp-<host>-<pid>` path. On the next `CacheManager` initialisation
+(which happens at the start of every read session), any `*.tmp-*` file
+with an mtime older than 24 hours is automatically removed. The `<host>`
+component in the suffix prevents PID collisions on NFS or other shared
+mounts across multiple machines.
 
 ## Standalone `oda_reader` users
 
@@ -372,12 +372,12 @@ These functions are fully functional and will not be removed until
 emits a one-time `DeprecationWarning` (once per function per session)
 directing you to the equivalent `oda_data.cache.*` call:
 
-| Legacy call                         | `oda_data` equivalent                    |
-|-------------------------------------|------------------------------------------|
-| `oda_reader.set_cache_dir(path)`    | `oda_data.set_cache_root(path)`          |
-| `oda_reader.clear_cache()`          | `oda_data.cache.clear("all")`            |
-| `oda_reader.enable_cache()`         | `oda_data.cache.enable_cache("all")`     |
-| `oda_reader.disable_cache()`        | `oda_data.cache.disable_cache("all")`    |
+| Legacy call                      | `oda_data` equivalent                 |
+| -------------------------------- | ------------------------------------- |
+| `oda_reader.set_cache_dir(path)` | `oda_data.set_cache_root(path)`       |
+| `oda_reader.clear_cache()`       | `oda_data.cache.clear("all")`         |
+| `oda_reader.enable_cache()`      | `oda_data.cache.enable_cache("all")`  |
+| `oda_reader.disable_cache()`     | `oda_data.cache.disable_cache("all")` |
 
 Standalone `oda_reader` users who do **not** also import `oda_data` will never
 see these warnings. The shims are preserved through `oda_reader 1.x` and
@@ -389,11 +389,11 @@ For `oda_data` users who relied on the v1.x / early-v2.x top-level helpers, the
 following names continue to work and are now thin wrappers over the
 `cache.*` API:
 
-| Top-level call          | New equivalent                       |
-|-------------------------|--------------------------------------|
-| `clear_cache()`         | `cache.clear("all")`                 |
-| `enable_cache()`        | `cache.enable_cache("all")`          |
-| `disable_cache()`       | `cache.disable_cache("all")`         |
+| Top-level call    | New equivalent               |
+| ----------------- | ---------------------------- |
+| `clear_cache()`   | `cache.clear("all")`         |
+| `enable_cache()`  | `cache.enable_cache("all")`  |
+| `disable_cache()` | `cache.disable_cache("all")` |
 
 Prefer the `cache.*` namespace in new code — it is scope-aware and returns
 structured results.

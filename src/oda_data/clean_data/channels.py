@@ -3,6 +3,7 @@ import string
 
 import numpy as np
 import pandas as pd
+from pandas.api.typing import NAType
 from thefuzz import process
 
 from oda_data.clean_data.schema import ODASchema
@@ -51,7 +52,7 @@ ADDITIONAL_PATTERNS: dict[str, int] = {
     r"\bsdg \b": 41402,
     r"\bmontreal fund\b": 47078,
     r"\bspecial climate change fund\b": 47130,
-    r"\devlopment programme\b": 41114,
+    r"\bdevelopment programme\b": 41114,
     r"\bfund for special operations (fso)\b": 46013,
 }
 
@@ -155,7 +156,7 @@ def _direct_match_name(
     channels_dict: dict[str, int],
     names_column: str = "clean_channel",
     target_column: str = "channel_code",
-):
+) -> pd.DataFrame:
     """Directly match channel names to channel codes.
 
     Args:
@@ -174,7 +175,9 @@ def _direct_match_name(
     )
 
 
-def _fuzzy_match_name(name: str, channels_dict: dict[str, int], tolerance: int = 90):
+def _fuzzy_match_name(
+    name: str, channels_dict: dict[str, int], tolerance: int = 90
+) -> int | NAType:
     """Fuzzy match a channel name to a channel code.
 
     Args:
@@ -203,7 +206,7 @@ def _apply_fuzzy_match(
     df: pd.DataFrame,
     mapping_dictionaries: list[tuple[dict[str, int], int]],
     names_column: str = "clean_channel",
-):
+) -> pd.DataFrame:
     """Apply a fuzzy match the names in a dataframe using one or more mapping
     dictionaries.
 
@@ -458,7 +461,7 @@ def regex_to_code_dictionary(
     )
 
 
-def _regex_match_channel_name_to_code(channel: str, regex_dict: dict):
+def _regex_match_channel_name_to_code(channel: str, regex_dict: dict) -> int | NAType:
     """Helper function to match a channel name to a channel code.
 
     Args:

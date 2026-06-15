@@ -67,4 +67,9 @@ def _validate_scope(scope: object) -> Scope:
     """
     if scope not in _SCOPE_VALUES:
         raise ValueError(f"Unknown scope {scope!r}; expected one of {_SCOPE_VALUES}")
-    return scope  # type: ignore[return-value]
+    # _SCOPE_VALUES is exactly the Scope literals; the membership check above
+    # guarantees scope is one of them, but the type checker cannot prove that
+    # `tuple[str, ...]` membership implies `Scope`.  The cast is safe.
+    from typing import cast
+
+    return cast("Scope", scope)
