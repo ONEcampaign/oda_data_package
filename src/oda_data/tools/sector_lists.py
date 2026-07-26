@@ -190,10 +190,12 @@ def get_sector_groups() -> dict[str, list[int]]:
 
 def get_broad_sector_groups() -> dict[str, str]:
     return {
+        "Education": "Education",
         "Education, Level Unspecified": "Education",
         "Basic Education": "Education",
         "Secondary Education": "Education",
         "Post-Secondary Education": "Education",
+        "Health": "Health",
         "Health, General": "Health",
         "Basic Health": "Health",
         "Non-communicable diseases (NCDs)": "Health",
