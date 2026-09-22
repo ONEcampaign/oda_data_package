@@ -308,6 +308,17 @@ class DACSource(Source):
             )
             self.de_sectors = check_strings(sectors)
 
+    def _extra_hash_components(self) -> list[tuple]:
+        """Extra (name, predicate, value) tuples folded into the cache-key hash.
+
+        They bypass the read-filter path, never reaching a parquet predicate
+        or a query string. Folding them into the hash lets a constructor
+        flag that changes row-level behaviour, without being expressed as a
+        filter tuple, still produce a different cache key. Subclasses
+        override this; the default is a no-op.
+        """
+        return []
+
     def _get_filtered_download_filters(self) -> dict:
         """Generates a dictionary of filters for downloading the dataset.
 
@@ -438,7 +449,9 @@ class DACSource(Source):
         """
         # Create filters and generate cache key
         filters = self._get_read_filters(additional_filters=additional_filters)
-        param_hash = generate_param_hash(filters if filters else [])
+        param_hash = generate_param_hash(
+            (filters if filters else []) + self._extra_hash_components()
+        )
 
         # When refresh=True, skip the upper cache tiers entirely so the bulk
         # fetcher's refresh=True actually re-downloads and the upper tiers see
@@ -640,6 +653,7 @@ class CRSData(DACSource):
         years: list[int] | range | int | None = None,
         providers: list[int] | int | None = None,
         recipients: list[int] | int | None = None,
+        exclude_multilateral_core: bool = True,
     ) -> None:
         """
         Initialize CRSData.
@@ -648,9 +662,17 @@ class CRSData(DACSource):
             years (list[int] | range): List or range of years to filter.
             providers (Optional[list[int]]): List of provider codes.
             recipients (Optional[list[int]]): List of recipient codes.
+            exclude_multilateral_core (bool): Whether to exclude CRS rows that report
+                a donor's core (unearmarked) contribution to a multilateral
+                organisation (``bi_multi == 2``). The OECD's CRS changelog states
+                these rows must be excluded to avoid double-counting bilateral
+                flows. Defaults to True. Rows with a missing ``bi_multi`` value
+                are always kept. Pass False to get the raw CRS totals including
+                those core-contribution rows.
         """
         super().__init__()
         self._init_filters(years=years, providers=providers, recipients=recipients)
+        self.exclude_multilateral_core = exclude_multilateral_core
         self._param_hash = None
 
     def _create_bulk_fetcher(self) -> Callable[[Path], None]:
@@ -659,6 +681,55 @@ class CRSData(DACSource):
         CRS bulk is downloaded as a zip file containing parquet.
         """
         return create_crs_bulk_fetcher()
+
+    def _extra_hash_components(self) -> list[tuple]:
+        return [("exclude_multilateral_core", "==", self.exclude_multilateral_core)]
+
+    def _exclude_core_contributions(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Drop rows reporting a donor's core contribution to a multilateral organisation.
+
+        No-op when ``exclude_multilateral_core`` is False, or when the ``bi_multi``
+        column isn't present (e.g. it was excluded from a column projection).
+        Rows with a missing ``bi_multi`` value are kept. A plain ``!= 2`` filter
+        would drop them, since a null comparison is null rather than true.
+        """
+        if not self.exclude_multilateral_core:
+            return df
+        column = self.schema.BI_MULTI
+        if column not in df.columns:
+            return df
+        return df.loc[(df[column] != 2) | df[column].isna()].reset_index(drop=True)
+
+    def _fetch_from_bulk_cache(
+        self,
+        filters: list[tuple] | None,
+        columns: list | None,
+        *,
+        refresh: bool = False,
+    ) -> pd.DataFrame:
+        """Read from the bulk cache, then apply the core-contribution exclusion.
+
+        ``bi_multi`` is read even when not in the requested ``columns``, so the
+        exclusion can be applied before column projection, then dropped again if
+        the caller didn't ask for it.
+        """
+        read_columns = columns
+        added_bi_multi = False
+        if (
+            self.exclude_multilateral_core
+            and columns is not None
+            and self.schema.BI_MULTI not in columns
+        ):
+            read_columns = [*columns, self.schema.BI_MULTI]
+            added_bi_multi = True
+
+        df = super()._fetch_from_bulk_cache(filters, read_columns, refresh=refresh)
+        df = self._exclude_core_contributions(df)
+
+        if added_bi_multi:
+            df = df.drop(columns=[self.schema.BI_MULTI])
+
+        return df
 
     def download(self) -> pd.DataFrame:
         """Downloads CRS data via API (filtered query).
@@ -672,7 +743,7 @@ class CRSData(DACSource):
             filters=self._get_filtered_download_filters(),
         )
         logger.info("CRS data downloaded successfully.")
-        return clean_raw_df(df)
+        return self._exclude_core_contributions(clean_raw_df(df))
 
 
 class MultiSystemData(DACSource):

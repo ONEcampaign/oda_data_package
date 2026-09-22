@@ -602,6 +602,214 @@ class TestCRSDataInitialization:
             mock_download_crs.assert_called_once()
             mock_clean.assert_called_once()
 
+    def test_crs_data_exclude_multilateral_core_defaults_true(self):
+        """Test exclude_multilateral_core defaults to True."""
+        source = CRSData(years=[2020])
+
+        assert source.exclude_multilateral_core is True
+
+    def test_crs_data_exclude_multilateral_core_can_be_disabled(self):
+        """Test exclude_multilateral_core can be set to False."""
+        source = CRSData(years=[2020], exclude_multilateral_core=False)
+
+        assert source.exclude_multilateral_core is False
+
+
+class TestCRSDataExcludeCoreContributions:
+    """Tests for CRSData's bi_multi == 2 exclusion (issue #164)."""
+
+    @staticmethod
+    def _mixed_bi_multi_df() -> pd.DataFrame:
+        """A frame with core-contribution rows, ordinary rows, and a null."""
+        return pd.DataFrame(
+            {
+                ODASchema.YEAR: [2020, 2020, 2020, 2020],
+                ODASchema.PROVIDER_CODE: [1, 1, 1, 1],
+                ODASchema.BI_MULTI: [1, 2, 2, None],
+                ODASchema.VALUE: [10.0, 20.0, 30.0, 40.0],
+            }
+        )
+
+    def test_exclude_core_contributions_drops_bi_multi_2_by_default(self):
+        """bi_multi == 2 rows are dropped when the flag defaults to True."""
+        source = CRSData(years=[2020])
+
+        result = source._exclude_core_contributions(self._mixed_bi_multi_df())
+
+        assert set(result[ODASchema.BI_MULTI].dropna()) == {1}
+        assert len(result) == 2  # the bi_multi==1 row and the null row
+
+    def test_exclude_core_contributions_keeps_null_bi_multi(self):
+        """Rows with a missing bi_multi value are never dropped."""
+        source = CRSData(years=[2020])
+
+        result = source._exclude_core_contributions(self._mixed_bi_multi_df())
+
+        assert result[ODASchema.BI_MULTI].isna().sum() == 1
+
+    def test_exclude_core_contributions_noop_when_flag_false(self):
+        """Passing exclude_multilateral_core=False keeps bi_multi == 2 rows."""
+        source = CRSData(years=[2020], exclude_multilateral_core=False)
+
+        result = source._exclude_core_contributions(self._mixed_bi_multi_df())
+
+        assert len(result) == 4
+        assert (result[ODASchema.BI_MULTI] == 2).sum() == 2
+
+    def test_exclude_core_contributions_noop_without_bi_multi_column(self):
+        """No-op when bi_multi isn't present (e.g. dropped by column projection)."""
+        source = CRSData(years=[2020])
+        df = pd.DataFrame({ODASchema.YEAR: [2020], ODASchema.VALUE: [10.0]})
+
+        result = source._exclude_core_contributions(df)
+
+        assert len(result) == 1
+
+    @patch("oda_data.api.sources.download_crs")
+    def test_download_excludes_bi_multi_2_by_default(self, mock_download_crs):
+        """The API (download()) path excludes bi_multi == 2 rows by default."""
+        mock_download_crs.return_value = pd.DataFrame(
+            {
+                "Year": [2020, 2020, 2020],
+                "DonorCode": [1, 1, 1],
+                "BiMulti": [1, 2, None],
+                "Value": [10.0, 20.0, 30.0],
+            }
+        )
+
+        source = CRSData(years=[2020])
+        result = source.download()
+
+        assert 2 not in result[ODASchema.BI_MULTI].dropna().tolist()
+        assert result[ODASchema.BI_MULTI].isna().sum() == 1
+
+    @patch("oda_data.api.sources.download_crs")
+    def test_download_keeps_bi_multi_2_when_flag_false(self, mock_download_crs):
+        """The API (download()) path keeps bi_multi == 2 rows when disabled."""
+        mock_download_crs.return_value = pd.DataFrame(
+            {
+                "Year": [2020, 2020],
+                "DonorCode": [1, 1],
+                "BiMulti": [1, 2],
+                "Value": [10.0, 20.0],
+            }
+        )
+
+        source = CRSData(years=[2020], exclude_multilateral_core=False)
+        result = source.download()
+
+        assert 2 in result[ODASchema.BI_MULTI].tolist()
+
+    @patch("oda_data.api.sources.create_crs_bulk_fetcher")
+    @patch("oda_data.api.sources.pd.read_parquet")
+    def test_bulk_path_excludes_bi_multi_2_by_default(
+        self,
+        mock_read_parquet,
+        mock_create_fetcher,
+        temp_cache_dir,
+        mock_bulk_fetcher,
+    ):
+        """The bulk-cache path excludes bi_multi == 2 rows, keeping nulls."""
+        with patch("oda_data.api.sources.ODAPaths") as mock_paths:
+            mock_paths.raw_data = temp_cache_dir
+            mock_paths.cache_root = temp_cache_dir
+
+            mock_create_fetcher.return_value = mock_bulk_fetcher
+            mock_read_parquet.return_value = self._mixed_bi_multi_df()
+
+            source = CRSData(years=[2020])
+            source.memory_cache.clear()
+
+            result = source.read(using_bulk_download=True)
+
+            assert 2 not in result[ODASchema.BI_MULTI].dropna().tolist()
+            assert result[ODASchema.BI_MULTI].isna().sum() == 1
+            assert len(result) == 2
+
+    @patch("oda_data.api.sources.create_crs_bulk_fetcher")
+    @patch("oda_data.api.sources.pd.read_parquet")
+    def test_bulk_path_reads_bi_multi_even_when_not_in_requested_columns(
+        self,
+        mock_read_parquet,
+        mock_create_fetcher,
+        temp_cache_dir,
+        mock_bulk_fetcher,
+    ):
+        """bi_multi is read (and dropped again) even for a column-projected read."""
+        with patch("oda_data.api.sources.ODAPaths") as mock_paths:
+            mock_paths.raw_data = temp_cache_dir
+            mock_paths.cache_root = temp_cache_dir
+
+            mock_create_fetcher.return_value = mock_bulk_fetcher
+            mock_read_parquet.return_value = self._mixed_bi_multi_df()
+
+            source = CRSData(years=[2020])
+            source.memory_cache.clear()
+
+            result = source.read(
+                using_bulk_download=True,
+                columns=[ODASchema.YEAR, ODASchema.VALUE],
+            )
+
+            # bi_multi was used to filter, then dropped from the projection
+            assert ODASchema.BI_MULTI not in result.columns
+            assert len(result) == 2
+
+            # pyarrow read was asked to project bi_multi alongside the requested columns
+            _, kwargs = mock_read_parquet.call_args
+            assert ODASchema.BI_MULTI in kwargs["columns"]
+
+    def test_bulk_and_api_paths_agree_given_the_same_raw_rows(
+        self, temp_cache_dir, mock_bulk_fetcher
+    ):
+        """The bulk and API paths exclude the same rows given identical raw data."""
+        raw = self._mixed_bi_multi_df()
+
+        with (
+            patch("oda_data.api.sources.ODAPaths") as mock_paths,
+            patch(
+                "oda_data.api.sources.create_crs_bulk_fetcher"
+            ) as mock_create_fetcher,
+            patch("oda_data.api.sources.pd.read_parquet") as mock_read_parquet,
+        ):
+            mock_paths.raw_data = temp_cache_dir
+            mock_paths.cache_root = temp_cache_dir
+            mock_create_fetcher.return_value = mock_bulk_fetcher
+            mock_read_parquet.return_value = raw.copy()
+
+            bulk_source = CRSData(years=[2020])
+            bulk_source.memory_cache.clear()
+            bulk_result = bulk_source.read(using_bulk_download=True)
+
+        api_source = CRSData(years=[2020])
+        api_result = api_source._exclude_core_contributions(raw.copy())
+
+        assert sorted(bulk_result[ODASchema.VALUE].tolist()) == sorted(
+            api_result[ODASchema.VALUE].tolist()
+        )
+
+    def test_cache_key_differs_by_exclude_multilateral_core_flag(self):
+        """The cache-key hash differs between the two flag values."""
+        from oda_data.tools.cache import generate_param_hash
+
+        source_default = CRSData(years=[2020])
+        source_disabled = CRSData(years=[2020], exclude_multilateral_core=False)
+
+        hash_default = generate_param_hash(
+            (source_default.filters or []) + source_default._extra_hash_components()
+        )
+        hash_disabled = generate_param_hash(
+            (source_disabled.filters or []) + source_disabled._extra_hash_components()
+        )
+
+        assert hash_default != hash_disabled
+
+    def test_extra_hash_components_default_is_noop_on_dac_source(self):
+        """Other DACSource subclasses don't gain a bi_multi hash component."""
+        source = DAC1Data(years=[2020])
+
+        assert source._extra_hash_components() == []
+
 
 class TestMultiSystemDataInitialization:
     """Tests for MultiSystemData initialization."""

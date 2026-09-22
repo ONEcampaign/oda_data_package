@@ -113,6 +113,14 @@ imputed_multilateral_by_purpose(
 )
 ```
 
+!!! note "Core Contributions Are Excluded from the Multilateral Spending Shares"
+The multilateral spending shares this function imputes onto are built from CRS
+data via `spending_by_purpose`, which excludes CRS rows reporting a donor's
+core contribution to a multilateral organization (`bi_multi == 2`) by default.
+Those core contributions are already the input on the other side of the
+imputation (`core_multilateral_contributions_by_provider`, from MultiSystem
+data). Including them again here would double count them.
+
 ### Complete Sectoral Analysis
 
 Combine bilateral and imputed multilateral aid for total sectoral spending:

@@ -151,6 +151,14 @@ The Creditor Reporting System (CRS) contains detailed, project-level ODA data in
 !!! warning "CRS Data Size"
 CRS is a very large dataset. Always use bulk downloads and filter aggressively to manage data size.
 
+!!! note "Core Contributions to Multilaterals Are Excluded by Default"
+`CRSData` excludes rows where `bi_multi == 2` (a donor's core, unearmarked
+contribution to a multilateral organization) from every read, whether bulk,
+cached, or via the API. Excluding them avoids double-counting, since
+`imputed_multilateral_by_purpose` redistributes the same core contributions
+separately, via MultiSystem data. Pass
+`CRSData(..., exclude_multilateral_core=False)` to include them.
+
 ### Basic Usage
 
 ```python title="Download CRS Data (Always Use Bulk)"
