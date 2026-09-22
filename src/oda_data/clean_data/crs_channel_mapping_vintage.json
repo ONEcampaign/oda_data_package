@@ -1,0 +1,8 @@
+{
+  "source": "resolvekit_bundled_snapshot",
+  "resolvekit_snapshot_version": 1,
+  "oecd_query_date": "2026-06-15",
+  "oecd_source_url": "https://development-finance-codelists.oecd.org/CodesList.aspx",
+  "refreshed_at": "2026-09-22T16:31:23.689725+00:00",
+  "channel_count": 446
+}

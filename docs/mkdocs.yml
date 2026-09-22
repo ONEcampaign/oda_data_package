@@ -12,6 +12,7 @@ nav:
       - Accessing Raw Data: data-sources.md
   - Advanced Topics:
       - Sector Imputations: sector-imputations.md
+      - Imputation Delta: imputation-delta.md
       - AidData Integration: aiddata.md
       - Cache Management: caching.md
       - Migration from v1.x: migration.md

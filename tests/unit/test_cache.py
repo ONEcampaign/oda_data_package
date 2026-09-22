@@ -8,6 +8,7 @@ This module tests the 3-tier caching system in oda_data.tools.cache, including:
 - Hash generation utilities
 """
 
+import logging
 import threading
 import time
 from pathlib import Path
@@ -21,6 +22,8 @@ from oda_data.tools.cache import (
     QueryCacheManager,
     ThreadSafeMemoryCache,
     generate_param_hash,
+    get_crs_release_id,
+    get_multisystem_release_id,
 )
 
 # ============================================================================
@@ -141,6 +144,26 @@ class TestThreadSafeMemoryCache:
 
         assert len(cache) == 0
         assert "key1" not in cache
+
+    def test_thread_safe_memory_cache_pop_removes_single_entry(self):
+        """Test that pop() removes and returns only the targeted entry."""
+        cache = ThreadSafeMemoryCache(maxsize=10, ttl=60)
+
+        cache["key1"] = "value1"
+        cache["key2"] = "value2"
+
+        result = cache.pop("key1")
+
+        assert result == "value1"
+        assert "key1" not in cache
+        assert "key2" in cache
+
+    def test_thread_safe_memory_cache_pop_missing_key_returns_default(self):
+        """Test that pop() on a missing key returns the default, not KeyError."""
+        cache = ThreadSafeMemoryCache(maxsize=10, ttl=60)
+
+        assert cache.pop("missing", "fallback") == "fallback"
+        assert cache.pop("missing") is None
 
     def test_thread_safe_memory_cache_max_size_eviction(self):
         """Test that LRU eviction occurs when maxsize is reached."""
@@ -377,6 +400,147 @@ class TestBulkCacheManager:
         assert records[0]["version"] == "1.0.0"
         assert records[0]["size_mb"] >= 0.0  # File should exist with some size
         assert isinstance(records[0]["age_days"], float)
+
+    def test_bulk_cache_manager_manifest_round_trips_release_id(
+        self, temp_cache_dir: Path, mock_bulk_fetcher
+    ):
+        """release_id survives a write/read cycle through the manifest and
+        is exposed via list_records() (#162 traceability)."""
+        manager = BulkCacheManager(base_dir=temp_cache_dir)
+
+        entry = BulkCacheEntry(
+            key="test_data",
+            fetcher=mock_bulk_fetcher,
+            version="1.0.0",
+            release_id="oecd-file-id-2026-09-01",
+        )
+        manager.ensure(entry)
+
+        manifest = manager._load_manifest()
+        assert manifest["test_data"]["release_id"] == "oecd-file-id-2026-09-01"
+
+        records = manager.list_records()
+        assert records[0]["release_id"] == "oecd-file-id-2026-09-01"
+
+    def test_bulk_cache_manager_detects_republish_inside_ttl(
+        self, temp_cache_dir: Path, mock_bulk_fetcher
+    ):
+        """A changed release_id forces a re-fetch even though the TTL and
+        version haven't expired — the #162 core complaint."""
+        manager = BulkCacheManager(base_dir=temp_cache_dir, ttl_seconds=2592000)
+
+        entry_v1 = BulkCacheEntry(
+            key="test_data",
+            fetcher=mock_bulk_fetcher,
+            ttl_days=30,
+            version="1.0.0",
+            release_id="oecd-file-id-2026-09-01",
+        )
+        path1 = manager.ensure(entry_v1)
+        mtime1 = path1.stat().st_mtime
+
+        time.sleep(0.01)
+
+        # Same TTL, same version, but the upstream OECD file id changed —
+        # a same-day republish, well inside the 30-day TTL window.
+        entry_republished = BulkCacheEntry(
+            key="test_data",
+            fetcher=mock_bulk_fetcher,
+            ttl_days=30,
+            version="1.0.0",
+            release_id="oecd-file-id-2026-09-01-1",
+        )
+        path2 = manager.ensure(entry_republished)
+        mtime2 = path2.stat().st_mtime
+
+        assert mtime2 > mtime1, "a changed release_id must trigger a re-fetch"
+
+        manifest = manager._load_manifest()
+        assert manifest["test_data"]["release_id"] == "oecd-file-id-2026-09-01-1"
+
+    def test_bulk_cache_manager_unknown_release_id_falls_back_to_ttl(
+        self, temp_cache_dir: Path, mock_bulk_fetcher
+    ):
+        """A missing release_id on either side is inconclusive — it must
+        not force a re-fetch of an otherwise-fresh, same-version entry."""
+        manager = BulkCacheManager(base_dir=temp_cache_dir, ttl_seconds=2592000)
+
+        entry_no_release_id = BulkCacheEntry(
+            key="test_data", fetcher=mock_bulk_fetcher, ttl_days=30, version="1.0.0"
+        )
+        path1 = manager.ensure(entry_no_release_id)
+        mtime1 = path1.stat().st_mtime
+
+        # A probe that couldn't determine a release id (returns None) must
+        # not be treated as "changed" against a manifest with no release_id.
+        path2 = manager.ensure(entry_no_release_id)
+        mtime2 = path2.stat().st_mtime
+
+        assert mtime2 == mtime1, "cache hit expected when release_id is unknown"
+
+
+# ============================================================================
+# Tests for release-id probes
+# ============================================================================
+
+
+class TestReleaseIdProbes:
+    """Tests for the cheap upstream release-id probe functions.
+
+    Both probes must never raise — a broken or absent probe degrades to
+    version/TTL-only staleness rather than breaking a normal read (#162).
+    No network access: oda_reader's functions are monkeypatched.
+    """
+
+    def test_get_crs_release_id_returns_probe_value(self, mocker):
+        mocker.patch(
+            "oda_reader.download.download_tools.get_bulk_file_url_with_version",
+            return_value=("https://sdmx.oecd.org/.../CRS.parquet", "crs-42"),
+        )
+        assert get_crs_release_id() == "crs-42"
+
+    def test_get_crs_release_id_swallows_errors(self, mocker, caplog):
+        mocker.patch(
+            "oda_reader.download.download_tools.get_bulk_file_url_with_version",
+            side_effect=ConnectionError("boom"),
+        )
+        _od_logger = logging.getLogger("oda_data")
+        _od_logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.WARNING):
+                assert get_crs_release_id() is None
+        finally:
+            _od_logger.removeHandler(caplog.handler)
+
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "CRS release id" in warnings[0].message
+        assert "boom" in warnings[0].message
+
+    def test_get_multisystem_release_id_returns_probe_value(self, mocker):
+        mocker.patch(
+            "oda_reader.download.download_tools.get_bulk_file_url_with_version",
+            return_value=("https://sdmx.oecd.org/.../Multisystem.parquet", "multi-7"),
+        )
+        assert get_multisystem_release_id() == "multi-7"
+
+    def test_get_multisystem_release_id_swallows_errors(self, mocker, caplog):
+        mocker.patch(
+            "oda_reader.download.download_tools.get_bulk_file_url_with_version",
+            side_effect=ConnectionError("boom"),
+        )
+        _od_logger = logging.getLogger("oda_data")
+        _od_logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.WARNING):
+                assert get_multisystem_release_id() is None
+        finally:
+            _od_logger.removeHandler(caplog.handler)
+
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "MultiSystem release id" in warnings[0].message
+        assert "boom" in warnings[0].message
 
 
 # ============================================================================

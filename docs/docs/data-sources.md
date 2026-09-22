@@ -34,7 +34,7 @@ from oda_data import DAC1Data, DAC2AData, CRSData, MultiSystemData
 
 ## DAC1: Aggregate Donor Flows
 
-DAC1 contains aggregate statistics for each donor—total ODA, multilateral ODA, bilateral ODA, etc.
+DAC1 contains aggregate statistics for each donor: total ODA, multilateral ODA, bilateral ODA, etc.
 
 ### Basic Usage
 

@@ -145,6 +145,38 @@ def test_clear_returns_int_per_scope(tmp_cache_root: Path) -> None:
     assert result["bulk"] == 3
 
 
+def test_clear_bulk_reaches_memory_cache(tmp_cache_root: Path) -> None:
+    """cache.clear('bulk') also clears every Source memory_cache (#162).
+
+    clear() operating only on the on-disk tiers left a warm in-process
+    memory cache free to keep serving stale data despite the disk cache
+    being empty.
+    """
+    from oda_data import CRSData, DAC1Data
+
+    CRSData.memory_cache["stale-crs-hash"] = "stale-crs-dataframe"
+    DAC1Data.memory_cache["stale-dac1-hash"] = "stale-dac1-dataframe"
+
+    cache.clear("bulk")
+
+    assert "stale-crs-hash" not in CRSData.memory_cache
+    assert "stale-dac1-hash" not in DAC1Data.memory_cache
+
+
+def test_clear_http_only_does_not_touch_memory_cache(tmp_cache_root: Path) -> None:
+    """cache.clear('http') (an oda_reader-owned scope) leaves memory_cache
+    alone — only clearing an oda_data-owned scope (bulk/query/all) should
+    reach the memory tier."""
+    from oda_data import CRSData
+
+    CRSData.memory_cache["still-here"] = "dataframe"
+
+    cache.clear("http")
+
+    assert "still-here" in CRSData.memory_cache
+    CRSData.memory_cache.clear()
+
+
 def test_clear_non_blocking_returns_none_under_contention(
     tmp_cache_root: Path,
 ) -> None:
@@ -301,6 +333,64 @@ def test_invalidate_unknown_string_raises_valueerror(tmp_cache_root: Path) -> No
     """cache.invalidate('Nonsense') raises ValueError."""
     with pytest.raises(ValueError, match="Nonsense"):
         cache.invalidate("Nonsense")
+
+
+def test_invalidate_reaches_memory_cache(tmp_cache_root: Path) -> None:
+    """cache.invalidate(CRSData) also clears CRSData.memory_cache (#162).
+
+    Before this fix, invalidate() only reached the on-disk bulk/query
+    tiers; a warm in-process memory cache would keep serving the
+    invalidated data.
+    """
+    from oda_data import CRSData
+
+    CRSData.memory_cache["some-param-hash"] = "stale-dataframe-placeholder"
+    assert "some-param-hash" in CRSData.memory_cache
+
+    cache.invalidate(CRSData)
+
+    assert "some-param-hash" not in CRSData.memory_cache
+
+
+# ---------------------------------------------------------------------------
+# cache.release_info
+# ---------------------------------------------------------------------------
+
+
+def test_release_info_returns_none_when_never_cached(tmp_cache_root: Path) -> None:
+    """cache.release_info(CRSData) is None before any bulk entry exists."""
+    from oda_data import CRSData
+
+    assert cache.release_info(CRSData) is None
+
+
+def test_release_info_reads_manifest_release_id(tmp_cache_root: Path) -> None:
+    """cache.release_info(dataset) surfaces the manifest's release_id,
+    downloaded_at and version — the public traceability surface for #162."""
+    from oda_data.tools.cache import BulkCacheEntry, BulkCacheManager
+
+    mgr = BulkCacheManager(tmp_cache_root / "oda-data")
+    entry = BulkCacheEntry(
+        key="CRSData_bulk",
+        fetcher=_write_parquet,
+        version="2.8.0",
+        release_id="crs-file-id-abc",
+    )
+    mgr.ensure(entry)
+
+    info = cache.release_info("CRSData")
+
+    assert info is not None
+    assert info.dataset == "CRSData"
+    assert info.release_id == "crs-file-id-abc"
+    assert info.version == "2.8.0"
+    assert info.downloaded_at is not None
+
+
+def test_release_info_unknown_string_raises_valueerror(tmp_cache_root: Path) -> None:
+    """cache.release_info('Nonsense') raises ValueError, mirroring invalidate()."""
+    with pytest.raises(ValueError, match="Nonsense"):
+        cache.release_info("Nonsense")
 
 
 # ---------------------------------------------------------------------------

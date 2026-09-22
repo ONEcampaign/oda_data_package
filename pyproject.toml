@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "2.7.1"
+version = "2.8.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 requires-python = ">=3.11"
 
@@ -28,12 +28,11 @@ classifiers = [
 dependencies = [
     "cachetools>=6.2.0",
     "filelock>=3.20.0",
-    "oda-reader>=1.6.0",
+    "oda-reader>=1.9.0",
     "platformdirs>=4.0.0",
     "pandas[excel,parquet,performance]>=2.2.0",
     "pydeflate>=2.3.3",
     "reader>=3.18",
-    "thefuzz>=0.22.1",
 ]
 
 [project.urls]
@@ -59,6 +58,21 @@ test = [
     "pytest-xdist>=3.5.0",
     "freezegun>=1.4.0",
 ]
+# Maintenance-only tooling for scripts/refresh_channel_crosswalk.py. Never a
+# runtime dependency of the oda_data package; excluded from the default
+# groups below so a plain `uv sync` never requires it (resolvekit needs
+# Python >=3.12, oda_data supports >=3.11). Install explicitly with
+# `uv sync --group maintenance`.
+maintenance = [
+    "resolvekit==0.1.12 ; python_version >= '3.12'",
+    "pyyaml>=6.0 ; python_version >= '3.12'",
+]
+
+[tool.uv]
+# Preserve today's implicit default (dev + test both installed by a plain
+# `uv sync` / `uv run`); without this, adding the "maintenance" group above
+# would otherwise be pulled into that same default set.
+default-groups = ["dev", "test"]
 
 [tool.ruff]
 # Set the maximum line length

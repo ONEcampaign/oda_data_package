@@ -6,13 +6,12 @@ from oda_data.indicators.indicator import Indicator
 def multilateral_spending_by_purpose_shares() -> Indicator:
     return Indicator(
         code="ONE.P.40.T.T.S_M",
-        name=(
-            "Purpose shares (3-year rolling total) out of total Official Development Assistance (ODA)"
-            " and Other Official Flows (OOF), for multilateral organisations."
-        ),
+        name=("Purpose shares (3-year rolling total), for multilateral organisations."),
         description=(
-            "Shares for each purpose code out of total Official Development Assistance (ODA)"
-            " and Other Official Flows (OOF). Data for multilateral organisations."
+            "Shares for each purpose code out of total gross CRS spending reported "
+            "by multilateral organisations, over a rolling 3-year window. No CRS "
+            "flow-type (category) filter is applied: the total includes ODA, OOF "
+            "and any other reported flow category."
         ),
         sources=["CRS"],
         type="ONE",

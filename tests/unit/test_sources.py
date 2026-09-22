@@ -427,6 +427,141 @@ class TestDACSourceReadCacheCoordination:
             mock_read_parquet.assert_called()
 
 
+class TestDACSourceReadRefreshReachesMemoryTier:
+    """Tests that read(refresh=True) reaches the in-memory cache tier (#162).
+
+    ``oda_data.cache.invalidate()`` / ``clear()`` reaching only the on-disk
+    tiers, and never ``DACSource.memory_cache``, was the core plumbing gap:
+    a warm memory cache could keep serving stale data even after the
+    caller asked for fresh data. These tests pin the fix at the
+    ``DACSource.read()`` level.
+    """
+
+    @patch.object(DACSource, "_fetch_from_bulk_cache")
+    def test_refresh_true_returns_fresh_data_not_stale_memory_entry(
+        self, mock_fetch, sample_dac1_df
+    ):
+        source = DACSource()
+        source._init_filters(years=[2020])
+        source.memory_cache.clear()
+
+        from oda_data.tools.cache import generate_param_hash
+
+        param_hash = generate_param_hash(source.filters)
+
+        stale_df = sample_dac1_df.copy()
+        source.memory_cache[param_hash] = stale_df
+
+        fresh_df = sample_dac1_df.copy()
+        fresh_df["value"] = fresh_df["value"] * 2
+        mock_fetch.return_value = fresh_df
+
+        result = source.read(using_bulk_download=True, refresh=True)
+
+        assert result["value"].tolist() == fresh_df["value"].tolist()
+        # The memory tier itself must now hold the fresh data, not the stale
+        # entry — a subsequent non-refresh read must not resurrect it.
+        assert source.memory_cache[param_hash]["value"].tolist() == (
+            fresh_df["value"].tolist()
+        )
+
+    @patch.object(DACSource, "_fetch_from_bulk_cache")
+    def test_refresh_true_pops_stale_entry_before_fetching(
+        self, mock_fetch, sample_dac1_df
+    ):
+        """The stale entry is evicted up front, not only overwritten after
+        the fetch completes — narrows the window in which a concurrent
+        reader could observe it."""
+        source = DACSource()
+        source._init_filters(years=[2020])
+        source.memory_cache.clear()
+
+        from oda_data.tools.cache import generate_param_hash
+
+        param_hash = generate_param_hash(source.filters)
+        source.memory_cache[param_hash] = sample_dac1_df.copy()
+
+        seen_during_fetch = {}
+
+        def _fetch_side_effect(*args, **kwargs):
+            seen_during_fetch["present"] = param_hash in source.memory_cache
+            return sample_dac1_df.copy()
+
+        mock_fetch.side_effect = _fetch_side_effect
+
+        source.read(using_bulk_download=True, refresh=True)
+
+        assert seen_during_fetch["present"] is False
+
+
+class TestReleaseIdWiring:
+    """Tests for _get_release_id wiring on DACSource subclasses (#162)."""
+
+    def test_dac_source_default_release_id_is_none(self):
+        source = DACSource()
+        assert source._get_release_id() is None
+
+    def test_dac1data_default_release_id_is_none(self):
+        source = DAC1Data(years=[2020])
+        assert source._get_release_id() is None
+
+    def test_crs_data_release_id_delegates_to_probe(self, mocker):
+        mocker.patch(
+            "oda_data.tools.cache.get_crs_release_id", return_value="crs-release-9"
+        )
+        source = CRSData(years=[2020])
+        assert source._get_release_id() == "crs-release-9"
+
+    def test_multisystem_data_release_id_delegates_to_probe(self, mocker):
+        mocker.patch(
+            "oda_data.tools.cache.get_multisystem_release_id",
+            return_value="multi-release-3",
+        )
+        source = MultiSystemData(years=[2020])
+        assert source._get_release_id() == "multi-release-3"
+
+    @patch.object(CRSData, "_create_bulk_fetcher")
+    @patch("oda_data.api.sources.pd.read_parquet")
+    def test_crs_fetch_from_bulk_cache_passes_release_id_to_entry(
+        self,
+        mock_read_parquet,
+        mock_create_fetcher,
+        sample_dac1_df,
+        temp_cache_dir,
+        mock_bulk_fetcher,
+        mocker,
+    ):
+        """CRSData._fetch_from_bulk_cache builds a BulkCacheEntry carrying
+        the probed release_id, wiring the manifest to the #162 fix."""
+        mocker.patch(
+            "oda_data.tools.cache.get_crs_release_id", return_value="crs-release-abc"
+        )
+        captured_entries = []
+
+        from oda_data.tools.cache import BulkCacheEntry as _RealBulkCacheEntry
+
+        def _capture(*args, **kwargs):
+            entry = _RealBulkCacheEntry(*args, **kwargs)
+            captured_entries.append(entry)
+            return entry
+
+        with patch("oda_data.api.sources.ODAPaths") as mock_paths:
+            mock_paths.cache_root = temp_cache_dir
+
+            source = CRSData(years=[2020])
+            source.exclude_multilateral_core = False
+            source.memory_cache.clear()
+
+            mock_create_fetcher.return_value = mock_bulk_fetcher
+            mock_read_parquet.return_value = sample_dac1_df.copy()
+
+            with patch("oda_data.api.sources.BulkCacheEntry", side_effect=_capture):
+                source.read(using_bulk_download=True)
+
+        assert len(captured_entries) == 1
+        assert captured_entries[0].release_id == "crs-release-abc"
+
+
 # ============================================================================
 # Tests for concrete source classes - Initialization
 # ============================================================================

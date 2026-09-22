@@ -5,6 +5,7 @@ platformdirs default (user_cache_dir("oda-data") / __version__).
 """
 
 import os
+import warnings
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
@@ -44,9 +45,16 @@ def _chain_oda_reader_cache(root: Path) -> None:
     if root == _LAST_CHAINED_ROOT:
         return
 
-    import oda_reader
+    from oda_reader import set_cache_dir as _oda_reader_set_cache_dir
 
-    oda_reader.set_cache_dir(root / "oda-reader")
+    # oda_reader.set_cache_dir is deprecated *for umbrella callers*, telling
+    # them to use oda_data.set_cache_root() instead — but this function *is*
+    # the internal plumbing behind oda_data.set_cache_root(), so it must call
+    # through to oda_reader's own implementation rather than recurse into
+    # itself. Use the public name and suppress the warning narrowly here.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        _oda_reader_set_cache_dir(root / "oda-reader")
     _LAST_CHAINED_ROOT = root
 
 

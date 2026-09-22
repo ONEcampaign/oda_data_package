@@ -1,249 +1,85 @@
+"""Imputed multilateral spending by purpose: money conservation.
+
+`imputed_multilateral_by_purpose` takes every donor's core (unearmarked)
+contribution to a multilateral organisation (from Multisystem) and spreads it
+across purpose codes using that organisation's own CRS spending pattern (from
+`imputation_shares.multilateral_spending_shares_by_channel_and_purpose_smoothed`).
+Every core dollar ends up in exactly one output row: imputed against the
+channel's own current shares, imputed against its own stale (lapsed-reporter)
+shares, imputed against a proxy channel's shares, or reported `unallocated`
+with the reason recorded in `channel_share_proxies.csv` / the crosswalk. The
+`_check_conservation` guard makes silently dropping money a hard failure
+(`ImputationConservationError`) rather than a warning.
+"""
+
+import hashlib
+import json
+from dataclasses import asdict
+from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+from pathlib import Path
+
 import pandas as pd
 
-from oda_data.api.constants import (
-    CHANNEL_PURPOSE_SHARE_GROUPER,
-    MEASURES,
-    PROVIDER_PURPOSE_GROUPER,
-    Measure,
-)
-from oda_data.clean_data.channels import add_multi_channel_codes
+from oda_data.api.constants import MEASURES, Measure
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
-from oda_data.tools.groupings import provider_groupings
+from oda_data.config import ODAPaths
+
+# Share-side functions (window padding, vectorised rolling totals,
+# flow_types, stale-share fallback) live in `imputation_shares.py`; these
+# names are re-exported here so `sector_imputations.<name>` imports keep
+# working.
+from oda_data.indicators.research.imputation_shares import (  # noqa: F401
+    add_multi_channels_and_group,
+    multilateral_spending_shares_by_channel_and_purpose_smoothed,
+    period_purpose_shares,
+    rolling_period_total,
+    share_by_purpose,
+    spending_by_purpose,
+)
+
+PROXY_TABLE_FILE = "channel_share_proxies.csv"
+CROSSWALK_FILE = "multilateral_channel_crosswalk.csv"
+CRS_CHANNEL_MAPPING_VINTAGE_FILE = "crs_channel_mapping_vintage.json"
+
+# Columns present on every row of `imputed_multilateral_by_purpose`'s output,
+# in the order of the output contract.
+_OUTPUT_COLUMNS: list[str] = [
+    ODASchema.YEAR,
+    ODASchema.PROVIDER_CODE,
+    ODASchema.CHANNEL_CODE,
+    ODASchema.RECIPIENT_CODE,
+    ODASchema.PURPOSE_CODE,
+    ODASchema.VALUE,
+    ODASchema.CURRENCY,
+    ODASchema.PRICES,
+    "allocation_status",
+    "share_channel_code",
+    "share_years",
+]
+
+# Output columns that must be nullable Int64: `unallocated` rows carry no
+# recipient/purpose, and `fixed_purpose`/`unallocated` rows carry no
+# share_channel_code. A plain int/float dtype would silently turn these into
+# float64 the moment a null appears, changing dtype for every downstream
+# consumer merging on them.
+_NULLABLE_INT_COLUMNS: list[str] = [
+    ODASchema.RECIPIENT_CODE,
+    ODASchema.PURPOSE_CODE,
+    "share_channel_code",
+]
 
 
-def rolling_period_total(
-    df: pd.DataFrame, period_length: int = 3, grouper: list[str] | None = None
-) -> pd.DataFrame:
-    """Calculates a rolling total over a specified period length.
+class ImputationConservationError(Exception):
+    """`imputed_multilateral_by_purpose`'s output does not conserve every
+    (year, donor_code, channel_code) core contribution amount.
 
-    Args:
-        df (pd.DataFrame): Input dataframe containing time-series data.
-        period_length (int, optional): Length of the rolling period. Defaults to 3.
-        grouper (list[str] | None, optional): Columns to group by. Defaults to None.
-
-    Returns:
-        pd.DataFrame: Dataframe with rolling total calculations.
+    This is a hard failure by design: money silently dropped by a join or a
+    dtype mismatch is a correctness bug, not something to warn about and
+    move past.
     """
-    data = pd.DataFrame()
-
-    if grouper is None:
-        grouper = [c for c in df.columns if c not in [ODASchema.YEAR, ODASchema.VALUE]]
-
-    for y in range(
-        df[ODASchema.YEAR].max(), df[ODASchema.YEAR].min() + period_length - 2, -1
-    ):
-        years = [y - i for i in range(period_length)]
-        _ = (
-            df.copy(deep=True)
-            .loc[lambda d: d[ODASchema.YEAR].isin(years)]
-            .groupby(grouper, observed=True, dropna=False)
-            .agg({ODASchema.VALUE: "sum", ODASchema.YEAR: "max"})
-            .assign(**{ODASchema.YEAR: y})
-            .reset_index()
-        )
-        data = pd.concat([data, _], ignore_index=True)
-
-    return (
-        data.assign(year=lambda d: d[ODASchema.YEAR].astype("int16[pyarrow]"))
-        .loc[lambda d: d[ODASchema.YEAR].notna()]
-        .reset_index(drop=True)
-    )
-
-
-def share_by_purpose(
-    df: pd.DataFrame, grouper: list[str] | None = None
-) -> pd.DataFrame:
-    """Calculates the share of the total for each purpose code.
-
-    Args:
-        df (pd.DataFrame): Input dataframe containing values to compute shares.
-        grouper (list[str] | None, optional): Columns to group by. Defaults to None.
-
-    Returns:
-        pd.DataFrame: Dataframe with an additional share column.
-    """
-    df[ODASchema.SHARE] = df.groupby(grouper, observed=True, dropna=False)[
-        ODASchema.VALUE
-    ].transform(lambda p: p / p.sum())
-
-    return df.loc[lambda d: d.share.notna()].reset_index(drop=True)
-
-
-def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
-    """Groups data by mapped channels and sums values.
-
-    Args:
-        df (pd.DataFrame): Input dataframe.
-
-    Returns:
-        pd.DataFrame: Aggregated dataframe grouped by relevant columns.
-    """
-    df = (
-        df.groupby(
-            [
-                c
-                for c in df.columns
-                if c
-                not in [
-                    ODASchema.PROVIDER_NAME,
-                    ODASchema.PROVIDER_CODE,
-                    ODASchema.AGENCY_CODE,
-                    ODASchema.AGENCY_NAME,
-                    "name",
-                    ODASchema.VALUE,
-                ]
-            ],
-            observed=True,
-            dropna=False,
-        )[[ODASchema.VALUE]]
-        .sum()
-        .reset_index()
-    )
-
-    return df
-
-
-def period_purpose_shares(
-    data: pd.DataFrame,
-    period_length: int = 3,
-    grouper: list[str] | None = None,
-    share_by_grouper: list[str] | None = None,
-) -> pd.DataFrame:
-    """Computes period-based purpose shares.
-
-    Args:
-        data (pd.DataFrame): Input dataframe.
-        period_length (int, optional): Length of the rolling period. Defaults to 3.
-        grouper (list[str] | None, optional): Columns to group by for rolling total. Defaults to None.
-        share_by_grouper (list[str] | None, optional): Columns to group by for share calculation. Defaults to None.
-
-    Returns:
-        pd.DataFrame: Dataframe with computed shares.
-    """
-    return data.pipe(
-        rolling_period_total, period_length=period_length, grouper=grouper
-    ).pipe(share_by_purpose, grouper=share_by_grouper)
-
-
-def add_multi_channels_and_group(data: pd.DataFrame) -> pd.DataFrame:
-    """Adds multi-channel codes and groups the data accordingly.
-
-    Args:
-        data (pd.DataFrame): Input dataframe.
-
-    Returns:
-        pd.DataFrame: Transformed dataframe with grouped channels.
-    """
-    return data.pipe(add_multi_channel_codes).pipe(_group_by_mapped_channel)
-
-
-def spending_by_purpose(
-    years: list | int | range | None = None,
-    providers: list | int | None = None,
-    measure: Measure | str = "gross_disbursement",
-    oda_only: bool = False,
-    currency: str = "USD",
-    base_year: int | None = None,
-    exclude_multilateral_core: bool = True,
-) -> pd.DataFrame:
-    """Retrieves and processes spending data by purpose.
-
-    By default, CRS rows that report a donor's core (unearmarked) contribution to a
-    multilateral organisation (`bi_multi == 2`) are excluded. Those contributions are
-    redistributed across purposes separately, by `imputed_multilateral_by_purpose`.
-    A caller that leaves them in this bilateral total would double count them.
-
-    Args:
-        years (list | int | range, optional): Years to filter the data. Defaults to None.
-        providers (list | int | None, optional): Providers to filter the data. Defaults to None.
-        measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
-        oda_only (bool, optional): Whether to include only ODA-related data. Defaults to False.
-        currency (str, optional): Target currency. Defaults to "USD".
-        base_year (int | None, optional): Base year for conversion. Defaults to None.
-        exclude_multilateral_core (bool, optional): Whether to exclude CRS rows
-            reporting a donor's core contribution to a multilateral organisation
-            (`bi_multi == 2`). Defaults to True. Pass False for a total that
-            includes those core-contribution rows.
-
-    Returns:
-        pd.DataFrame: Dataframe with spending by purpose.
-    """
-    from oda_data.api.sources import CRSData
-
-    # Get the relevant measure
-    measure = MEASURES["CRS"][measure]["column"]
-
-    # Set up grouper
-    grouper = [
-        c
-        for c in PROVIDER_PURPOSE_GROUPER
-        if c not in [ODASchema.CURRENCY, ODASchema.PRICES]
-    ]
-
-    # Set up filters
-    filters = [("category", "in", [10, 60])] if oda_only else []
-
-    # Set up the CRS data object
-    crs = CRSData(
-        providers=providers,
-        years=years,
-        exclude_multilateral_core=exclude_multilateral_core,
-    )
-
-    # Read the data and group by provider and purpose
-    data = (
-        crs.read(
-            columns=[*grouper, measure],
-            additional_filters=filters,
-            using_bulk_download=True,
-        )
-        .groupby(grouper, dropna=False, observed=True)[[measure]]
-        .sum()
-        .reset_index()
-        .rename(columns={measure: "value"})
-    )
-
-    # Convert the data to the target currency and prices
-    data = convert_units(data, currency=currency, base_year=base_year)
-
-    return data
-
-
-def multilateral_spending_shares_by_channel_and_purpose_smoothed(
-    years: list | int | range | None = None,
-    oda_only: bool = False,
-    period_length: int = 3,
-) -> pd.DataFrame:
-    """Computes multilateral spending shares by channel and purpose, smoothed over a period.
-
-    Args:
-        years (list | int | range, optional): Years to filter the data. Defaults to None.
-        oda_only (bool, optional): Whether to include only ODA-related data. Defaults to False.
-        period_length (int, optional): Length of the rolling period. Defaults to 3.
-
-    Returns:
-        pd.DataFrame: Dataframe with spending shares.
-    """
-
-    # Get the multilateral providers
-    multilateral_providers = list(provider_groupings()["multilateral"])
-
-    # Get the spending data by purpose
-    data = (
-        spending_by_purpose(
-            years=years, providers=multilateral_providers, oda_only=oda_only
-        )
-        .pipe(add_multi_channels_and_group)
-        .pipe(
-            period_purpose_shares,
-            period_length=period_length,
-            grouper=None,
-            share_by_grouper=CHANNEL_PURPOSE_SHARE_GROUPER,
-        )
-    )
-
-    return data.drop(columns=[ODASchema.VALUE, ODASchema.PRICES, ODASchema.CURRENCY])
 
 
 def core_multilateral_contributions_by_provider(
@@ -253,6 +89,8 @@ def core_multilateral_contributions_by_provider(
     measure: Measure | str = "gross_disbursement",
     currency: str = "USD",
     base_year: int | None = None,
+    multisystem: pd.DataFrame | None = None,
+    refresh: bool = False,
 ) -> pd.DataFrame:
     """Retrieves core multilateral contributions grouped by provider and channel.
 
@@ -263,84 +101,383 @@ def core_multilateral_contributions_by_provider(
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
         currency (str, optional): Target currency. Defaults to "USD".
         base_year (int | None, optional): Base year for conversion. Defaults to None.
+        multisystem (pd.DataFrame | None, optional): Pre-fetched Multisystem data to
+            use instead of reading it (for tests and pinned builds). Must carry
+            `donor_code`, `channel_code`, `year` and `amount` columns, already
+            filtered to the desired flow type/amount type/indicator. Defaults to
+            None (read from `MultiSystemData`).
+        refresh (bool, optional): If True, bypass the bulk cache and re-download
+            (#162). Only has an effect when `multisystem` is None. Defaults to False.
 
     Returns:
         pd.DataFrame: Dataframe with core multilateral contributions.
     """
-
-    from oda_data.api.sources import MultiSystemData
-
-    # Get the relevant measure and columns
-    measure = MEASURES["Multisystem"][measure]["filter"]
-    cols = [ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE, ODASchema.YEAR]
-
-    # Set up filters
-    filters = [
-        ("flow_type", "in", [measure]),
-        ("amount_type", "in", ["Current prices"]),
-    ]
-
-    # Add provider filters, if any
-    if isinstance(channels, int):
-        channels = [channels]
-    if channels:
-        filters.append(("channel_code", "in", channels))
-
-    # Set up the multisystem data object
-    ms = MultiSystemData(
-        providers=providers, years=years, indicators="Core contributions to"
+    data = _read_core_contributions(
+        years=years,
+        providers=providers,
+        channels=channels,
+        measure=measure,
+        multisystem=multisystem,
+        refresh=refresh,
     )
 
-    # Read the data and group by provider and channel
-    data = (
-        ms.read(
+    return convert_units(data, currency=currency, base_year=base_year)
+
+
+def _read_core_contributions(
+    years: list | int | range | None,
+    providers: list | int | None,
+    channels: list | int | None,
+    measure: Measure | str,
+    multisystem: pd.DataFrame | None,
+    refresh: bool,
+) -> pd.DataFrame:
+    """Read raw (unconverted) core contributions, one row per (year,
+    donor_code, channel_code)."""
+    cols = [ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE, ODASchema.YEAR]
+    measure_filter = MEASURES["Multisystem"][measure]["filter"]
+
+    if multisystem is not None:
+        raw = multisystem
+    else:
+        from oda_data.api.sources import MultiSystemData
+
+        filters = [
+            ("flow_type", "in", [measure_filter]),
+            ("amount_type", "in", ["Current prices"]),
+        ]
+        resolved_channels = [channels] if isinstance(channels, int) else channels
+        if resolved_channels:
+            filters.append((ODASchema.CHANNEL_CODE, "in", resolved_channels))
+
+        ms = MultiSystemData(
+            providers=providers, years=years, indicators="Core contributions to"
+        )
+        raw = ms.read(
             columns=[*cols, ODASchema.AMOUNT],
             additional_filters=filters,
             using_bulk_download=True,
+            refresh=refresh,
         )
-        .groupby(cols, dropna=False, observed=True)[[ODASchema.AMOUNT]]
+
+    return (
+        raw.groupby(cols, dropna=False, observed=True)[[ODASchema.AMOUNT]]
         .sum()
         .reset_index()
-        .rename(columns={ODASchema.AMOUNT: "value"})
+        .rename(columns={ODASchema.AMOUNT: ODASchema.VALUE})
+        .astype({ODASchema.CHANNEL_CODE: "int64"})
     )
 
-    # Convert the data to the target currency and prices
-    data = convert_units(data, currency=currency, base_year=base_year)
 
-    return data
-
-
-def _compute_imputations(
-    core_contributions: pd.DataFrame, multi_spending_shares: pd.DataFrame
-) -> pd.DataFrame:
-    """Computes imputed multilateral spending by donor and agency.
-
-    Args:
-        core_contributions (pd.DataFrame): Dataframe with core contributions.
-        multi_spending_shares (pd.DataFrame): Dataframe with multilateral spending shares.
+def _get_channel_share_proxies() -> pd.DataFrame:
+    """Read the reviewed proxy table.
 
     Returns:
-        pd.DataFrame: Imputed multilateral spending data.
+        pd.DataFrame: columns channel_code, channel_name, proxy_channel_code,
+        proxy_type ("parent_fund" or "fixed_purpose"), fixed_purpose_code,
+        rationale, reviewed. `proxy_channel_code` is null for `fixed_purpose`
+        rows; `fixed_purpose_code` is null for `parent_fund` rows.
     """
-
-    # Merge core contributions with spending shares
-    data = multi_spending_shares.merge(
-        core_contributions,
-        on=[ODASchema.CHANNEL_CODE, ODASchema.YEAR],
-        how="inner",
+    return pd.read_csv(
+        ODAPaths.cleaning / PROXY_TABLE_FILE,
+        dtype={
+            ODASchema.CHANNEL_CODE: "Int64",
+            "proxy_channel_code": "Int64",
+            "fixed_purpose_code": "Int64",
+        },
     )
 
-    # Compute imputed spending
-    data = (
-        data.assign(
-            **{ODASchema.VALUE: lambda d: d[ODASchema.VALUE] * d[ODASchema.SHARE]}
+
+def _apply_proxies(
+    unmatched: pd.DataFrame, shares: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Resolve unmatched core rows against the proxy table.
+
+    A proxy never chains: a `parent_fund` row is resolved against the proxy
+    channel's own current/stale shares only, never against a second proxy.
+
+    Args:
+        unmatched: Core rows (`year, donor_code, channel_code, value`) whose
+            channel had no own share for that year.
+        shares: Output of
+            `multilateral_spending_shares_by_channel_and_purpose_smoothed`,
+            used as the source of the proxy channel's own shares.
+
+    Returns:
+        `(proxy_rows, still_unmatched)`: rows resolved via a proxy
+        (`_OUTPUT_COLUMNS`-shaped, minus currency/prices), and the remaining
+        core rows with no proxy (or a proxy with no share pool of its own),
+        which fall through to `unallocated`.
+    """
+    proxy_table = _get_channel_share_proxies()
+    with_proxy = unmatched.merge(
+        proxy_table[
+            ["channel_code", "proxy_channel_code", "proxy_type", "fixed_purpose_code"]
+        ],
+        on=ODASchema.CHANNEL_CODE,
+        how="left",
+    )
+
+    fixed = (
+        with_proxy.loc[with_proxy["proxy_type"] == "fixed_purpose"]
+        .assign(
+            **{
+                ODASchema.PURPOSE_CODE: lambda d: d["fixed_purpose_code"],
+                ODASchema.RECIPIENT_CODE: pd.NA,
+                "allocation_status": "proxy",
+                "share_channel_code": pd.NA,
+                "share_years": pd.NA,
+            }
         )
-        .drop(labels=[ODASchema.SHARE], axis=1)
-        .loc[lambda d: d[ODASchema.VALUE] != 0]
-        .reset_index(drop=True)
+        .drop(columns=["proxy_channel_code", "proxy_type", "fixed_purpose_code"])
     )
 
-    return data
+    parent_candidates = with_proxy.loc[with_proxy["proxy_type"] == "parent_fund"].drop(
+        columns=["fixed_purpose_code", "proxy_type"]
+    )
+    parent_shares = shares.rename(
+        columns={ODASchema.CHANNEL_CODE: "proxy_channel_code"}
+    )
+    parent_matched = parent_candidates.merge(
+        parent_shares,
+        on=[ODASchema.YEAR, "proxy_channel_code"],
+        how="inner",
+    ).assign(
+        **{
+            ODASchema.VALUE: lambda d: d[ODASchema.VALUE] * d[ODASchema.SHARE],
+            "allocation_status": "proxy",
+            "share_channel_code": lambda d: d["proxy_channel_code"],
+        }
+    )
+    parent_matched = parent_matched.drop(
+        columns=[ODASchema.SHARE, "proxy_channel_code"]
+    )
+
+    proxy_rows = pd.concat([fixed, parent_matched], ignore_index=True, sort=False)
+
+    key = [ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE]
+    if proxy_rows.empty:
+        return proxy_rows, unmatched
+
+    resolved_keys = proxy_rows[key].drop_duplicates()
+    joined = unmatched.merge(resolved_keys, on=key, how="left", indicator=True)
+    still_unmatched = joined.loc[joined["_merge"] == "left_only"].drop(columns="_merge")
+
+    return proxy_rows, still_unmatched
+
+
+def _allocate(
+    core: pd.DataFrame, shares: pd.DataFrame, *, use_proxy_shares: bool
+) -> pd.DataFrame:
+    """Outer-join core contributions against shares: own shares first, then
+    (optionally) a proxy channel's shares, then `unallocated`.
+
+    Args:
+        core: `year, donor_code, channel_code, value` -- one row per core
+            contribution, raw currency (pre-conversion).
+        shares: Output of
+            `multilateral_spending_shares_by_channel_and_purpose_smoothed`.
+        use_proxy_shares: Whether unmatched channels fall back to a proxy
+            channel's shares before being marked `unallocated`.
+
+    Returns:
+        pd.DataFrame: `_OUTPUT_COLUMNS` minus currency/prices (added later,
+        once, by the caller).
+    """
+    key = [ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE]
+
+    own = core.merge(
+        shares, on=[ODASchema.YEAR, ODASchema.CHANNEL_CODE], how="inner"
+    ).assign(
+        **{
+            ODASchema.VALUE: lambda d: d[ODASchema.VALUE] * d[ODASchema.SHARE],
+            "share_channel_code": lambda d: d[ODASchema.CHANNEL_CODE],
+        }
+    )
+    own = own.drop(columns=[ODASchema.SHARE])
+
+    matched_keys = own[key].drop_duplicates()
+    joined = core.merge(matched_keys, on=key, how="left", indicator=True)
+    unmatched = joined.loc[joined["_merge"] == "left_only"].drop(columns="_merge")
+
+    proxy_rows = unmatched.iloc[0:0]
+    if use_proxy_shares and not unmatched.empty:
+        # `shares` may be empty (e.g. no channel in `core` has any CRS
+        # presence): `fixed_purpose` proxy rows don't need it at all, and a
+        # `parent_fund` row's merge against an empty `shares` simply matches
+        # nothing, falling through to unallocated below -- so this must not
+        # be skipped just because `shares` happens to be empty.
+        proxy_rows, unmatched = _apply_proxies(unmatched, shares)
+
+    unallocated = unmatched.assign(
+        **{
+            ODASchema.RECIPIENT_CODE: pd.NA,
+            ODASchema.PURPOSE_CODE: pd.NA,
+            "allocation_status": "unallocated",
+            "share_channel_code": pd.NA,
+            "share_years": pd.NA,
+        }
+    )
+
+    parts = [df for df in (own, proxy_rows, unallocated) if not df.empty]
+    if not parts:
+        columns = [
+            c
+            for c in _OUTPUT_COLUMNS
+            if c not in (ODASchema.CURRENCY, ODASchema.PRICES)
+        ]
+        return pd.DataFrame(columns=columns)
+
+    return pd.concat(parts, ignore_index=True, sort=False)
+
+
+def _drop_zero_value_rows(result: pd.DataFrame) -> pd.DataFrame:
+    """Drop exact-zero-value rows from an allocation result.
+
+    A row with `value == 0.0` exactly contributes nothing to its (year,
+    donor_code, channel_code) conservation total, so dropping it cannot
+    change whether that total conserves. Three things produce these rows:
+    a purpose/recipient share window whose net CRS spending nets to exactly
+    zero, a zero-dollar core contribution multiplying out to zero across
+    every purpose/proxy it has a share in, and a zero-dollar core
+    contribution that falls through to `unallocated` (no core money was
+    actually left unallocated; there was none to begin with). None of these
+    is a real allocation, so none should be emitted -- a single-year call
+    and the matching year of a multi-year call must return the same rows.
+    A negative value is a real CRS reversal flowing through a share and is
+    kept.
+
+    Args:
+        result: `_allocate`'s output (`_OUTPUT_COLUMNS` minus
+            currency/prices).
+
+    Returns:
+        pd.DataFrame: `result` with `value == 0.0` rows removed.
+    """
+    return result.loc[result[ODASchema.VALUE] != 0.0].reset_index(drop=True)
+
+
+def _check_conservation(
+    result: pd.DataFrame, core: pd.DataFrame, *, stage: str
+) -> None:
+    """Raise `ImputationConservationError` if `result` does not conserve
+    every (year, donor_code, channel_code) amount in `core`.
+
+    Args:
+        result: The (possibly partial) allocation output.
+        core: The core contributions being allocated, one row per key.
+        stage: Human-readable label for where in the pipeline this check
+            runs (e.g. "pre-conversion", "post-conversion"), used only in
+            the error message.
+
+    Raises:
+        ImputationConservationError: If any (year, donor_code, channel_code)
+            combination's allocated total differs from its core amount by
+            more than `1e-6 * abs(core) + 1e-9`.
+    """
+    key = [ODASchema.YEAR, ODASchema.PROVIDER_CODE, ODASchema.CHANNEL_CODE]
+
+    if core.empty:
+        return
+
+    allocated = (
+        result.groupby(key, dropna=False, observed=True)[ODASchema.VALUE]
+        .sum()
+        .rename("allocated")
+    )
+    core_totals = core.set_index(key)[ODASchema.VALUE].rename("core")
+
+    compared = pd.concat([core_totals, allocated], axis=1).fillna(0.0)
+    compared["diff"] = compared["allocated"] - compared["core"]
+    tolerance = 1e-6 * compared["core"].abs() + 1e-9
+    violations = compared.loc[compared["diff"].abs() > tolerance]
+
+    if violations.empty:
+        return
+
+    worst = violations.reindex(
+        violations["diff"].abs().sort_values(ascending=False).index
+    ).head(10)
+    offenders = "; ".join(
+        f"year={y}, donor_code={d}, channel_code={c}: core={row['core']:.6f}, "
+        f"allocated={row['allocated']:.6f}, diff={row['diff']:.6f}"
+        for (y, d, c), row in worst.iterrows()
+    )
+    raise ImputationConservationError(
+        f"imputed_multilateral_by_purpose does not conserve core contributions "
+        f"({stage}): {len(violations)} of {len(compared)} (year, donor_code, "
+        f"channel_code) combinations violate abs(diff) <= 1e-6*abs(core) + 1e-9. "
+        f"Worst offenders: {offenders}"
+    )
+
+
+def _cast_output_dtypes(result: pd.DataFrame) -> pd.DataFrame:
+    """Cast nullable output columns to pandas Int64, so `unallocated` /
+    `fixed_purpose` rows don't silently turn a whole column to float64."""
+    return result.astype(dict.fromkeys(_NULLABLE_INT_COLUMNS, "Int64"))
+
+
+def _empty_result() -> pd.DataFrame:
+    """An empty, correctly typed `imputed_multilateral_by_purpose` result."""
+    result = pd.DataFrame(columns=_OUTPUT_COLUMNS)
+    return _cast_output_dtypes(result)
+
+
+def _file_vintage(path: Path) -> dict:
+    """Fingerprint a settings CSV: path, content hash, mtime, size.
+
+    There is no separate vintage sidecar for the crosswalk or proxy table
+    (unlike `crs_channel_mapping.csv`), so provenance is derived directly
+    from the file on disk.
+    """
+    if not path.exists():
+        return {"path": str(path), "exists": False}
+
+    stat = path.stat()
+    return {
+        "path": str(path),
+        "sha256_16": hashlib.sha256(path.read_bytes()).hexdigest()[:16],
+        "mtime": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+        "size_bytes": stat.st_size,
+    }
+
+
+def _crs_channel_mapping_vintage() -> dict | None:
+    """Read the CRS channel codelist refresh vintage recorded by
+    `scripts/refresh_channel_crosswalk.py`, or None if missing/unreadable."""
+    path = ODAPaths.cleaning / CRS_CHANNEL_MAPPING_VINTAGE_FILE
+    try:
+        return json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _package_version() -> str:
+    try:
+        return _pkg_version("oda_data")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+def _build_provenance(**parameters: object) -> dict:
+    """Build the `result.attrs["provenance"]` dict for
+    `imputed_multilateral_by_purpose`."""
+    from oda_data.cache import release_info
+
+    crs_release = release_info("CRSData")
+    multisystem_release = release_info("MultiSystemData")
+
+    return {
+        "crs_release": asdict(crs_release) if crs_release is not None else None,
+        "multisystem_release": asdict(multisystem_release)
+        if multisystem_release is not None
+        else None,
+        "crosswalk_vintage": _file_vintage(ODAPaths.cleaning / CROSSWALK_FILE),
+        "proxy_table_vintage": _file_vintage(ODAPaths.cleaning / PROXY_TABLE_FILE),
+        "crs_channel_mapping_vintage": _crs_channel_mapping_vintage(),
+        "package_version": _package_version(),
+        "parameters": parameters,
+    }
 
 
 def imputed_multilateral_by_purpose(
@@ -350,17 +487,41 @@ def imputed_multilateral_by_purpose(
     measure: Measure | str = "gross_disbursement",
     currency: str = "USD",
     base_year: int | None = None,
-    shares_based_on_oda_only: bool = False,
+    flow_types: tuple[str, ...] = ("ODA", "OOF"),
+    period_length: int = 3,
+    max_share_age: int = 5,
+    use_proxy_shares: bool = True,
+    crs: pd.DataFrame | None = None,
+    multisystem: pd.DataFrame | None = None,
+    refresh: bool = False,
+    shares_based_on_oda_only: bool | None = None,
 ) -> pd.DataFrame:
     """Computes imputed multilateral spending by purpose.
 
-    The multilateral spending shares this imputes onto (via
-    `multilateral_spending_shares_by_channel_and_purpose_smoothed`, which calls
-    `spending_by_purpose`) exclude CRS rows reporting a donor's core contribution to a
-    multilateral organisation (`bi_multi == 2`) by default. Those core contributions
-    are already captured here, on the `core_multilateral_contributions_by_provider`
-    leg, via MultiSystem data. Including them on the CRS leg too would double count
-    them.
+    Every donor's core (unearmarked) contribution to a multilateral channel
+    (Multisystem) is spread across purpose codes using that channel's own
+    CRS spending pattern
+    (`imputation_shares.multilateral_spending_shares_by_channel_and_purpose_smoothed`).
+    A channel with no CRS rows of its own in the requested window falls back
+    to its most recent window (`allocation_status="stale_share"`), then to a
+    reviewed proxy channel's shares (`allocation_status="proxy"`,
+    `channel_share_proxies.csv`), then to `unallocated` (full core amount,
+    `recipient_code`/`purpose_code` null). Every core dollar ends up in
+    exactly one output row: conservation is enforced, not assumed -- see
+    `ImputationConservationError`.
+
+    The multilateral spending shares this imputes onto exclude CRS rows
+    reporting a donor's core contribution to a multilateral organisation
+    (`bi_multi == 2`) by default. Those core contributions are already
+    captured here, on the Multisystem leg. Including them on the CRS leg too
+    would double count them.
+
+    `result.attrs["provenance"]` records the upstream CRS/Multisystem
+    release identity, the crosswalk/proxy-table vintage, the package version
+    and this call's parameters, so a result can be traced back to what
+    produced it. Most pandas operations (including many that look like
+    simple filters, e.g. some groupby/merge paths) drop `.attrs`; read it
+    from the frame this function returns, before further transformation.
 
     Args:
         years (list | int | range, optional): Years to filter the data. Defaults to None.
@@ -369,30 +530,100 @@ def imputed_multilateral_by_purpose(
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
         currency (str, optional): Target currency. Defaults to "USD".
         base_year (int | None, optional): Base year for conversion. Defaults to None.
-        shares_based_on_oda_only (bool, optional): Whether to base shares on ODA-only data. Defaults to False.
+        flow_types (tuple[str, ...], optional): CRS flow types the shares are based
+            on. Defaults to `("ODA", "OOF")`, the discontinued OECD sectoral
+            imputation practice, needed so OOF-only-reporting channels (IBRD, EBRD,
+            IFC, IDB Invest) get a non-empty share pool. Pass `("ODA",)` for the
+            stricter, official-ODA-definition basis.
+        period_length (int, optional): Rolling window length in years for shares. Defaults to 3.
+        max_share_age (int, optional): Maximum number of years a stale window may
+            lag behind the requested year. Defaults to 5.
+        use_proxy_shares (bool, optional): Whether a channel with no own current or
+            stale share falls back to a reviewed proxy channel's shares
+            before being marked `unallocated`. Defaults to True.
+        crs (pd.DataFrame | None, optional): Pre-fetched, row-level CRS data to use
+            instead of reading it (for tests and pinned builds). Forwarded to
+            `multilateral_spending_shares_by_channel_and_purpose_smoothed`. Defaults
+            to None.
+        multisystem (pd.DataFrame | None, optional): Pre-fetched Multisystem data to
+            use instead of reading it. Forwarded to
+            `core_multilateral_contributions_by_provider`. Defaults to None.
+        refresh (bool, optional): If True, bypass the bulk cache and re-download for
+            both the CRS and Multisystem reads (#162). Only has an effect where the
+            corresponding `crs`/`multisystem` input is None. Defaults to False.
+        shares_based_on_oda_only (bool | None, optional): Deprecated; use
+            `flow_types`. `None` (the default) means "not passed" and does not emit
+            a warning; passing True/False emits a `DeprecationWarning` and overrides
+            `flow_types`. Defaults to None.
 
     Returns:
-        pd.DataFrame: Dataframe with imputed multilateral spending by purpose.
-    """
+        pd.DataFrame: `year, donor_code, channel_code, recipient_code,
+        purpose_code, value, currency, prices, allocation_status,
+        share_channel_code, share_years`. `recipient_code`, `purpose_code`
+        and `share_channel_code` are nullable Int64. `channel_code` is
+        always the core-contribution channel, never the proxy. Rows with
+        `value == 0.0` exactly are never emitted (a wider read window than
+        the requested years can surface a share window or a core
+        contribution that nets to nothing); a single-year call and the
+        matching year of a multi-year call therefore return the same rows.
+        A negative `value` is a real CRS reversal and is kept.
 
-    # Get core multilateral contributions by provider and channel
-    core = core_multilateral_contributions_by_provider(
+    Raises:
+        ImputationConservationError: If the sum of `value` for any (year,
+            donor_code, channel_code) does not match its core contribution
+            amount within `abs(diff) <= 1e-6 * abs(core) + 1e-9`, checked
+            both before and after currency conversion.
+    """
+    core_raw = _read_core_contributions(
+        years=years,
+        providers=providers,
+        channels=channels,
+        measure=measure,
+        multisystem=multisystem,
+        refresh=refresh,
+    )
+
+    provenance = _build_provenance(
         years=years,
         providers=providers,
         channels=channels,
         measure=measure,
         currency=currency,
         base_year=base_year,
+        flow_types=flow_types,
+        period_length=period_length,
+        max_share_age=max_share_age,
+        use_proxy_shares=use_proxy_shares,
+        refresh=refresh,
+        shares_based_on_oda_only=shares_based_on_oda_only,
     )
 
-    # Get multilateral spending shares by channel and purpose
-    multi_shares = multilateral_spending_shares_by_channel_and_purpose_smoothed(
-        years=years, oda_only=shares_based_on_oda_only
+    if core_raw.empty:
+        result = _empty_result()
+        result.attrs["provenance"] = provenance
+        return result
+
+    core_years = sorted(int(y) for y in core_raw[ODASchema.YEAR].unique())
+
+    shares = multilateral_spending_shares_by_channel_and_purpose_smoothed(
+        years=core_years,
+        flow_types=flow_types,
+        period_length=period_length,
+        max_share_age=max_share_age,
+        crs=crs,
+        oda_only=shares_based_on_oda_only,
+        refresh=refresh,
     )
 
-    # Compute imputed multilateral spending by purpose
-    data = _compute_imputations(
-        core_contributions=core, multi_spending_shares=multi_shares
-    )
+    result_raw = _allocate(core_raw, shares, use_proxy_shares=use_proxy_shares)
+    result_raw = _drop_zero_value_rows(result_raw)
+    _check_conservation(result_raw, core_raw, stage="pre-conversion")
 
-    return data
+    result = convert_units(result_raw, currency=currency, base_year=base_year)
+    core_converted = convert_units(core_raw, currency=currency, base_year=base_year)
+    _check_conservation(result, core_converted, stage="post-conversion")
+
+    result = _cast_output_dtypes(result[_OUTPUT_COLUMNS].reset_index(drop=True))
+    result.attrs["provenance"] = provenance
+
+    return result
