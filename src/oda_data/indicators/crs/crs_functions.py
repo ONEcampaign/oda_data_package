@@ -36,15 +36,20 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
 def _rolling_period_total(df: pd.DataFrame, period_length: int = 3) -> pd.DataFrame:
     """Calculate a rolling total of `period_length` years.
 
-    Thin wrapper around the shared, vectorised `rolling_window_total`
-    (`oda_data.indicators.research.imputation_shares`), which replaced this
-    function's own year-by-year deep-copy/concat loop. A (grouper, year)
-    combination is only emitted once its group has a full `period_length`-
-    year window within the years present in `df`.
+    Wraps the shared, vectorised `rolling_window_total`
+    (`oda_data.indicators.research.imputation_shares`). A (grouper, year)
+    combination is emitted once its group has a full `period_length`-year
+    window within the years present in `df`, and only when some value in that
+    window is nonzero. `rolling_window_total` fills a window in which the group
+    has no rows with zeros, and those rows would otherwise become zero-share
+    rows for years before or after the group existed.
     """
     values = list(crs_value_cols().values())
 
-    return rolling_window_total(df, period_length=period_length, value_cols=values)
+    totals = rolling_window_total(df, period_length=period_length, value_cols=values)
+    has_value = totals[values].fillna(0).ne(0).any(axis=1)
+
+    return totals.loc[has_value].reset_index(drop=True)
 
 
 def _purpose_share(value_row: pd.DataFrame, value_col: str) -> pd.Series:

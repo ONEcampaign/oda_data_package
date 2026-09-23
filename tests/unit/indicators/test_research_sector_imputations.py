@@ -739,3 +739,50 @@ class TestCoreMultilateralContributionsByProvider:
         )
 
         assert result[ODASchema.VALUE].sum() == pytest.approx(1000.0)
+
+
+# ============================================================================
+# _get_channel_share_proxies
+# ============================================================================
+
+
+class TestChannelShareProxies:
+    def _write(self, tmp_path, reviewed_values):
+        rows = [
+            f"{44007 + i},Channel {i},44002,parent_fund,,rationale,{value}"
+            for i, value in enumerate(reviewed_values)
+        ]
+        header = (
+            "channel_code,channel_name,proxy_channel_code,proxy_type,"
+            "fixed_purpose_code,rationale,reviewed"
+        )
+        (tmp_path / "channel_share_proxies.csv").write_text(
+            "\n".join([header, *rows]) + "\n"
+        )
+
+    def test_keeps_only_reviewed_rows(self, tmp_path, monkeypatch):
+        from oda_data.config import ODAPaths
+        from oda_data.indicators.research.sector_imputations import (
+            _get_channel_share_proxies,
+        )
+
+        self._write(tmp_path, ["true", "false"])
+        monkeypatch.setattr(ODAPaths, "cleaning", tmp_path)
+
+        proxies = _get_channel_share_proxies()
+
+        assert proxies[ODASchema.CHANNEL_CODE].tolist() == [44007]
+
+    def test_table_without_reviewed_column_is_refused(self, tmp_path, monkeypatch):
+        from oda_data.config import ODAPaths
+        from oda_data.indicators.research.sector_imputations import (
+            _get_channel_share_proxies,
+        )
+
+        (tmp_path / "channel_share_proxies.csv").write_text(
+            "channel_code,proxy_channel_code,fixed_purpose_code\n44007,44002,\n"
+        )
+        monkeypatch.setattr(ODAPaths, "cleaning", tmp_path)
+
+        with pytest.raises(ValueError, match="reviewed"):
+            _get_channel_share_proxies()

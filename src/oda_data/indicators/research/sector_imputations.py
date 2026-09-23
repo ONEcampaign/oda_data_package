@@ -208,15 +208,18 @@ def _read_core_contributions(
 
 
 def _get_channel_share_proxies() -> pd.DataFrame:
-    """Read the reviewed proxy table.
+    """Read the proxy table, keeping only rows marked `reviewed=true`.
 
     Returns:
         pd.DataFrame: columns channel_code, channel_name, proxy_channel_code,
         proxy_type ("parent_fund" or "fixed_purpose"), fixed_purpose_code,
         rationale, reviewed. `proxy_channel_code` is null for `fixed_purpose`
         rows; `fixed_purpose_code` is null for `parent_fund` rows.
+
+    Raises:
+        ValueError: If the table has no `reviewed` column.
     """
-    return pd.read_csv(
+    proxies = pd.read_csv(
         ODAPaths.cleaning / PROXY_TABLE_FILE,
         dtype={
             ODASchema.CHANNEL_CODE: "Int64",
@@ -224,6 +227,12 @@ def _get_channel_share_proxies() -> pd.DataFrame:
             "fixed_purpose_code": "Int64",
         },
     )
+    if "reviewed" not in proxies.columns:
+        raise ValueError(
+            f"{PROXY_TABLE_FILE} has no 'reviewed' column, so unreviewed proxies "
+            "cannot be told apart from reviewed ones."
+        )
+    return proxies.loc[proxies["reviewed"].eq(True)].reset_index(drop=True)
 
 
 def _apply_proxies(

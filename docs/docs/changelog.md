@@ -5,6 +5,14 @@ All notable changes to the oda_data package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-09-22
+
+### Fixed
+
+- **`multilateral_purpose_spending_shares` returned zero-share rows** for windows in which a purpose/recipient group had no CRS rows, including years before or after the group existed. The rolling total now emits a group's window only when the window holds a nonzero value.
+- **`imputed_multilateral_by_purpose` used unreviewed proxy rows.** `channel_share_proxies.csv` rows marked `reviewed=false` are now ignored, as crosswalk rows are, and a proxy table without a `reviewed` column raises `ValueError`. All eight shipped proxy rows are reviewed, so results are unchanged.
+- **`scripts/imputation_delta.py` misattributed non-contiguous year requests.** Years the previous release left empty are now the requested years before `min(years) + period_length - 1`, so `--years 2019,2021,2023` treats only 2019 as empty.
+
 ## [2.8.0] - 2026-09-22
 
 This release rebuilds the imputed multilateral pipeline (`imputed_multilateral_by_purpose`, `multilateral_spending_shares_by_channel_and_purpose_smoothed`, `spending_by_purpose`) end to end. Every core contribution now ends up in exactly one output row: imputed against a channel's own CRS shares, a lapsed reporter's stale shares, a reviewed proxy channel's shares, or explicitly `unallocated`, instead of some being silently dropped or misattributed. See [Sector Imputations](https://oneecampaign.github.io/oda_data_package/sector-imputations/) for the full methodology, and [Imputation Delta](https://oneecampaign.github.io/oda_data_package/imputation-delta/) for a script that measures the change by year and donor. Closes #162, #163, #165.
