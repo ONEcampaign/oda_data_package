@@ -185,6 +185,27 @@ class TestRollingPeriodTotal:
         assert year_2022["commitment_current"].iloc[0] == 600.0
 
     @patch("oda_data.indicators.crs.crs_functions.crs_value_cols")
+    def test_rolling_period_total_skips_windows_a_group_is_absent_from(
+        self, mock_value_cols
+    ):
+        """A group with no rows in a window gets no row for that window."""
+        mock_value_cols.return_value = {"commitment": "commitment_current"}
+
+        df = pd.DataFrame(
+            {
+                ODASchema.YEAR: [2018, 2019, 2020, 2021, 2022, 2018],
+                ODASchema.RECIPIENT_CODE: [100] * 5 + [200],
+                "commitment_current": [1.0] * 6,
+            }
+        )
+
+        result = _rolling_period_total(df)
+
+        recipient_200 = result[result[ODASchema.RECIPIENT_CODE] == 200]
+        assert recipient_200[ODASchema.YEAR].tolist() == [2020]
+        assert len(result[result[ODASchema.RECIPIENT_CODE] == 100]) == 3
+
+    @patch("oda_data.indicators.crs.crs_functions.crs_value_cols")
     def test_rolling_period_total_custom_period(self, mock_value_cols):
         """Test rolling total with custom period length."""
         mock_value_cols.return_value = {"commitment": "commitment_current"}

@@ -29,7 +29,7 @@ Named causes:
   that unconditionally, with no toggle to reproduce the old truncation, so
   it cannot be isolated by ablating this branch's own defaults the way the
   other three causes are. Since the affected years are known exactly from
-  the request (`years[: period_length - 1]`) and no other named cause is a
+  the request (every year before `min(years) + period_length - 1`) and no other named cause is a
   candidate explanation for a total that is structurally zero, the whole
   `observed_delta` for those (year, donor) rows -- after subtracting the
   other ablated causes and `unallocated_and_proxy`, same as `residual`
@@ -162,13 +162,16 @@ def _year_donor_totals(result: pd.DataFrame, *, label: str) -> pd.DataFrame:
 
 
 def _truncated_years(years: list[int], period_length: int) -> frozenset[int]:
-    """The leading years of a request that the previous release's window
-    truncation defect hits: with `period_length=3`, the first two years of
-    any multi-year request never got a complete rolling window under
-    `oda-data==2.7.0`'s unpadded CRS read, so `old_total` is exactly 0 there
-    regardless of donor -- see `window_padding` in the module docstring."""
-    sorted_years = sorted(years)
-    return frozenset(sorted_years[: max(period_length - 1, 0)])
+    """The requested years that the previous release's window truncation
+    defect hits: `oda-data==2.7.0` read CRS for the requested years only, so
+    a year earlier than `min(years) + period_length - 1` never got a rolling
+    window and `old_total` is exactly 0 there regardless of donor -- see
+    `window_padding` in the module docstring. The cutoff is a calendar year,
+    so a non-contiguous request such as 2019, 2021, 2023 loses 2019 only."""
+    if not years:
+        return frozenset()
+    cutoff = min(years) + period_length - 1
+    return frozenset(y for y in years if y < cutoff)
 
 
 def _status_totals(
