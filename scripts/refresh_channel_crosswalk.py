@@ -15,9 +15,9 @@ Two independent jobs, run via subcommands:
     review report of pairs that are new, whose provider/agency name changed,
     or that are still marked ``reviewed=false``. Each such pair gets a
     candidate channel code from ResolveKit's ``Resolver``. New pairs are
-    appended to the crosswalk as ``method="resolvekit", reviewed=false`` rows
-    so nothing is silently dropped -- but a row already marked
-    ``reviewed=true`` is never touched, and an already-present
+    appended to the crosswalk as ``method="resolvekit", reviewed=false`` rows,
+    which runtime matching ignores until a human sets ``reviewed=true``. A row
+    already marked ``reviewed=true`` is never touched, and an already-present
     ``reviewed=false`` row is reported again rather than being rewritten (so a
     reviewer's in-progress edits are never clobbered by a second run).
 
@@ -569,11 +569,9 @@ def upsert_new_pairs(
     Never mutates an existing row: rows already in ``crosswalk`` (whether
     ``reviewed=True`` or ``reviewed=False``) pass through unchanged. Only
     pairs absent from the crosswalk entirely (``new``) are added, each as
-    ``method="resolvekit", reviewed=False`` so a human must confirm them
-    before they take effect in ``add_multilateral_channel_codes``' join (an
-    unreviewed row's ``channel_code`` is exactly as usable as any other row
-    there -- ``reviewed`` is an editorial-workflow marker, not a join
-    condition).
+    ``method="resolvekit", reviewed=False``. ``add_multilateral_channel_codes``
+    ignores unreviewed rows, so a proposal takes effect only once a human sets
+    ``reviewed=true``.
 
     Args:
         crosswalk: As returned by :func:`load_crosswalk`.

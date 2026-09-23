@@ -28,6 +28,7 @@ def _crs_rows(
             ODASchema.RECIPIENT_CODE: recipient_code,
             ODASchema.YEAR: y,
             ODASchema.CATEGORY: category,
+            ODASchema.BI_MULTI: 1,
             "usd_disbursement": value,
         }
         for y in years

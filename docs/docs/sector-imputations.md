@@ -7,9 +7,9 @@ The imputed multilateral pipeline was rebuilt in `oda_data` 2.8.0: a reviewed
 provider/agency-to-channel crosswalk replaces fuzzy name matching, core
 contributions that were previously silently dropped are now visible as
 `unallocated`/`proxy`/`stale_share` rows, and the output carries a
-provenance record. See [Imputation Delta](imputation-delta.md) for what
-changed in the numbers and why, and the [Changelog](changelog.md) for the
-full list of breaking changes.
+provenance record. [Imputation Delta](imputation-delta.md) measures the
+change in totals by year and donor, and the [Changelog](changelog.md) lists
+the breaking changes.
 
 ## The Problem: Multilateral Contributions Have No Sector Codes
 
@@ -80,9 +80,9 @@ discontinued OECD sectoral-imputation practice) because several multilateral cha
 only OOF to the CRS: IBRD (channel 44001, $7.07 billion of core contributions 2015-2024), EBRD
 (46015), IFC (44004) and IDB Invest all have zero Category-10 CRS rows. Under an ODA-only filter
 their share pool is empty and their core money falls straight to `unallocated`. Pass
-`flow_types=("ODA",)` for the stricter, official-ODA-definition basis; `spending_by_purpose`
-(the bilateral counterpart used for direct CRS analysis) keeps ODA-only as its own default,
-since it isn't subject to the same OOF-only-reporter problem.
+`flow_types=("ODA",)` for the stricter, official-ODA-definition basis. `spending_by_purpose`
+(the bilateral counterpart used for direct CRS analysis) defaults to `flow_types=("ODA",)`;
+before 2.8.0 its default applied no category filter.
 
 ### Step 3: Fall Back to a Stale Share for a Lapsed Reporter
 
@@ -191,8 +191,8 @@ downstream total moves depending on how you aggregate:
   or `recipient_code`)** picks up the full `unallocated` amount, since those rows carry a real
   `value` and only their purpose/recipient columns are null.
 
-See [Imputation Delta](imputation-delta.md) for a year-by-donor breakdown of how much money
-moves under each of these read patterns.
+[Imputation Delta](imputation-delta.md) measures how much money this moves for a given set of
+donors and years.
 
 ## Using Sector Imputations
 
@@ -231,6 +231,8 @@ imputed_multilateral_by_purpose(
     measure="gross_disbursement",          # Measure type
     currency="USD",                        # Target currency
     base_year=None,                        # For constant prices (None = current)
+    shares_based_on_oda_only=None,         # Deprecated -- see below
+    *,                                     # The parameters below are keyword-only
     flow_types=("ODA", "OOF"),             # CRS categories the shares are based on
     period_length=3,                       # Rolling window length, in years
     max_share_age=5,                       # Stale-share lookback, in years
@@ -238,7 +240,6 @@ imputed_multilateral_by_purpose(
     crs=None,                              # Pre-fetched CRS data (tests, pinned builds)
     multisystem=None,                      # Pre-fetched Multisystem data
     refresh=False,                         # Bypass the bulk cache and re-download
-    shares_based_on_oda_only=None,         # Deprecated -- see below
 )
 ```
 
@@ -259,7 +260,7 @@ they used to do, since neither maps cleanly onto its replacement:
 - `imputed_multilateral_by_purpose(..., shares_based_on_oda_only=False)` (the old default)
   applied **no CRS category filter at all**, mixing OOF, export credits and every other flow
   category in alongside ODA. This is different from the new default, `flow_types=("ODA", "OOF")`, and there is no `flow_types` value that reproduces the pre-2.8.0 "no filter" basis
-  exactly. See [Imputation Delta](imputation-delta.md) for how much this changes the numbers.
+  exactly.
 
 Pass `flow_types` directly instead.
 

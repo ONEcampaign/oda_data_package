@@ -207,6 +207,27 @@ def _summarise_unmapped(rows: pd.DataFrame, provider_col: str, agency_col: str) 
     return "; ".join(lines)
 
 
+def _reviewed_rows(crosswalk: pd.DataFrame) -> pd.DataFrame:
+    """Keep the crosswalk rows marked `reviewed=True`, warning about the rest.
+
+    Raises:
+        ValueError: If the crosswalk has no `reviewed` column.
+    """
+    if "reviewed" not in crosswalk.columns:
+        raise ValueError(
+            "The multilateral channel crosswalk has no 'reviewed' column, so "
+            "unreviewed proposals cannot be told apart from reviewed mappings."
+        )
+    reviewed = crosswalk["reviewed"].eq(True)
+    if not reviewed.all():
+        logger.warning(
+            "Ignoring %d unreviewed multilateral channel crosswalk row(s); "
+            "pairs they cover are treated as unmapped until marked reviewed=true.",
+            int((~reviewed).sum()),
+        )
+    return crosswalk.loc[reviewed]
+
+
 def add_multilateral_channel_codes(
     df: pd.DataFrame,
     on_unmapped: Literal["raise", "unallocated"] = "raise",
@@ -214,6 +235,10 @@ def add_multilateral_channel_codes(
 ) -> pd.DataFrame:
     """Add channel codes by an exact join on (provider_code, agency_code)
     against the reviewed multilateral channel crosswalk.
+
+    Only crosswalk rows marked `reviewed=True` take part in the join. An
+    unreviewed row is treated as absent, so a pair it covers counts as
+    unmapped until a human confirms it.
 
     Rows whose crosswalk status is "excluded" are dropped; the dropped row
     count and value are logged at INFO with the reason. A (provider_code,
@@ -242,6 +267,7 @@ def add_multilateral_channel_codes(
 
     if crosswalk is None:
         crosswalk = get_multilateral_channel_crosswalk()
+    crosswalk = _reviewed_rows(crosswalk)
 
     df = df.copy(deep=True).drop(
         columns=[c for c in ("channel_code", "status", "reason") if c in df.columns]

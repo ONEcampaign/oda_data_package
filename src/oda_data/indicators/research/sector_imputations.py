@@ -32,6 +32,9 @@ from oda_data.config import ODAPaths
 # names are re-exported here so `sector_imputations.<name>` imports keep
 # working.
 from oda_data.indicators.research.imputation_shares import (  # noqa: F401
+    _as_list,
+    _multilateral_spending_shares,
+    _resolve_flow_types,
     add_multi_channels_and_group,
     multilateral_spending_shares_by_channel_and_purpose_smoothed,
     period_purpose_shares,
@@ -89,6 +92,7 @@ def core_multilateral_contributions_by_provider(
     measure: Measure | str = "gross_disbursement",
     currency: str = "USD",
     base_year: int | None = None,
+    *,
     multisystem: pd.DataFrame | None = None,
     refresh: bool = False,
 ) -> pd.DataFrame:
@@ -104,8 +108,10 @@ def core_multilateral_contributions_by_provider(
         multisystem (pd.DataFrame | None, optional): Pre-fetched Multisystem data to
             use instead of reading it (for tests and pinned builds). Must carry
             `donor_code`, `channel_code`, `year` and `amount` columns, already
-            filtered to the desired flow type/amount type/indicator. Defaults to
-            None (read from `MultiSystemData`).
+            filtered to core contributions. `years`, `providers` and `channels`
+            are applied to it, and so are the `measure` flow type and current
+            prices where it carries `flow_type` and `amount_type` columns.
+            Defaults to None (read from `MultiSystemData`).
         refresh (bool, optional): If True, bypass the bulk cache and re-download
             (#162). Only has an effect when `multisystem` is None. Defaults to False.
 
@@ -124,6 +130,32 @@ def core_multilateral_contributions_by_provider(
     return convert_units(data, currency=currency, base_year=base_year)
 
 
+def _filter_supplied_multisystem(
+    multisystem: pd.DataFrame,
+    *,
+    years: list | int | range | None,
+    providers: list | int | None,
+    channels: list | int | None,
+    measure_filter: str,
+) -> pd.DataFrame:
+    """Apply to a caller-supplied Multisystem frame the filters a
+    `MultiSystemData` read applies. The `flow_type` and `amount_type` filters
+    apply only when the frame carries those columns."""
+    mask = pd.Series(True, index=multisystem.index)
+    for column, values in (
+        (ODASchema.YEAR, _as_list(years)),
+        (ODASchema.PROVIDER_CODE, _as_list(providers)),
+        (ODASchema.CHANNEL_CODE, _as_list(channels)),
+    ):
+        if values is not None:
+            mask &= multisystem[column].isin(values)
+    if "flow_type" in multisystem.columns:
+        mask &= multisystem["flow_type"] == measure_filter
+    if "amount_type" in multisystem.columns:
+        mask &= multisystem["amount_type"] == "Current prices"
+    return multisystem.loc[mask]
+
+
 def _read_core_contributions(
     years: list | int | range | None,
     providers: list | int | None,
@@ -138,7 +170,13 @@ def _read_core_contributions(
     measure_filter = MEASURES["Multisystem"][measure]["filter"]
 
     if multisystem is not None:
-        raw = multisystem
+        raw = _filter_supplied_multisystem(
+            multisystem,
+            years=years,
+            providers=providers,
+            channels=channels,
+            measure_filter=measure_filter,
+        )
     else:
         from oda_data.api.sources import MultiSystemData
 
@@ -459,19 +497,37 @@ def _package_version() -> str:
         return "unknown"
 
 
-def _build_provenance(**parameters: object) -> dict:
-    """Build the `result.attrs["provenance"]` dict for
-    `imputed_multilateral_by_purpose`."""
+def _release(source: str, *, supplied: bool, read: bool) -> dict | str | None:
+    """The release a source's data came from: "supplied" for a caller-supplied
+    frame, None when it was not read, else the cached release metadata."""
     from oda_data.cache import release_info
 
-    crs_release = release_info("CRSData")
-    multisystem_release = release_info("MultiSystemData")
+    if supplied:
+        return "supplied"
+    if not read:
+        return None
+    release = release_info(source)
+    return asdict(release) if release is not None else None
 
+
+def _build_provenance(
+    *,
+    crs_supplied: bool,
+    multisystem_supplied: bool,
+    crs_read: bool,
+    parameters: dict,
+) -> dict:
+    """Build the `result.attrs["provenance"]` dict for
+    `imputed_multilateral_by_purpose`.
+
+    Called after the reads it describes, so the cached release metadata it
+    records is the one those reads produced.
+    """
     return {
-        "crs_release": asdict(crs_release) if crs_release is not None else None,
-        "multisystem_release": asdict(multisystem_release)
-        if multisystem_release is not None
-        else None,
+        "crs_release": _release("CRSData", supplied=crs_supplied, read=crs_read),
+        "multisystem_release": _release(
+            "MultiSystemData", supplied=multisystem_supplied, read=True
+        ),
         "crosswalk_vintage": _file_vintage(ODAPaths.cleaning / CROSSWALK_FILE),
         "proxy_table_vintage": _file_vintage(ODAPaths.cleaning / PROXY_TABLE_FILE),
         "crs_channel_mapping_vintage": _crs_channel_mapping_vintage(),
@@ -487,6 +543,8 @@ def imputed_multilateral_by_purpose(
     measure: Measure | str = "gross_disbursement",
     currency: str = "USD",
     base_year: int | None = None,
+    shares_based_on_oda_only: bool | None = None,
+    *,
     flow_types: tuple[str, ...] = ("ODA", "OOF"),
     period_length: int = 3,
     max_share_age: int = 5,
@@ -494,7 +552,6 @@ def imputed_multilateral_by_purpose(
     crs: pd.DataFrame | None = None,
     multisystem: pd.DataFrame | None = None,
     refresh: bool = False,
-    shares_based_on_oda_only: bool | None = None,
 ) -> pd.DataFrame:
     """Computes imputed multilateral spending by purpose.
 
@@ -530,6 +587,10 @@ def imputed_multilateral_by_purpose(
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
         currency (str, optional): Target currency. Defaults to "USD".
         base_year (int | None, optional): Base year for conversion. Defaults to None.
+        shares_based_on_oda_only (bool | None, optional): Deprecated; use
+            `flow_types`. `None` (the default) means "not passed" and does not emit
+            a warning; passing True/False emits a `DeprecationWarning` and overrides
+            `flow_types`. Defaults to None.
         flow_types (tuple[str, ...], optional): CRS flow types the shares are based
             on. Defaults to `("ODA", "OOF")`, the discontinued OECD sectoral
             imputation practice, needed so OOF-only-reporting channels (IBRD, EBRD,
@@ -551,10 +612,6 @@ def imputed_multilateral_by_purpose(
         refresh (bool, optional): If True, bypass the bulk cache and re-download for
             both the CRS and Multisystem reads (#162). Only has an effect where the
             corresponding `crs`/`multisystem` input is None. Defaults to False.
-        shares_based_on_oda_only (bool | None, optional): Deprecated; use
-            `flow_types`. `None` (the default) means "not passed" and does not emit
-            a warning; passing True/False emits a `DeprecationWarning` and overrides
-            `flow_types`. Defaults to None.
 
     Returns:
         pd.DataFrame: `year, donor_code, channel_code, recipient_code,
@@ -574,6 +631,57 @@ def imputed_multilateral_by_purpose(
             amount within `abs(diff) <= 1e-6 * abs(core) + 1e-9`, checked
             both before and after currency conversion.
     """
+    return _imputed_multilateral_by_purpose(
+        years=years,
+        providers=providers,
+        channels=channels,
+        measure=measure,
+        currency=currency,
+        base_year=base_year,
+        shares_based_on_oda_only=shares_based_on_oda_only,
+        flow_types=flow_types,
+        period_length=period_length,
+        max_share_age=max_share_age,
+        use_proxy_shares=use_proxy_shares,
+        exclude_multilateral_core=True,
+        crs=crs,
+        multisystem=multisystem,
+        refresh=refresh,
+    )
+
+
+def _imputed_multilateral_by_purpose(
+    *,
+    years: list | int | range | None,
+    providers: list | int | None,
+    channels: list | int | None,
+    measure: Measure | str,
+    currency: str,
+    base_year: int | None,
+    shares_based_on_oda_only: bool | None,
+    flow_types: tuple[str, ...],
+    period_length: int,
+    max_share_age: int,
+    use_proxy_shares: bool,
+    exclude_multilateral_core: bool,
+    crs: pd.DataFrame | None,
+    multisystem: pd.DataFrame | None,
+    refresh: bool,
+) -> pd.DataFrame:
+    """Body of `imputed_multilateral_by_purpose`.
+
+    `exclude_multilateral_core=False` keeps CRS rows reporting a core
+    contribution to a multilateral organisation (`bi_multi == 2`) in the
+    shares. It exists to measure the effect of excluding them
+    (`scripts/imputation_delta.py`), and `imputed_multilateral_by_purpose`
+    always passes True.
+    """
+    # stacklevel=4 points a deprecation warning at the caller of the public
+    # function, past _resolve_flow_types, this function and the public one.
+    resolved_flow_types = _resolve_flow_types(
+        flow_types, shares_based_on_oda_only, stacklevel=4
+    )
+
     core_raw = _read_core_contributions(
         years=years,
         providers=providers,
@@ -583,35 +691,41 @@ def imputed_multilateral_by_purpose(
         refresh=refresh,
     )
 
-    provenance = _build_provenance(
-        years=years,
-        providers=providers,
-        channels=channels,
-        measure=measure,
-        currency=currency,
-        base_year=base_year,
-        flow_types=flow_types,
-        period_length=period_length,
-        max_share_age=max_share_age,
-        use_proxy_shares=use_proxy_shares,
-        refresh=refresh,
-        shares_based_on_oda_only=shares_based_on_oda_only,
-    )
+    parameters = {
+        "years": years,
+        "providers": providers,
+        "channels": channels,
+        "measure": measure,
+        "currency": currency,
+        "base_year": base_year,
+        "flow_types": flow_types,
+        "period_length": period_length,
+        "max_share_age": max_share_age,
+        "use_proxy_shares": use_proxy_shares,
+        "exclude_multilateral_core": exclude_multilateral_core,
+        "refresh": refresh,
+        "shares_based_on_oda_only": shares_based_on_oda_only,
+    }
 
     if core_raw.empty:
         result = _empty_result()
-        result.attrs["provenance"] = provenance
+        result.attrs["provenance"] = _build_provenance(
+            crs_supplied=crs is not None,
+            multisystem_supplied=multisystem is not None,
+            crs_read=False,
+            parameters=parameters,
+        )
         return result
 
     core_years = sorted(int(y) for y in core_raw[ODASchema.YEAR].unique())
 
-    shares = multilateral_spending_shares_by_channel_and_purpose_smoothed(
-        years=core_years,
-        flow_types=flow_types,
+    shares = _multilateral_spending_shares(
+        core_years,
+        flow_types=resolved_flow_types,
         period_length=period_length,
         max_share_age=max_share_age,
+        exclude_multilateral_core=exclude_multilateral_core,
         crs=crs,
-        oda_only=shares_based_on_oda_only,
         refresh=refresh,
     )
 
@@ -624,6 +738,11 @@ def imputed_multilateral_by_purpose(
     _check_conservation(result, core_converted, stage="post-conversion")
 
     result = _cast_output_dtypes(result[_OUTPUT_COLUMNS].reset_index(drop=True))
-    result.attrs["provenance"] = provenance
+    result.attrs["provenance"] = _build_provenance(
+        crs_supplied=crs is not None,
+        multisystem_supplied=multisystem is not None,
+        crs_read=True,
+        parameters=parameters,
+    )
 
     return result

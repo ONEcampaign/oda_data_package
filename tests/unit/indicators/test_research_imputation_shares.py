@@ -378,6 +378,7 @@ def _crs_rows(
             ODASchema.RECIPIENT_CODE: recipient_code,
             ODASchema.YEAR: y,
             ODASchema.CATEGORY: category,
+            ODASchema.BI_MULTI: 1,
             "usd_disbursement": value,
         }
         for y in years
@@ -673,6 +674,7 @@ class TestSpendingByPurposeFlowTypes:
                 ODASchema.RECIPIENT_CODE: [1, 1, 1],
                 ODASchema.YEAR: [2020, 2020, 2020],
                 ODASchema.CATEGORY: [10, 21, 60],
+                ODASchema.BI_MULTI: [1, 1, 1],
                 "usd_disbursement": [10.0, 20.0, 30.0],
             }
         )
@@ -692,6 +694,40 @@ class TestSpendingByPurposeFlowTypes:
     def test_oda_only_true_warns(self):
         with pytest.warns(DeprecationWarning, match="oda_only"):
             spending_by_purpose(crs=self._crs_df(), oda_only=True)
+
+    def test_supplied_frame_excludes_core_contributions(self):
+        crs = self._crs_df().assign(**{ODASchema.BI_MULTI: [2, 1, None]})
+        result = spending_by_purpose(crs=crs, flow_types=())
+        # The bi_multi == 2 row (10.0) is dropped; the null row is kept.
+        assert result[ODASchema.VALUE].sum() == pytest.approx(50.0)
+
+    def test_supplied_frame_keeps_core_contributions_when_disabled(self):
+        crs = self._crs_df().assign(**{ODASchema.BI_MULTI: [2, 1, 1]})
+        result = spending_by_purpose(
+            crs=crs, flow_types=(), exclude_multilateral_core=False
+        )
+        assert result[ODASchema.VALUE].sum() == pytest.approx(60.0)
+
+    def test_supplied_frame_without_bi_multi_is_refused(self):
+        crs = self._crs_df().drop(columns=[ODASchema.BI_MULTI])
+        with pytest.raises(ValueError, match="bi_multi"):
+            spending_by_purpose(crs=crs)
+        result = spending_by_purpose(crs=crs, exclude_multilateral_core=False)
+        assert result[ODASchema.VALUE].sum() == pytest.approx(10.0)
+
+    def test_supplied_frame_is_filtered_by_years_and_providers(self):
+        crs = self._crs_df().assign(
+            **{ODASchema.YEAR: [2020, 2021, 2020], ODASchema.PROVIDER_CODE: [1, 1, 2]}
+        )
+        result = spending_by_purpose(crs=crs, flow_types=(), years=2020, providers=1)
+        assert result[ODASchema.VALUE].sum() == pytest.approx(10.0)
+
+    def test_oda_only_keeps_its_positional_slot(self):
+        with pytest.warns(DeprecationWarning, match="oda_only"):
+            result = spending_by_purpose(
+                None, None, "gross_disbursement", True, crs=self._crs_df()
+            )
+        assert result[ODASchema.VALUE].sum() == pytest.approx(10.0)
 
     def test_flow_type_categories_match_crs_codebook(self):
         assert FLOW_TYPE_CATEGORIES == {"ODA": 10, "OOF": 21, "PSI": 60}

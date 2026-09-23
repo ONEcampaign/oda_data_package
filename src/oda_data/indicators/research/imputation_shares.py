@@ -390,16 +390,64 @@ def add_multi_channels_and_group(data: pd.DataFrame) -> pd.DataFrame:
     return data.pipe(add_multilateral_channel_codes).pipe(_group_by_mapped_channel)
 
 
+def _as_list(values: list | int | range | None) -> list | None:
+    """Coerce a scalar-or-iterable filter argument to a list, or None."""
+    if values is None:
+        return None
+    if isinstance(values, int):
+        return [values]
+    return list(values)
+
+
+def _filter_supplied_crs(
+    crs: pd.DataFrame,
+    *,
+    years: list | int | range | None,
+    providers: list | int | None,
+    category_codes: list[int],
+    exclude_multilateral_core: bool,
+) -> pd.DataFrame:
+    """Apply to a caller-supplied CRS frame the filters a `CRSData` read applies.
+
+    Raises:
+        ValueError: If `exclude_multilateral_core` is True and the frame has no
+            `bi_multi` column, since core-contribution rows cannot then be told
+            apart. Pass `exclude_multilateral_core=False` for a frame that is
+            already filtered.
+    """
+    if exclude_multilateral_core and ODASchema.BI_MULTI not in crs.columns:
+        raise ValueError(
+            "The supplied crs frame has no 'bi_multi' column, so core "
+            "contributions to multilaterals (bi_multi == 2) cannot be excluded. "
+            "Include the column, or pass exclude_multilateral_core=False if the "
+            "frame is already filtered."
+        )
+
+    mask = pd.Series(True, index=crs.index)
+    if exclude_multilateral_core:
+        bi_multi = crs[ODASchema.BI_MULTI]
+        mask &= (bi_multi != 2) | bi_multi.isna()
+    if category_codes:
+        mask &= crs[ODASchema.CATEGORY].isin(category_codes)
+    if (year_list := _as_list(years)) is not None:
+        mask &= crs[ODASchema.YEAR].isin(year_list)
+    if (provider_list := _as_list(providers)) is not None:
+        mask &= crs[ODASchema.PROVIDER_CODE].isin(provider_list)
+
+    return crs.loc[mask]
+
+
 def spending_by_purpose(
     years: list | int | range | None = None,
     providers: list | int | None = None,
     measure: Measure | str = "gross_disbursement",
-    flow_types: tuple[str, ...] = ("ODA",),
+    oda_only: bool | None = None,
     currency: str = "USD",
     base_year: int | None = None,
+    *,
+    flow_types: tuple[str, ...] = ("ODA",),
     exclude_multilateral_core: bool = True,
     crs: pd.DataFrame | None = None,
-    oda_only: bool | None = None,
     refresh: bool = False,
 ) -> pd.DataFrame:
     """Retrieves and processes spending data by purpose.
@@ -413,6 +461,7 @@ def spending_by_purpose(
         years (list | int | range, optional): Years to filter the data. Defaults to None.
         providers (list | int | None, optional): Providers to filter the data. Defaults to None.
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
+        oda_only (bool | None, optional): Deprecated; use `flow_types`. Defaults to None.
         flow_types (tuple[str, ...], optional): CRS flow types to include, any of
             "ODA" (category 10), "OOF" (21), "PSI" (60). Defaults to `("ODA",)`.
         currency (str, optional): Target currency. Defaults to "USD".
@@ -423,17 +472,19 @@ def spending_by_purpose(
             includes those core-contribution rows.
         crs (pd.DataFrame | None, optional): Pre-fetched, row-level CRS data to use
             instead of reading it (for tests and pinned builds). Must carry
-            `PROVIDER_PURPOSE_GROUPER` columns, the `measure` column and, unless
-            `flow_types` is empty, a `category` column. Defaults to None (read
+            `PROVIDER_PURPOSE_GROUPER` columns, the `measure` column, a
+            `category` column unless `flow_types` is empty, and a `bi_multi`
+            column unless `exclude_multilateral_core` is False. The same
+            `years`, `providers`, flow-type and core-contribution filters a
+            `CRSData` read applies are applied to it. Defaults to None (read
             from `CRSData`).
-        oda_only (bool | None, optional): Deprecated; use `flow_types`. Defaults to None.
         refresh (bool, optional): If True, bypass the bulk cache and re-download
             (#162). Only has an effect when `crs` is None. Defaults to False.
 
     Returns:
         pd.DataFrame: Dataframe with spending by purpose.
     """
-    resolved_flow_types = _resolve_flow_types(flow_types, oda_only, stacklevel=2)
+    resolved_flow_types = _resolve_flow_types(flow_types, oda_only, stacklevel=3)
 
     # Get the relevant measure
     measure_col = MEASURES["CRS"][measure]["column"]
@@ -450,9 +501,13 @@ def spending_by_purpose(
     filters = [(ODASchema.CATEGORY, "in", category_codes)] if category_codes else []
 
     if crs is not None:
-        raw = crs
-        if category_codes:
-            raw = raw.loc[raw[ODASchema.CATEGORY].isin(category_codes)]
+        raw = _filter_supplied_crs(
+            crs,
+            years=years,
+            providers=providers,
+            category_codes=category_codes,
+            exclude_multilateral_core=exclude_multilateral_core,
+        )
     else:
         from oda_data.api.sources import CRSData
 
@@ -484,11 +539,12 @@ def spending_by_purpose(
 
 def multilateral_spending_shares_by_channel_and_purpose_smoothed(
     years: list | int | range | None = None,
-    flow_types: tuple[str, ...] = ("ODA", "OOF"),
+    oda_only: bool | None = None,
     period_length: int = 3,
+    *,
+    flow_types: tuple[str, ...] = ("ODA", "OOF"),
     max_share_age: int = 5,
     crs: pd.DataFrame | None = None,
-    oda_only: bool | None = None,
     refresh: bool = False,
 ) -> pd.DataFrame:
     """Computes multilateral spending shares by channel and purpose, smoothed
@@ -513,6 +569,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
     Args:
         years (list | int | range, optional): Years to compute shares for. Defaults to None
             (every year derivable from the input).
+        oda_only (bool | None, optional): Deprecated; use `flow_types`. Defaults to None.
         flow_types (tuple[str, ...], optional): CRS flow types the shares are based on.
             Defaults to `("ODA", "OOF")`, the discontinued OECD sectoral-imputation
             practice: channels that report only OOF to CRS (e.g. IBRD, EBRD, IFC,
@@ -520,8 +577,7 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
             filter. Pass `("ODA",)` for the stricter, official-ODA-definition basis.
         period_length (int, optional): Rolling window length in years. Defaults to 3.
         max_share_age (int, optional): Maximum number of years a stale window may lag behind the requested year. Defaults to 5.
-        crs (pd.DataFrame | None, optional): Pre-fetched, row-level CRS data to use instead of reading it (for tests and pinned builds). Defaults to None.
-        oda_only (bool | None, optional): Deprecated; use `flow_types`. Defaults to None.
+        crs (pd.DataFrame | None, optional): Pre-fetched, row-level CRS data to use instead of reading it (for tests and pinned builds). Filtered as `spending_by_purpose` filters a supplied frame, to multilateral providers and the padded years. Defaults to None.
         refresh (bool, optional): If True, bypass the bulk cache and re-download
             (#162). Only has an effect when `crs` is None. Defaults to False.
 
@@ -529,23 +585,47 @@ def multilateral_spending_shares_by_channel_and_purpose_smoothed(
         pd.DataFrame: `year, channel_code, purpose_code, recipient_code,
         share, allocation_status, share_years`.
     """
-    resolved_flow_types = _resolve_flow_types(flow_types, oda_only, stacklevel=2)
+    return _multilateral_spending_shares(
+        years,
+        flow_types=_resolve_flow_types(flow_types, oda_only, stacklevel=3),
+        period_length=period_length,
+        max_share_age=max_share_age,
+        exclude_multilateral_core=True,
+        crs=crs,
+        refresh=refresh,
+    )
 
+
+def _multilateral_spending_shares(
+    years: list | int | range | None,
+    *,
+    flow_types: tuple[str, ...],
+    period_length: int,
+    max_share_age: int,
+    exclude_multilateral_core: bool,
+    crs: pd.DataFrame | None,
+    refresh: bool,
+) -> pd.DataFrame:
+    """Body of `multilateral_spending_shares_by_channel_and_purpose_smoothed`,
+    with `flow_types` already resolved.
+
+    `exclude_multilateral_core=False` keeps CRS rows reporting a core
+    contribution to a multilateral organisation (`bi_multi == 2`) in the
+    shares. It exists to measure the effect of excluding them
+    (`scripts/imputation_delta.py`), and every public caller passes True.
+    """
     multilateral_providers = list(provider_groupings()["multilateral"])
 
-    if crs is not None:
-        read_years = years
-        requested_years = _normalise_years(years)
-    else:
-        read_years, requested_years = pad_years_for_window(
-            years, period_length=period_length, max_share_age=max_share_age
-        )
+    read_years, requested_years = pad_years_for_window(
+        years, period_length=period_length, max_share_age=max_share_age
+    )
 
     data = (
         spending_by_purpose(
             years=read_years,
             providers=multilateral_providers,
-            flow_types=resolved_flow_types,
+            flow_types=flow_types,
+            exclude_multilateral_core=exclude_multilateral_core,
             crs=crs,
             refresh=refresh,
         )

@@ -13,12 +13,9 @@ Named causes:
 
 - `bi_multi_exclusion`: the 2.7.1 fix that excludes CRS rows reporting a
   donor's own core contribution to a multilateral organisation
-  (`bi_multi == 2`) from the shares this pipeline imputes onto.
-  `imputed_multilateral_by_purpose` has no top-level toggle for this (it
-  lives inside `CRSData`/`spending_by_purpose`), so it is measured by
-  reading the multilateral CRS extract twice, with `exclude_multilateral_core`
-  True and False, and feeding each in via this branch's own `crs=` override
-  point -- then diffing the two full pipeline runs.
+  (`bi_multi == 2`) from the shares this pipeline imputes onto. Measured by
+  running this branch's pipeline with `exclude_multilateral_core=False` and
+  diffing against the real default (True).
 - `window_padding`: the stale-share lookback (`max_share_age`) that lets a
   lapsed or early-window channel still resolve a share instead of falling
   straight to unallocated. Measured by running this branch's pipeline with
@@ -198,74 +195,37 @@ def run_new_pipeline(
     *,
     max_share_age: int = 5,
     flow_types: tuple[str, ...] = ("ODA", "OOF"),
-    crs: pd.DataFrame | None = None,
+    exclude_multilateral_core: bool = True,
 ) -> pd.DataFrame:
-    """Run this branch's `imputed_multilateral_by_purpose` in-process.
+    """Run this branch's imputation pipeline in-process.
 
-    `max_share_age` and `flow_types` default to this branch's real defaults;
-    `compute_new_causes` overrides exactly one at a time to ablate the
-    corresponding named cause. `crs`, when given, is forwarded as-is (used
-    by the `bi_multi_exclusion` ablation, which needs a CRS extract read
-    with a non-default `exclude_multilateral_core` -- a parameter
-    `imputed_multilateral_by_purpose` does not expose directly).
+    `max_share_age`, `flow_types` and `exclude_multilateral_core` default to
+    this branch's real defaults; `compute_new_causes` overrides exactly one at
+    a time to ablate the corresponding named cause. Calls the private
+    `_imputed_multilateral_by_purpose`, since `exclude_multilateral_core` is
+    not a parameter of the public `imputed_multilateral_by_purpose`.
     """
     from oda_data.indicators.research.sector_imputations import (
-        imputed_multilateral_by_purpose,
+        _imputed_multilateral_by_purpose,
     )
 
-    return imputed_multilateral_by_purpose(
+    return _imputed_multilateral_by_purpose(
         years=years,
         providers=providers,
+        channels=None,
         measure=measure,
         currency=currency,
         base_year=base_year,
-        refresh=refresh,
+        shares_based_on_oda_only=None,
         flow_types=flow_types,
+        period_length=_PERIOD_LENGTH,
         max_share_age=max_share_age,
-        crs=crs,
-    )
-
-
-def _read_multilateral_crs_for_shares(
-    years: list[int],
-    *,
-    period_length: int,
-    max_share_age: int,
-    exclude_multilateral_core: bool,
-    refresh: bool,
-) -> pd.DataFrame:
-    """Read the multilateral-provider CRS rows `spending_by_purpose` needs,
-    padded for a full rolling window plus stale-share lookback, with an
-    explicit `exclude_multilateral_core` -- the knob the
-    `bi_multi_exclusion` ablation needs and no public
-    `imputed_multilateral_by_purpose` parameter reaches.
-    """
-    from oda_data.api.sources import CRSData
-    from oda_data.clean_data.schema import ODASchema
-    from oda_data.indicators.research.imputation_shares import pad_years_for_window
-    from oda_data.tools.groupings import provider_groupings
-
-    read_years, _ = pad_years_for_window(
-        years, period_length=period_length, max_share_age=max_share_age
-    )
-    multilateral_providers = list(provider_groupings()["multilateral"])
-    crs = CRSData(
-        providers=multilateral_providers,
-        years=read_years,
+        use_proxy_shares=True,
         exclude_multilateral_core=exclude_multilateral_core,
+        crs=None,
+        multisystem=None,
+        refresh=refresh,
     )
-    columns = [
-        ODASchema.PROVIDER_CODE,
-        ODASchema.PROVIDER_NAME,
-        ODASchema.AGENCY_CODE,
-        ODASchema.AGENCY_NAME,
-        ODASchema.PURPOSE_CODE,
-        ODASchema.RECIPIENT_CODE,
-        ODASchema.YEAR,
-        ODASchema.CATEGORY,
-        "usd_disbursement",
-    ]
-    return crs.read(columns=columns, using_bulk_download=True, refresh=refresh)
 
 
 def compute_new_causes(
@@ -286,21 +246,6 @@ def compute_new_causes(
     real = run_new_pipeline(years, providers, measure, currency, base_year, refresh)
     new_total = _year_donor_totals(real, label="new_total")
 
-    crs_bi_multi_excluded = _read_multilateral_crs_for_shares(
-        years,
-        period_length=_PERIOD_LENGTH,
-        max_share_age=5,
-        exclude_multilateral_core=True,
-        refresh=refresh,
-    )
-    crs_bi_multi_included = _read_multilateral_crs_for_shares(
-        years,
-        period_length=_PERIOD_LENGTH,
-        max_share_age=5,
-        exclude_multilateral_core=False,
-        refresh=refresh,
-    )
-
     ablated_runs = {
         "bi_multi_exclusion": run_new_pipeline(
             years,
@@ -309,7 +254,7 @@ def compute_new_causes(
             currency,
             base_year,
             refresh,
-            crs=crs_bi_multi_included,
+            exclude_multilateral_core=False,
         ),
         "window_padding": run_new_pipeline(
             years, providers, measure, currency, base_year, refresh, max_share_age=0
@@ -325,24 +270,9 @@ def compute_new_causes(
         ),
     }
 
-    # The bi_multi_exclusion "real" side is also computed via the injected
-    # `crs=` path (rather than reused from `real` above, which reads CRS
-    # internally), so the ablation isolates only the exclude_multilateral_core
-    # flag, not the injected-vs-internal-read mechanism itself.
-    bi_multi_real = run_new_pipeline(
-        years,
-        providers,
-        measure,
-        currency,
-        base_year,
-        refresh,
-        crs=crs_bi_multi_excluded,
-    )
-
+    real_total = _year_donor_totals(real, label="real_total")
     cause_tables: dict[str, pd.DataFrame] = {}
     for cause in _ABLATION_NAMES:
-        real_side = bi_multi_real if cause == "bi_multi_exclusion" else real
-        real_total = _year_donor_totals(real_side, label="real_total")
         ablated_total = _year_donor_totals(ablated_runs[cause], label="ablated_total")
         merged = real_total.merge(
             ablated_total, on=[_YEAR, _DONOR], how="outer"

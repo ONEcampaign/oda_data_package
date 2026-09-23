@@ -210,6 +210,17 @@ class TestGetMultilateralChannelCrosswalk:
 class TestAddMultilateralChannelCodes:
     """Tests for the add_multilateral_channel_codes exact join."""
 
+    def test_unreviewed_rows_are_treated_as_unmapped(self, crs_rows, crosswalk):
+        unreviewed = crosswalk.assign(reviewed=False)
+        with pytest.raises(UnmappedChannelError):
+            add_multilateral_channel_codes(crs_rows, crosswalk=unreviewed)
+
+    def test_crosswalk_without_reviewed_column_is_refused(self, crs_rows, crosswalk):
+        with pytest.raises(ValueError, match="reviewed"):
+            add_multilateral_channel_codes(
+                crs_rows, crosswalk=crosswalk.drop(columns=["reviewed"])
+            )
+
     def test_joins_correct_codes_for_mapped_pairs(self, crs_rows, crosswalk):
         result = add_multilateral_channel_codes(
             crs_rows, on_unmapped="unallocated", crosswalk=crosswalk

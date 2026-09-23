@@ -63,6 +63,7 @@ def _crs_rows(
             ODASchema.RECIPIENT_CODE: recipient_code,
             ODASchema.YEAR: y,
             ODASchema.CATEGORY: category,
+            ODASchema.BI_MULTI: 1,
             "usd_disbursement": value,
         }
         for y in years
@@ -84,6 +85,7 @@ def _empty_crs() -> pd.DataFrame:
             ODASchema.RECIPIENT_CODE,
             ODASchema.YEAR,
             ODASchema.CATEGORY,
+            ODASchema.BI_MULTI,
             "usd_disbursement",
         ]
     )
@@ -162,6 +164,7 @@ class TestImputedMultilateralByPurposeAllocationPaths:
                         "channel_code": 44007,
                         "status": "mapped",
                         "reason": None,
+                        "reviewed": True,
                     }
                 ]
             )
@@ -615,6 +618,54 @@ class TestProvenanceAndDeprecation:
         assert provenance["parameters"]["flow_types"] == ("ODA", "OOF")
         assert provenance["parameters"]["years"] == [2022]
 
+    def test_supplied_frames_are_recorded_as_supplied(self):
+        crs = pd.DataFrame(_crs_rows(104, 1.0, 110, 1, range(2018, 2023), 100.0))
+        multisystem = _multisystem_rows([(1, 47128, 2022, 1000.0)])
+
+        result = imputed_multilateral_by_purpose(
+            years=[2022], crs=crs, multisystem=multisystem
+        )
+
+        assert result.attrs["provenance"]["crs_release"] == "supplied"
+        assert result.attrs["provenance"]["multisystem_release"] == "supplied"
+
+    def test_crs_release_is_looked_up_after_the_crs_read(self, monkeypatch):
+        from oda_data import cache
+        from oda_data.indicators.research import sector_imputations
+
+        crs = pd.DataFrame(_crs_rows(104, 1.0, 110, 1, range(2018, 2023), 100.0))
+        multisystem = _multisystem_rows([(1, 47128, 2022, 1000.0)])
+        calls = []
+        real_shares = sector_imputations._multilateral_spending_shares
+
+        def shares(*args, **kwargs):
+            calls.append("shares")
+            return real_shares(*args, **{**kwargs, "crs": crs})
+
+        monkeypatch.setattr(sector_imputations, "_multilateral_spending_shares", shares)
+        monkeypatch.setattr(cache, "release_info", calls.append)
+
+        imputed_multilateral_by_purpose(years=[2022], multisystem=multisystem)
+
+        assert calls.index("CRSData") > calls.index("shares")
+
+    def test_shares_based_on_oda_only_keeps_its_positional_slot(self):
+        crs = pd.DataFrame(_crs_rows(104, 1.0, 110, 1, range(2018, 2023), 100.0))
+        multisystem = _multisystem_rows([(1, 47128, 2022, 1000.0)])
+
+        with pytest.warns(DeprecationWarning, match="oda_only"):
+            imputed_multilateral_by_purpose(
+                [2022],
+                None,
+                None,
+                "gross_disbursement",
+                "USD",
+                None,
+                True,
+                crs=crs,
+                multisystem=multisystem,
+            )
+
     def test_default_call_emits_no_deprecation_warning(self):
         crs = pd.DataFrame(_crs_rows(104, 1.0, 110, 1, range(2018, 2023), 100.0))
         multisystem = _multisystem_rows([(1, 47128, 2022, 1000.0)])
@@ -668,3 +719,23 @@ class TestCoreMultilateralContributionsByProvider:
 
         assert result[ODASchema.VALUE].sum() == pytest.approx(1500.0)
         assert set(result[ODASchema.YEAR]) == {2021, 2022}
+
+    def test_supplied_multisystem_is_filtered_by_scope(self):
+        from oda_data.indicators.research.sector_imputations import (
+            core_multilateral_contributions_by_provider,
+        )
+
+        multisystem = _multisystem_rows(
+            [
+                (1, 47128, 2022, 1000.0),
+                (1, 47128, 2021, 500.0),
+                (2, 47128, 2022, 300.0),
+                (1, 41301, 2022, 200.0),
+            ]
+        )
+
+        result = core_multilateral_contributions_by_provider(
+            years=2022, providers=1, channels=47128, multisystem=multisystem
+        )
+
+        assert result[ODASchema.VALUE].sum() == pytest.approx(1000.0)
