@@ -153,6 +153,17 @@ class ThreadSafeMemoryCache:
         with self._lock:
             self._cache.clear()
 
+    def pop(self, key: object, default: object = None) -> object:
+        """Remove and return an item from cache if present (thread-safe).
+
+        Used by ``refresh=True`` reads to evict a specific stale entry
+        before re-fetching, rather than waiting for the post-fetch write to
+        overwrite it — narrowing the window in which a concurrent reader
+        could still observe the stale value (#162).
+        """
+        with self._lock:
+            return self._cache.pop(key, default)
+
     def __len__(self) -> int:
         """Return number of items in cache (thread-safe)."""
         with self._lock:
@@ -171,12 +182,19 @@ class BulkCacheEntry:
         fetcher: Callback that downloads and writes parquet to provided path
         ttl_days: Time-to-live in days before cache is considered stale
         version: Version string for cache invalidation (e.g., package version)
+        release_id: Cheap upstream release identifier (e.g. the OECD bulk
+            file id, an ETag, or a content hash — whichever the source
+            exposes without a full download), used to detect an upstream
+            republish inside the TTL window (#162). ``None`` when the
+            caller has no cheap way to determine one; staleness then falls
+            back to ``version``/TTL only.
     """
 
     key: str
     fetcher: Callable[[Path], None]
     ttl_days: int = 30
     version: str | None = None
+    release_id: str | None = None
 
 
 class BulkCacheManager:
@@ -240,6 +258,23 @@ class BulkCacheManager:
         """Check if a cached entry is stale."""
         # Check version mismatch
         if entry.version is not None and entry.version != record.get("version"):
+            return True
+
+        # Check upstream release identity: when both sides know a release
+        # id and they disagree, the cache is stale regardless of TTL. This
+        # is how an OECD republish inside the TTL window is detected (#162)
+        # rather than served stale. A missing release id on either side is
+        # inconclusive — fall through to the TTL check.
+        record_release_id = record.get("release_id")
+        if (
+            entry.release_id is not None
+            and record_release_id is not None
+            and entry.release_id != record_release_id
+        ):
+            logger.info(
+                f"Detected upstream republish for {entry.key}: release "
+                f"changed from {record_release_id!r} to {entry.release_id!r}"
+            )
             return True
 
         # Check TTL expiration
@@ -365,6 +400,7 @@ class BulkCacheManager:
                 "filename": path.name,
                 "downloaded_at": datetime.now(UTC).isoformat(),
                 "version": entry.version,
+                "release_id": entry.release_id,
                 "size_mb": round(file_size, 2),
             }
             self._save_manifest(manifest)
@@ -456,6 +492,7 @@ class BulkCacheManager:
                         "age_days": round(age_days, 1),
                         "is_stale": age > timedelta(seconds=self.ttl_seconds),
                         "version": record.get("version"),
+                        "release_id": record.get("release_id"),
                     }
                 )
             except (KeyError, ValueError):
@@ -466,6 +503,7 @@ class BulkCacheManager:
                         "age_days": None,
                         "is_stale": True,
                         "version": record.get("version"),
+                        "release_id": record.get("release_id"),
                     }
                 )
 
@@ -643,6 +681,73 @@ class QueryCacheManager:
 
 # Backward compatibility - kept for external code that might import this
 OnDiskCache = QueryCacheManager
+
+
+# ============================================================================
+# Upstream release identity
+# ============================================================================
+# Cheap (non-download) probes for the OECD file service's current bulk file
+# id, used as the release_id on BulkCacheEntry so a republish inside the TTL
+# window is detected without re-downloading the full dataset (#162).
+
+
+def get_crs_release_id() -> str | None:
+    """Return a cheap upstream release identifier for the CRS bulk file.
+
+    Resolves the OECD dataflow annotation for the full-CRS-parquet label via
+    ``oda_reader``'s ``get_bulk_file_url_with_version`` — a lightweight HTTP
+    call, not a full bulk download — and returns its cache-invalidation
+    version token (either the annotation label's ``-vYYYYMMDD`` suffix, or a
+    fallback ETag/Last-Modified revalidation token). The bulk URL itself is
+    now permanently stable across OECD republishes, so the URL alone cannot
+    signal a republish; the version token is the part that actually changes.
+    Any failure (oda_reader API not present, network error, timeout) is
+    swallowed and ``None`` is returned, logged as a warning so a silent
+    fallback to version/TTL-only staleness is visible.
+
+    Returns:
+        The current OECD cache-invalidation token for CRS, or None if it
+        couldn't be determined.
+    """
+    try:
+        from oda_reader.crs import CRS_FLOW_URL
+        from oda_reader.download.download_tools import get_bulk_file_url_with_version
+
+        _url, version = get_bulk_file_url_with_version(
+            flow_url=CRS_FLOW_URL, label="CRS-Parquet"
+        )
+        return version
+    except Exception as e:
+        logger.warning(
+            f"Could not determine CRS release id ({e}); falling back to "
+            "version/TTL-only staleness checks."
+        )
+        return None
+
+
+def get_multisystem_release_id() -> str | None:
+    """Return a cheap upstream release identifier for the MultiSystem bulk file.
+
+    See :func:`get_crs_release_id` for the mechanism and failure policy.
+
+    Returns:
+        The current OECD cache-invalidation token for MultiSystem, or None
+        if it couldn't be determined.
+    """
+    try:
+        from oda_reader.download.download_tools import get_bulk_file_url_with_version
+        from oda_reader.multisystem import MULTI_FLOW_URL, MULTISYSTEM_BULK_LABEL
+
+        _url, version = get_bulk_file_url_with_version(
+            flow_url=MULTI_FLOW_URL, label=MULTISYSTEM_BULK_LABEL
+        )
+        return version
+    except Exception as e:
+        logger.warning(
+            f"Could not determine MultiSystem release id ({e}); falling "
+            "back to version/TTL-only staleness checks."
+        )
+        return None
 
 
 # ============================================================================

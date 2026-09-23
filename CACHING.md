@@ -43,6 +43,13 @@ Inside that root, four subdirectories hold the respective cache scopes:
 | `http/`        | `http`  | HTTP-level response cache (managed by oda_reader) |
 | `raw/`         | `raw`   | Raw OECD zip archives (managed by oda_reader)     |
 
+A fifth directory, `pydeflate/`, sits alongside these under the same cache root and
+holds `pydeflate`'s own currency-exchange and deflator cache. It is not one of the
+four `Scope` values above (`cache.clear()` and friends do not manage it), but it is
+version-segmented and CWD-independent for the same reason: it follows
+`ODA_DATA_CACHE_DIR` / `set_cache_root()` rather than the process's working
+directory.
+
 ______________________________________________________________________
 
 ## Configuring the cache root
@@ -109,7 +116,7 @@ for scope, records in cache.entries().items():
         print(r.scope, r.key, r.size_bytes, r.age_days)
 ```
 
-`"all"` is never a key in the returned dict — only the four concrete scopes
+`"all"` is never a key in the returned dict, only the four concrete scopes
 (`"bulk"`, `"query"`, `"http"`, `"raw"`) appear.
 
 ### `cache.clear(scope="all", *, blocking=True) -> dict[Scope, int | None]`
@@ -118,8 +125,8 @@ Delete cached files in the named scope. Returns the count of files deleted per
 scope. For the `"bulk"` and `"query"` scopes (which `oda_data` writes under a
 `FileLock`), the value is `None` if the scope was skipped because another process
 held the write lock and `blocking=False` was passed. The `"http"` and `"raw"`
-scopes always return an `int` — see the
-[Multi-process behavior](#multi-process-behavior) section for why.
+scopes always return an `int` (see the
+[Multi-process behavior](#multi-process-behavior) section for why).
 
 ```python
 # Clear everything, waiting for any write lock (default):
@@ -131,12 +138,18 @@ cache.clear("raw")
 # Non-blocking: skip contended scopes instead of waiting:
 result = cache.clear("bulk", blocking=False)
 if result.get("bulk") is None:
-    print("bulk cache is busy — try again later")
+    print("bulk cache is busy, try again later")
 ```
 
 The distinction between `0` (scope was reachable but empty) and `None` (scope was
 locked by another writer) is intentional; it applies only to the `"bulk"` and
 `"query"` scopes, which `oda_data` manages under a `FileLock`.
+
+**Memory tier:** clearing `"bulk"`, `"query"`, or `"all"` also clears every
+in-process `memory_cache` (the shared `ThreadSafeMemoryCache` instances on
+`DACSource` and `AidDataSource`). Clearing only `"http"` or `"raw"` does not touch
+it. Without this, a warm memory cache could keep serving data the on-disk clear
+had just removed.
 
 ### `cache.size() -> dict[Scope, int]`
 
@@ -162,9 +175,19 @@ Raises `ValueError` for unrecognised names.
 **Blocking semantics:** `cache.invalidate` acquires the bulk and query write locks
 (60-second timeout each) so the unlink sequence cannot race with concurrent writers.
 Do not call `cache.invalidate` from inside a `BulkCacheManager` or
-`QueryCacheManager` write context — the caller would deadlock against itself.
+`QueryCacheManager` write context. The caller would deadlock against itself.
 On `filelock.Timeout`, retry after the current writer completes; persistent
 timeouts may require a manual `cache.clear()`.
+
+**Memory tier:** `cache.invalidate` also clears the target dataset's
+`memory_cache`. Memory-cache keys carry no dataset prefix, so this clears the
+*entire* shared cache instance for the dataset's class family, invalidating
+`CRSData` also evicts cached `DAC1Data`/`DAC2AData`/`MultiSystemData` entries,
+since they share one `DACSource.memory_cache` instance. This is coarser than the
+single-dataset bulk/query invalidation above, but it means `cache.invalidate` is
+a true substitute for reaching into `DACSource.memory_cache.clear()` directly,
+so a caller wanting fresh data does not need to touch that undocumented
+attribute.
 
 ```python
 from oda_data import cache, CRSData
@@ -175,6 +198,29 @@ cache.invalidate(CRSData)
 # By name string (exact, case-sensitive):
 cache.invalidate("CRSData")
 ```
+
+### `cache.release_info(dataset: type[Source] | str) -> ReleaseInfo | None`
+
+Return the upstream release identity recorded for a cached dataset: how a
+result can be traced back to the OECD release it came from. Reads the bulk
+cache manifest entry for *dataset*; returns `None` if the dataset has never
+been cached via `read(using_bulk_download=True)`.
+
+```python
+from oda_data import CRSData, cache
+
+CRSData(years=[2023]).read(using_bulk_download=True)
+
+info = cache.release_info(CRSData)
+print(info.release_id)      # the OECD bulk file id at download time, or None
+print(info.downloaded_at)   # ISO timestamp
+print(info.version)         # oda_data package version at download time
+```
+
+`ReleaseInfo` has `dataset`, `release_id`, `downloaded_at`, and `version` fields.
+`release_id` is only populated for datasets that go through the OECD bulk file
+service with a cheap release-id probe (`CRSData`, `MultiSystemData`); other
+datasets always report `release_id=None`.
 
 ### `cache.enable_cache(scope="all")` / `cache.disable_cache(scope="all")`
 
@@ -211,7 +257,7 @@ for r in results:
 
 | Scope   | Owner        | What it holds                                                            |
 | ------- | ------------ | ------------------------------------------------------------------------ |
-| `all`   | —            | Shorthand for every scope at once. Not a key in `entries()` or `size()`. |
+| `all`   | n/a          | Shorthand for every scope at once. Not a key in `entries()` or `size()`. |
 | `bulk`  | `oda_data`   | Cleaned parquet files extracted from OECD bulk zips.                     |
 | `query` | `oda_data`   | Filter-specific parquet slices derived from bulk files.                  |
 | `http`  | `oda_reader` | HTTP-level response cache.                                               |
@@ -221,17 +267,20 @@ for r in results:
 enable/disable toggle (managed by `oda_reader`); see the
 `cache.enable_cache` / `cache.disable_cache` section below for the implications.
 
-When troubleshooting corrupt downloads, start with `cache.clear("raw")` — it
+When troubleshooting corrupt downloads, start with `cache.clear("raw")`. It
 removes the raw zip archives without touching the cleaned parquet files. Clearing
 `"bulk"` or `"query"` forces parquet re-extraction without re-downloading the
 underlying zip.
 
-### `read(refresh=True)` — per-call bypass
+### `read(refresh=True)`: per-call bypass
 
 Pass `refresh=True` to any dataset read call to bypass the bulk cache and
 re-download fresh data on that specific call. This is equivalent to calling
 `cache.invalidate(dataset)` before reading, but scoped to the single call and
-without permanently removing the cache entry.
+without permanently removing the cache entry. It also reaches the in-process
+memory tier: the stale entry for this call's exact parameters is evicted
+before the re-fetch (not just overwritten afterwards), so a concurrent reader
+cannot observe it mid-refresh.
 
 ```python
 from oda_data import CRSData
@@ -242,6 +291,24 @@ df = crs.read(using_bulk_download=True, refresh=True)
 
 This works on all dataset classes: `CRSData`, `DAC1Data`, `DAC2AData`,
 `MultiSystemData`, and `AidDataData`.
+
+### Detecting an OECD republish inside the TTL
+
+The bulk cache manifest records an upstream release identifier alongside
+`downloaded_at` and `version`, for `CRSData` and `MultiSystemData` the current
+OECD bulk file id, fetched with a cheap metadata call (not a full download).
+When a read reaches the bulk tier, this release id is compared against the one
+already on record: if they differ, the cached entry is treated as stale and
+re-downloaded, regardless of how much of the 30-day TTL remains. This is how a
+same-day OECD republish is detected rather than served from a cache that is
+technically still within its TTL window. A missing release id on either side
+(the probe failed, or the entry predates this feature) is inconclusive and
+falls back to the TTL/version check alone. See `cache.release_info()` above to
+read the release id an already-cached dataset reflects.
+
+Note that this check only runs when a read actually reaches the bulk tier. A
+read served from the (shorter-lived) memory or query cache tiers does not
+re-probe the release id on every call.
 
 ______________________________________________________________________
 
@@ -301,7 +368,7 @@ from oda_data import cache, CRSData
 cache.clear("raw")
 # Or wipe everything: cache.clear("all")
 
-# Re-read normally — the zip will be re-downloaded:
+# Re-read normally, the zip will be re-downloaded:
 df = CRSData(years=[2023]).read(using_bulk_download=True)
 ```
 
@@ -334,13 +401,13 @@ Write coordination:
 - **`BulkCacheManager`** acquires the lock before writing a new zip download. If
   two notebooks start `crs.read(using_bulk_download=True)` at the same time, the
   second blocks until the first completes and then reads from the already-written
-  cache entry — only one network download occurs.
+  cache entry, only one network download occurs.
 - **`cache.clear(blocking=True)`** (the default): acquires the lock and waits up
   to 1200 s for any in-progress write to finish.
 - **`cache.clear(blocking=False)`**: skips scopes under contention instead of
   blocking. Returns `None` for each contended `"bulk"` / `"query"` scope (rather
   than `0`, which means the scope was reachable but empty). The `"http"` and
-  `"raw"` scopes always return an `int` — `oda_reader` does not expose a public
+  `"raw"` scopes always return an `int`. `oda_reader` does not expose a public
   lock path for those caches, so contention cannot be detected; every reachable
   file is unlinked unconditionally. This distinction matters when the caller
   needs to confirm whether a clear was actually attempted.

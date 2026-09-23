@@ -303,6 +303,68 @@ class TestConvertUnits:
         # Deflation should be called (which handles both conversion and deflation)
         mock_pydeflate["deflate"].assert_called_once()
 
+    def test_convert_units_pydeflate_path_is_cwd_independent(
+        self, mock_pydeflate, monkeypatch, tmp_path
+    ):
+        """The path convert_units hands to pydeflate must not depend on the
+        process CWD (#162): it must resolve from the version-segmented
+        cache root, not from ``Path.cwd() / ".raw_data"``.
+        """
+        import oda_data.cache.config as cache_config
+        from oda_data.config import ODAPaths
+
+        cache_dir = (tmp_path / "cache").resolve()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(cache_config, "_cache_root_override", None)
+        monkeypatch.setenv("ODA_DATA_CACHE_DIR", str(cache_dir))
+
+        df = pd.DataFrame(
+            {
+                "year": [2020],
+                "donor_code": [1],  # Required by pydeflate (maps to provider_code)
+                "value": [1000.0],
+            }
+        )
+
+        cwd_a = tmp_path / "cwd_a"
+        cwd_b = tmp_path / "cwd_b"
+        cwd_a.mkdir()
+        cwd_b.mkdir()
+
+        monkeypatch.chdir(cwd_a)
+        convert_units(data=df, indicator="TEST", currency="EUR", base_year=None)
+        path_from_a = mock_pydeflate["set_path"].call_args[0][0]
+
+        monkeypatch.chdir(cwd_b)
+        convert_units(data=df, indicator="TEST", currency="EUR", base_year=None)
+        path_from_b = mock_pydeflate["set_path"].call_args[0][0]
+
+        assert path_from_a == path_from_b
+        assert path_from_a == ODAPaths.pydeflate
+        assert path_from_a == cache_dir / "pydeflate"
+
+    def test_convert_units_does_not_swallow_mkdir_errors(
+        self, mock_pydeflate, monkeypatch
+    ):
+        """A failure creating the pydeflate cache directory must propagate
+        rather than being silently swallowed (#162 caching fixes)."""
+
+        def _boom(self, *args, **kwargs):
+            raise OSError("simulated permission error")
+
+        monkeypatch.setattr(Path, "mkdir", _boom)
+
+        df = pd.DataFrame(
+            {
+                "year": [2020],
+                "donor_code": [1],
+                "value": [1000.0],
+            }
+        )
+
+        with pytest.raises(OSError, match="simulated permission error"):
+            convert_units(data=df, indicator="TEST", currency="EUR", base_year=None)
+
 
 # ============================================================================
 # Tests for map_column_schema

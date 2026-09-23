@@ -369,6 +369,15 @@ class DACSource(Source):
         except Exception:
             return "unknown"
 
+    def _get_release_id(self) -> str | None:
+        """Best-effort upstream release identity for the bulk cache manifest.
+
+        Overridden by subclasses that go through the OECD bulk file service
+        (CRSData, MultiSystemData) with a cheap, non-download probe. The
+        default is None, which falls back to version/TTL-only staleness.
+        """
+        return None
+
     def _fetch_from_bulk_cache(
         self,
         filters: list[tuple] | None,
@@ -393,6 +402,7 @@ class DACSource(Source):
             fetcher=self._create_bulk_fetcher(),
             ttl_days=30,
             version=self._get_package_version(),
+            release_id=self._get_release_id(),
         )
 
         # This blocks if another thread is downloading (prevents concurrent waste)
@@ -456,7 +466,17 @@ class DACSource(Source):
         # When refresh=True, skip the upper cache tiers entirely so the bulk
         # fetcher's refresh=True actually re-downloads and the upper tiers see
         # the fresh data. Without this guard a warm memory/query cache would
-        # short-circuit the refresh, returning stale data.
+        # short-circuit the refresh, returning stale data. Also evict the
+        # memory-tier entries this call is about to overwrite up front,
+        # rather than relying solely on the post-fetch write — this closes
+        # the window in which a concurrent reader could still observe the
+        # stale value while the refresh is in flight (#162).
+        if refresh:
+            self.memory_cache.pop(param_hash, None)
+            if columns:
+                self.memory_cache.pop(
+                    generate_projection_hash(param_hash, columns), None
+                )
         if not refresh:
             # 1. Try memory cache (thread-safe, fastest)
             _cached = self.memory_cache.get(param_hash)
@@ -685,6 +705,12 @@ class CRSData(DACSource):
     def _extra_hash_components(self) -> list[tuple]:
         return [("exclude_multilateral_core", "==", self.exclude_multilateral_core)]
 
+    def _get_release_id(self) -> str | None:
+        """Cheap upstream release id for the CRS bulk file (#162)."""
+        from oda_data.tools.cache import get_crs_release_id
+
+        return get_crs_release_id()
+
     def _exclude_core_contributions(self, df: pd.DataFrame) -> pd.DataFrame:
         """Drop rows reporting a donor's core contribution to a multilateral organisation.
 
@@ -792,6 +818,12 @@ class MultiSystemData(DACSource):
         MultiSystem bulk is downloaded as a zip file containing parquet.
         """
         return create_multisystem_bulk_fetcher()
+
+    def _get_release_id(self) -> str | None:
+        """Cheap upstream release id for the MultiSystem bulk file (#162)."""
+        from oda_data.tools.cache import get_multisystem_release_id
+
+        return get_multisystem_release_id()
 
     def download(self) -> pd.DataFrame:
         """Downloads MultiSystem data via API (filtered query).

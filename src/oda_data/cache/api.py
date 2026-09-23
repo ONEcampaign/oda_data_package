@@ -5,12 +5,14 @@ http/raw caches into a single Scope-keyed view.
 """
 
 import contextlib
+import json
 import time
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 from oda_data.cache.config import oda_data_cache_root
-from oda_data.cache.types import CacheRecord, Scope, _validate_scope
+from oda_data.cache.types import CacheRecord, ReleaseInfo, Scope, _validate_scope
 from oda_data.logger import logger
 
 if TYPE_CHECKING:
@@ -64,9 +66,9 @@ _ODA_READER_SUBDIR: dict[str, str] = {
 }
 
 # oda_reader sub-directories that are NOT backed by a public Scope literal but
-# are still wiped by ``clear("all")``. Today only ``dataframes`` (oda_reader's
-# processed-DataFrame cache); future additions go here so the "all" sweep
-# stays exhaustive.
+# are still wiped by ``clear("all")``. Only ``dataframes`` (oda_reader's
+# processed-DataFrame cache) so far; future additions go here so the "all"
+# sweep stays exhaustive.
 _ODA_READER_EXTRA_SUBDIRS: tuple[str, ...] = ("dataframes",)
 
 
@@ -173,7 +175,7 @@ def clear(scope: Scope = "all", *, blocking: bool = True) -> dict[Scope, int | N
         For ``"http"`` and ``"raw"`` (owned by ``oda_reader``), the returned
         value is always an ``int`` regardless of ``blocking``: every reachable
         file is unlinked, but contention with a concurrent ``oda_reader``
-        writer cannot currently be detected. If you need a strict "no clears
+        writer cannot be detected. If you need a strict "no clears
         during active writes" guarantee for those scopes, coordinate at the
         call-site level (e.g., quiesce in-flight downloads first).
 
@@ -197,7 +199,33 @@ def clear(scope: Scope = "all", *, blocking: bool = True) -> dict[Scope, int | N
         if extra and isinstance(raw_count, int):
             result["raw"] = raw_count + extra
 
+    # A cleared on-disk bulk/query scope must not leave a warm in-process
+    # memory cache behind to serve stale data (#162), so clear() also
+    # reaches DACSource.memory_cache / AidDataSource.memory_cache.
+    if any(s in _ODA_DATA_SCOPES for s in scopes_to_clear):
+        _clear_all_memory_caches()
+
     return result
+
+
+def _clear_all_memory_caches() -> None:
+    """Clear every distinct Source-family in-memory cache.
+
+    ``cache.clear()`` and ``cache.invalidate()`` operate on the on-disk
+    tiers; without this, a warm in-process ``memory_cache`` would survive
+    and keep serving stale data despite the on-disk cache being empty
+    (#162). Memory-cache keys are plain param hashes with no dataset
+    prefix, so per-dataset targeting isn't possible — every distinct shared
+    cache instance is cleared in full.
+    """
+    from oda_data.api.sources import Source as _Source
+
+    seen: set[int] = set()
+    for cls in [_Source, *_all_source_subclasses(_Source)]:
+        mem = getattr(cls, "memory_cache", None)
+        if mem is not None and id(mem) not in seen:
+            seen.add(id(mem))
+            mem.clear()
 
 
 def _clear_oda_reader_extra_subdirs() -> int:
@@ -260,13 +288,13 @@ def _clear_oda_data_scope(scope_name: str, *, blocking: bool) -> int | None:
 def _clear_oda_reader_scope(scope_name: str, *, blocking: bool) -> int | None:
     """Clear an oda_reader-owned scope (http or raw).
 
-    ``oda_reader`` does not currently expose a public lock path for these
+    ``oda_reader`` does not expose a public lock path for these
     scopes, so ``blocking`` is accepted for signature parity but cannot be
     honoured. Every reachable file is unlinked; the function always returns
     an ``int`` (never ``None``).
     """
-    # TODO(jorge 2026-04-28): switch to FileLock once oda_reader publishes a
-    # public lock-path getter for the http/raw caches.
+    # TODO: switch to FileLock once oda_reader publishes a public lock-path
+    # getter for the http/raw caches.
     directory = _oda_reader_cache_dir() / _ODA_READER_SUBDIR[scope_name]
     if not directory.is_dir():
         return 0
@@ -351,6 +379,15 @@ def invalidate(dataset: "type[Source] | str") -> None:
     persistent timeouts indicate a stuck process and may require a manual
     ``cache.clear()``.
 
+    Also clears the target dataset's in-process ``memory_cache`` (#162): the
+    on-disk bulk/query entries alone are not a substitute for ``refresh``,
+    since a warm memory cache would otherwise keep serving the invalidated
+    data. Memory-cache keys carry no dataset prefix, so this clears the
+    *entire* shared cache instance for the dataset's class family (e.g.
+    invalidating ``CRSData`` also evicts cached ``DAC1Data``/``DAC2AData``/
+    ``MultiSystemData`` entries, since they share one ``DACSource.memory_cache``
+    instance) rather than a single dataset's entries.
+
     Args:
         dataset: Either a Source subclass (e.g. ``CRSData``) or its class
             ``__name__`` as a string (e.g. ``"CRSData"``). The string must
@@ -384,6 +421,67 @@ def invalidate(dataset: "type[Source] | str") -> None:
     bulk_key = f"{name}_bulk"
     _invalidate_bulk_entry(bulk_key)
     _invalidate_query_entries(name)
+
+    # Reach the memory tier too — see docstring note above.
+    known[name].memory_cache.clear()
+
+
+def release_info(dataset: "type[Source] | str") -> ReleaseInfo | None:
+    """Return the upstream release identity recorded for a cached dataset.
+
+    Reads the bulk cache manifest entry for *dataset* so a result can be
+    traced back to the OECD release it came from (#162). Call this after a
+    ``read(using_bulk_download=True)`` to see which upstream release the
+    returned data reflects.
+
+    Args:
+        dataset: Either a Source subclass (e.g. ``CRSData``) or its class
+            ``__name__`` as a string (case-sensitive exact match).
+
+    Returns:
+        A ``ReleaseInfo``, or ``None`` if the dataset has never been cached
+        (no bulk manifest entry exists for it).
+
+    Raises:
+        ValueError: If ``dataset`` is a string that does not match any
+            registered Source subclass ``__name__``.
+    """
+    from oda_data.api.sources import Source as _Source
+
+    name = dataset if isinstance(dataset, str) else dataset.__name__
+
+    known: dict[str, type[_Source]] = {
+        cls.__name__: cls for cls in _all_source_subclasses(_Source)
+    }
+    if name not in known:
+        valid = sorted(known)
+        raise ValueError(
+            f"Unknown dataset {name!r}. "
+            f"Expected one of: {valid}. "
+            f"Note: names are case-sensitive and must match the class __name__ exactly."
+        )
+
+    manifest_path = _scope_dir("bulk") / "manifest.json"
+    if not manifest_path.exists():
+        return None
+
+    try:
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Failed to read bulk manifest for release_info: {e}")
+        return None
+
+    record = manifest.get(f"{name}_bulk")
+    if record is None:
+        return None
+
+    return ReleaseInfo(
+        dataset=name,
+        release_id=record.get("release_id"),
+        downloaded_at=record.get("downloaded_at"),
+        version=record.get("version"),
+    )
 
 
 _T = TypeVar("_T")
@@ -500,12 +598,22 @@ def _set_scope_enabled(scope: str, *, enabled: bool) -> None:
     reader_scopes = [s for s in scopes if s in ("http", "raw")]
     if reader_scopes:
         try:
-            import oda_reader
+            from oda_reader import disable_cache as _oda_reader_disable_cache
+            from oda_reader import enable_cache as _oda_reader_enable_cache
 
-            if enabled:
-                oda_reader.enable_cache()
-            else:
-                oda_reader.disable_cache()
+            # oda_reader.enable_cache/disable_cache are deprecated *for
+            # umbrella callers*, telling them to use oda_data.cache.*
+            # instead — but this function *is* the internal plumbing behind
+            # oda_data.cache.enable_cache/disable_cache, so it must call
+            # through to oda_reader's own implementation rather than
+            # recurse into itself. Use the public names and suppress the
+            # warning narrowly here.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                if enabled:
+                    _oda_reader_enable_cache()
+                else:
+                    _oda_reader_disable_cache()
         except Exception as e:
             logger.debug(
                 f"Could not toggle oda_reader cache for scopes {reader_scopes!r}: {e}"

@@ -1,8 +1,12 @@
 import pandas as pd
 
-from oda_data.clean_data.channels import add_channel_names, add_multi_channel_codes
+from oda_data.clean_data.channels import (
+    add_channel_names,
+    add_multilateral_channel_codes,
+)
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.crs.common import crs_value_cols
+from oda_data.indicators.research.imputation_shares import rolling_window_total
 
 
 def _multi_donors_only(data: pd.DataFrame) -> pd.DataFrame:
@@ -30,42 +34,17 @@ def _group_by_mapped_channel(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _rolling_period_total(df: pd.DataFrame, period_length: int = 3) -> pd.DataFrame:
-    """Calculate a rolling total of Y period length"""
+    """Calculate a rolling total of `period_length` years.
+
+    Thin wrapper around the shared, vectorised `rolling_window_total`
+    (`oda_data.indicators.research.imputation_shares`), which replaced this
+    function's own year-by-year deep-copy/concat loop. A (grouper, year)
+    combination is only emitted once its group has a full `period_length`-
+    year window within the years present in `df`.
+    """
     values = list(crs_value_cols().values())
-    cols = [c for c in df.columns if c not in [ODASchema.YEAR, *values]]
 
-    min_year = int(df[ODASchema.YEAR].min())
-    max_year = int(df[ODASchema.YEAR].max())
-    min_complete_year = min_year + period_length - 1
-
-    # If there are not enough observations to build a complete window, bail early
-    if max_year < min_complete_year:
-        return df.head(0).copy()
-
-    frames: list[pd.DataFrame] = []
-
-    for y in range(max_year, min_complete_year - 1, -1):
-        years = [y - i for i in range(period_length)]
-        _ = (
-            df.copy(deep=True)
-            .loc[lambda d: d[ODASchema.YEAR].isin(years)]
-            .groupby(cols, observed=True, dropna=False)
-            .agg(dict.fromkeys(values, "sum") | {ODASchema.YEAR: "max"})
-            .assign(**{ODASchema.YEAR: y})
-            .reset_index()
-        )
-        frames.append(_)
-
-    if not frames:
-        return df.head(0).copy()
-
-    data = (
-        pd.concat(frames, ignore_index=True)
-        .astype({ODASchema.YEAR: "int16[pyarrow]"})
-        .loc[lambda d: d[ODASchema.YEAR].notna()]
-    )
-
-    return data.reset_index(drop=True)
+    return rolling_window_total(df, period_length=period_length, value_cols=values)
 
 
 def _purpose_share(value_row: pd.DataFrame, value_col: str) -> pd.Series:
@@ -116,7 +95,7 @@ def multilateral_purpose_spending_shares(data: pd.DataFrame) -> pd.DataFrame:
     """Calculate the shares of spending by purpose_code."""
 
     data = (
-        data.pipe(add_multi_channel_codes)
+        data.pipe(add_multilateral_channel_codes)
         .pipe(_group_by_mapped_channel)
         .pipe(_rolling_period_total)
         .pipe(_yearly_share)

@@ -477,7 +477,7 @@ class TestMultilateralPurposeSpendingShares:
     """Integration tests for the multilateral_purpose_spending_shares function."""
 
     @patch("oda_data.indicators.crs.crs_functions.crs_value_cols")
-    @patch("oda_data.indicators.crs.crs_functions.add_multi_channel_codes")
+    @patch("oda_data.indicators.crs.crs_functions.add_multilateral_channel_codes")
     @patch("oda_data.indicators.crs.crs_functions.add_channel_names")
     def test_multilateral_purpose_spending_shares_pipeline(
         self, mock_add_names, mock_add_codes, mock_value_cols
@@ -502,7 +502,7 @@ class TestMultilateralPurposeSpendingShares:
         )
 
         # Mock the intermediate functions
-        # add_multi_channel_codes just passes through data
+        # add_multilateral_channel_codes just passes through data
         mock_add_codes.return_value = df.copy()
 
         # add_channel_names should add the PROVIDER_NAME column
@@ -525,7 +525,7 @@ class TestMultilateralPurposeSpendingShares:
         assert isinstance(result, pd.DataFrame)
 
     @patch("oda_data.indicators.crs.crs_functions.crs_value_cols")
-    @patch("oda_data.indicators.crs.crs_functions.add_multi_channel_codes")
+    @patch("oda_data.indicators.crs.crs_functions.add_multilateral_channel_codes")
     @patch("oda_data.indicators.crs.crs_functions.add_channel_names")
     def test_multilateral_purpose_spending_shares_removes_invalid_rows(
         self, mock_add_names, mock_add_codes, mock_value_cols

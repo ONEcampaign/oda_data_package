@@ -28,6 +28,30 @@ class CacheRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ReleaseInfo:
+    """Upstream release identity recorded for one cached bulk dataset.
+
+    This is how a result can be traced back to the OECD release it came
+    from (#162): read it after a ``read(using_bulk_download=True)`` call to
+    see which upstream release the cached data reflects.
+
+    Attributes:
+        dataset: Class name of the cached dataset (e.g. "CRSData").
+        release_id: Upstream release identifier (the OECD bulk file id, an
+            ETag, or a content hash — whichever the source exposes), or
+            None if the dataset's fetcher does not report one.
+        downloaded_at: ISO timestamp of when this cache entry was written,
+            or None if the manifest record is missing that field.
+        version: oda_data package version recorded at download time.
+    """
+
+    dataset: str
+    release_id: str | None
+    downloaded_at: str | None
+    version: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class MigrationResult:
     """Outcome of migrating one pre-2.6 cache tree.
 

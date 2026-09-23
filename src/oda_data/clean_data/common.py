@@ -1,4 +1,3 @@
-import contextlib
 import json
 import pathlib
 from functools import partial
@@ -224,11 +223,14 @@ def convert_units(
     currency: str = "USD",
     base_year: int | None = None,
 ) -> pd.DataFrame:
-    # Ensure pydeflate has the current data path and directory exists (lazy init)
-    # In read-only environments, let downstream functions surface meaningful errors
-    with contextlib.suppress(Exception):
-        ODAPaths.raw_data.mkdir(parents=True, exist_ok=True)
-    set_pydeflate_path(ODAPaths.raw_data)
+    # Ensure pydeflate's cache directory exists (lazy init). This is the
+    # same version-segmented cache root as the rest of the package, not
+    # ODAPaths.raw_data (CWD-dependent, and a data-outputs path since 2.6 —
+    # see CACHING.md). A failure here is not swallowed: a read-only or
+    # otherwise broken cache directory should surface loudly rather than
+    # silently fall back to an unset pydeflate path.
+    ODAPaths.pydeflate.mkdir(parents=True, exist_ok=True)
+    set_pydeflate_path(ODAPaths.pydeflate)
 
     if indicator is None:
         indicator = ""

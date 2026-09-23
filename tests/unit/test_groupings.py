@@ -367,3 +367,16 @@ class TestGroupingsErrorHandling:
         # Circular references should cause AttributeError (list has no .items())
         with pytest.raises(AttributeError, match="'list' object has no attribute"):
             _read_grouping(test_file)
+
+
+class TestMultilateralGroupingContent:
+    """Tests against the real provider_groupings.json content."""
+
+    def test_unodc_is_in_multilateral_grouping(self):
+        """UNODC (provider 1040) is a confirmed CRS self-reporter (see the
+        multilateral channel crosswalk) and must be in the "multilateral"
+        provider grouping for its CRS rows to be picked up by
+        multilateral-provider-scoped reads (e.g. spending_by_purpose)."""
+        result = provider_groupings()
+
+        assert 1040 in result["multilateral"]

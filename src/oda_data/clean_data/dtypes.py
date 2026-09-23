@@ -3,6 +3,35 @@ from collections import defaultdict
 import pandas as pd
 
 from oda_data.clean_data.schema import ODASchema
+from oda_data.logger import logger
+
+FALLBACK_STRING_DTYPE = "string[pyarrow]"
+
+# Columns where a failed cast is expected, genuine heterogeneity rather than
+# dirty data: the same schema column holds purely numeric CRS codes in one
+# source but alphanumeric DAC aid-type codes (e.g. "E01") in another (e.g.
+# Multisystem). This set is declared explicitly — every other column
+# (notably money/measure columns such as VALUE, USD_*, AMOUNT) raises on a
+# failed cast instead of silently degrading to a string dtype, so a dirty
+# row can't turn a numeric column into text and corrupt downstream sums.
+_ALPHANUMERIC_CODE_FALLBACK_COLUMNS: frozenset[str] = frozenset(
+    {
+        ODASchema.FLOW_CODE,
+        ODASchema.AIDTYPE_CODE,
+        ODASchema.FLOWS_CODE,
+    }
+)
+
+
+def _offending_values(series: pd.Series, dtype: str) -> list:
+    """Return the distinct non-null values in *series* that fail to cast to *dtype*."""
+    offending = []
+    for value in series.dropna().unique():
+        try:
+            pd.Series([value]).astype(dtype)
+        except (TypeError, ValueError):
+            offending.append(value)
+    return offending
 
 
 def schema_types(save: bool = False) -> dict:
@@ -153,15 +182,61 @@ def set_default_types(df: pd.DataFrame, save: bool = False) -> pd.DataFrame:
     """
     Set the types of the columns in the dataframe.
 
+    The dtype map in ``schema_types`` is a single set of expectations shared by
+    every DAC source (CRS, DAC1, DAC2A, Multisystem, ...), but the same schema
+    column can hold different kinds of values depending on which source
+    produced it. For example, ``ODASchema.FLOW_CODE`` is a purely numeric CRS
+    flow code, but for Multisystem data it carries alphanumeric DAC aid-type
+    codes (e.g. "E01"). Casting every column unconditionally therefore breaks
+    for sources whose values don't fit the "typical" dtype for that column.
+
+    Each column is cast individually. For the explicit set of columns in
+    ``_ALPHANUMERIC_CODE_FALLBACK_COLUMNS`` (DAC alphanumeric code families
+    such as ``flow_code``), a cast failure is expected source-specific
+    heterogeneity, and the column falls back to a string dtype with a logged
+    warning identifying the column and the reason. For every other column —
+    notably money/measure columns such as ``VALUE``, ``USD_*``, ``AMOUNT`` —
+    a cast failure raises, naming the column, dtype, and offending values,
+    since silently turning a numeric column to text would corrupt downstream
+    aggregation (e.g. ``groupby(...).sum()`` concatenating strings instead
+    of summing numbers).
+
     Args:
         df (pd.DataFrame): The input dataframe.
+        save (bool): Whether the types are being set for saving to disk
+            (uses ``category`` dtypes) rather than for in-memory use.
 
     Returns:
         pd.DataFrame: The dataframe with the types set.
 
+    Raises:
+        ValueError: If a column outside ``_ALPHANUMERIC_CODE_FALLBACK_COLUMNS``
+            can't be cast to its expected dtype.
+
     """
     default_types = schema_types(save=save)
+    fallback_dtype = "category" if save else FALLBACK_STRING_DTYPE
 
-    converted_types = {c: default_types[c] for c in df.columns}
+    result = df.copy()
 
-    return df.astype(converted_types)
+    for column in result.columns:
+        dtype = default_types[column]
+        try:
+            result[column] = result[column].astype(dtype)
+        except (TypeError, ValueError) as error:
+            if column not in _ALPHANUMERIC_CODE_FALLBACK_COLUMNS:
+                offending = _offending_values(result[column], dtype)
+                raise ValueError(
+                    f"Could not cast column '{column}' to dtype '{dtype}' "
+                    f"({error}). Offending value(s): {offending}. This "
+                    f"column is not in the declared alphanumeric-code "
+                    f"fallback set, so it will not be silently degraded to "
+                    f"a string dtype."
+                ) from error
+            logger.warning(
+                f"Could not cast column '{column}' to dtype '{dtype}' "
+                f"({error}). Falling back to '{fallback_dtype}'."
+            )
+            result[column] = result[column].astype(fallback_dtype)
+
+    return result
