@@ -145,8 +145,14 @@ def spending_by_purpose(
     oda_only: bool = False,
     currency: str = "USD",
     base_year: int | None = None,
+    exclude_multilateral_core: bool = True,
 ) -> pd.DataFrame:
     """Retrieves and processes spending data by purpose.
+
+    By default, CRS rows that report a donor's core (unearmarked) contribution to a
+    multilateral organisation (`bi_multi == 2`) are excluded. Those contributions are
+    redistributed across purposes separately, by `imputed_multilateral_by_purpose`.
+    A caller that leaves them in this bilateral total would double count them.
 
     Args:
         years (list | int | range, optional): Years to filter the data. Defaults to None.
@@ -155,6 +161,10 @@ def spending_by_purpose(
         oda_only (bool, optional): Whether to include only ODA-related data. Defaults to False.
         currency (str, optional): Target currency. Defaults to "USD".
         base_year (int | None, optional): Base year for conversion. Defaults to None.
+        exclude_multilateral_core (bool, optional): Whether to exclude CRS rows
+            reporting a donor's core contribution to a multilateral organisation
+            (`bi_multi == 2`). Defaults to True. Pass False for a total that
+            includes those core-contribution rows.
 
     Returns:
         pd.DataFrame: Dataframe with spending by purpose.
@@ -175,7 +185,11 @@ def spending_by_purpose(
     filters = [("category", "in", [10, 60])] if oda_only else []
 
     # Set up the CRS data object
-    crs = CRSData(providers=providers, years=years)
+    crs = CRSData(
+        providers=providers,
+        years=years,
+        exclude_multilateral_core=exclude_multilateral_core,
+    )
 
     # Read the data and group by provider and purpose
     data = (
@@ -339,6 +353,14 @@ def imputed_multilateral_by_purpose(
     shares_based_on_oda_only: bool = False,
 ) -> pd.DataFrame:
     """Computes imputed multilateral spending by purpose.
+
+    The multilateral spending shares this imputes onto (via
+    `multilateral_spending_shares_by_channel_and_purpose_smoothed`, which calls
+    `spending_by_purpose`) exclude CRS rows reporting a donor's core contribution to a
+    multilateral organisation (`bi_multi == 2`) by default. Those core contributions
+    are already captured here, on the `core_multilateral_contributions_by_provider`
+    leg, via MultiSystem data. Including them on the CRS leg too would double count
+    them.
 
     Args:
         years (list | int | range, optional): Years to filter the data. Defaults to None.

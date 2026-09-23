@@ -5,7 +5,10 @@ This module tests the business logic for:
 - Rolling period total calculations
 - Purpose share calculations
 - Multilateral sector imputation formula: imputed_value = core_contribution × spending_share
+- spending_by_purpose's exclude_multilateral_core forwarding (issue #164)
 """
+
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -16,6 +19,7 @@ from oda_data.indicators.research.sector_imputations import (
     period_purpose_shares,
     rolling_period_total,
     share_by_purpose,
+    spending_by_purpose,
 )
 
 # ============================================================================
@@ -394,6 +398,126 @@ class TestPeriodPurposeShares:
 
         # Should have computed rolling totals over 3 years
         assert len(result) > 0
+
+
+class TestSpendingByPurposeExcludeMultilateralCore:
+    """Tests that spending_by_purpose forwards exclude_multilateral_core to CRSData."""
+
+    @staticmethod
+    def _crs_read_df() -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 1],
+                ODASchema.PROVIDER_NAME: ["Donor", "Donor"],
+                ODASchema.AGENCY_CODE: [1, 1],
+                ODASchema.AGENCY_NAME: ["Agency", "Agency"],
+                ODASchema.PURPOSE_CODE: [110, 110],
+                ODASchema.RECIPIENT_CODE: [1, 1],
+                ODASchema.YEAR: [2020, 2020],
+                "usd_disbursement": [10.0, 20.0],
+            }
+        )
+
+    def test_forwards_exclude_multilateral_core_default_true(self):
+        """spending_by_purpose passes exclude_multilateral_core=True by default."""
+        with patch("oda_data.api.sources.CRSData") as mock_crs_cls:
+            mock_crs_cls.return_value.read.return_value = self._crs_read_df()
+
+            spending_by_purpose(years=[2020], providers=[1])
+
+            _, kwargs = mock_crs_cls.call_args
+            assert kwargs["exclude_multilateral_core"] is True
+
+    def test_forwards_exclude_multilateral_core_when_disabled(self):
+        """spending_by_purpose passes exclude_multilateral_core=False through."""
+        with patch("oda_data.api.sources.CRSData") as mock_crs_cls:
+            mock_crs_cls.return_value.read.return_value = self._crs_read_df()
+
+            spending_by_purpose(
+                years=[2020], providers=[1], exclude_multilateral_core=False
+            )
+
+            _, kwargs = mock_crs_cls.call_args
+            assert kwargs["exclude_multilateral_core"] is False
+
+
+class TestSpendingByPurposeExcludesCoreContributions:
+    """End-to-end (I/O-boundary-mocked) tests of the bi_multi == 2 exclusion.
+
+    Unlike TestSpendingByPurposeExcludeMultilateralCore above, these mock only
+    at the I/O boundary (``pd.read_parquet`` / the bulk fetcher, as the
+    CRSData-level tests in tests/unit/test_sources.py do) and run
+    spending_by_purpose for real, so they exercise the actual row-level
+    exclusion rather than just the kwarg forwarding.
+    """
+
+    @staticmethod
+    def _mixed_bi_multi_df() -> pd.DataFrame:
+        """One normal row, one bi_multi == 2 (core contribution) row, one null."""
+        return pd.DataFrame(
+            {
+                ODASchema.PROVIDER_CODE: [1, 1, 1],
+                ODASchema.PROVIDER_NAME: ["Donor", "Donor", "Donor"],
+                ODASchema.AGENCY_CODE: [1, 1, 1],
+                ODASchema.AGENCY_NAME: ["Agency", "Agency", "Agency"],
+                ODASchema.PURPOSE_CODE: [110, 110, 110],
+                ODASchema.RECIPIENT_CODE: [1, 1, 1],
+                ODASchema.YEAR: [2020, 2020, 2020],
+                ODASchema.BI_MULTI: [1, 2, None],
+                "usd_disbursement": [10.0, 20.0, 30.0],
+            }
+        )
+
+    def _run_spending_by_purpose(
+        self,
+        temp_cache_dir,
+        mock_bulk_fetcher,
+        exclude_multilateral_core: bool,
+    ) -> pd.DataFrame:
+        from oda_data.api.sources import CRSData
+
+        CRSData.memory_cache.clear()
+
+        with (
+            patch(
+                "oda_data.api.sources.create_crs_bulk_fetcher"
+            ) as mock_create_fetcher,
+            patch("oda_data.api.sources.pd.read_parquet") as mock_read_parquet,
+            patch("oda_data.api.sources.ODAPaths") as mock_paths,
+            patch(
+                "oda_data.indicators.research.sector_imputations.convert_units",
+                side_effect=lambda data, **kwargs: data,
+            ),
+        ):
+            mock_paths.raw_data = temp_cache_dir
+            mock_paths.cache_root = temp_cache_dir
+            mock_create_fetcher.return_value = mock_bulk_fetcher
+            mock_read_parquet.return_value = self._mixed_bi_multi_df()
+
+            return spending_by_purpose(
+                years=[2020],
+                providers=[1],
+                exclude_multilateral_core=exclude_multilateral_core,
+            )
+
+    def test_excludes_bi_multi_2_by_default(self, temp_cache_dir, mock_bulk_fetcher):
+        """The summed value excludes the bi_multi == 2 row but keeps the null row."""
+        result = self._run_spending_by_purpose(
+            temp_cache_dir, mock_bulk_fetcher, exclude_multilateral_core=True
+        )
+
+        # Normal row (10.0) + null bi_multi row (30.0); the bi_multi == 2 row
+        # (20.0) is excluded.
+        assert result[ODASchema.VALUE].sum() == pytest.approx(40.0)
+
+    def test_keeps_bi_multi_2_when_disabled(self, temp_cache_dir, mock_bulk_fetcher):
+        """With exclude_multilateral_core=False, the bi_multi == 2 row is kept."""
+        result = self._run_spending_by_purpose(
+            temp_cache_dir, mock_bulk_fetcher, exclude_multilateral_core=False
+        )
+
+        # All three rows are included: 10.0 + 20.0 + 30.0
+        assert result[ODASchema.VALUE].sum() == pytest.approx(60.0)
 
 
 class TestImputedMultilateralByPurposeIntegration:

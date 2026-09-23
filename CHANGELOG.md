@@ -5,6 +5,31 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-09-22
+
+### Fixed
+
+- **`CRSData` no longer double counts donor core contributions to multilateral
+  organizations.** The OECD's 9 April 2026 CRS changelog added rows for donor
+  core contributions to multilateral organizations (`bi_multi == 2`) alongside
+  the pre-existing bilateral rows, back-filled to 2005, and stated that these
+  rows "must be excluded" to correctly calculate bilateral flows. `CRSData`
+  never filtered on `bi_multi`, so every CRS-derived aggregate, including the
+  `CRS.*` indicator catalogue and `spending_by_purpose`, counted these rows
+  twice: once as a bilateral CRS row, once again when
+  `imputed_multilateral_by_purpose` redistributes the same core contribution
+  across recipients via MultiSystem data. On the cache used to measure this,
+  `CRS.P.10` (Bilateral ODA, all donors, 2023, current USD) was inflated by
+  $62.6 billion (17.7%): Germany +35.5%, France +37.3%, UK +35.7%, USA +8.1%.
+  `CRSData` now excludes `bi_multi == 2` rows by default, on every read path
+  (bulk parquet, the on-disk query cache, the in-memory cache, and the API
+  `download()` path); rows with a missing `bi_multi` value are kept. Pass
+  `CRSData(..., exclude_multilateral_core=False)`, or
+  `spending_by_purpose(..., exclude_multilateral_core=False)`, to opt back
+  into the raw totals. Cached results computed under the old, uncorrected
+  default are not reused under the new default, since the exclusion flag is
+  part of the cache key.
+
 ## [2.7.0] - 2026-06-15
 
 This release refreshes the DAC1 indicator catalogue to match the current
