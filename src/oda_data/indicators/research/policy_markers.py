@@ -111,6 +111,10 @@ def bilateral_policy_marker(
 
     cols = [*grouper, measure]
 
+    # Unscreened activities have a blank marker, so not_screened needs the column
+    if marker_score == "not_screened":
+        cols.append(marker)
+
     try:
         data = crs.read(
             columns=cols,
@@ -125,8 +129,8 @@ def bilateral_policy_marker(
             using_bulk_download=True,
         )
 
-    # if marker is not_screened, we need to filter out the screened data
-    if marker == "not_screened":
+    # Keep only unscreened activities (blank marker)
+    if marker_score == "not_screened":
         data = data.loc[lambda d: d[marker].isna()]
 
     data = (

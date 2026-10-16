@@ -5,6 +5,12 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-10-16
+
+### Fixed
+
+- **`bilateral_policy_marker` returned all allocable aid for `marker_score="not_screened"`.** The not-screened branch compared the marker name instead of the score, and the read left out the marker column, so no filter was ever applied. It now returns only rows with a blank marker, and principal, significant, not_targeted and not_screened add up to total_allocable. Figures previously read from `not_screened` will fall sharply: for the United States in 2023, gender aid not screened goes from $46,038m to $0. Closes #170.
+
 ## [2.8.1] - 2026-09-22
 
 ### Fixed
