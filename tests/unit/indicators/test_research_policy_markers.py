@@ -7,12 +7,17 @@ This module tests the business logic for filtering bilateral policy marker data:
 - Special "not_screened" handling
 """
 
-import pandas as pd
+from unittest.mock import patch
 
+import pandas as pd
+import pytest
+
+from oda_data.api.constants import EXTENDED_PROVIDER_PURPOSE_GROUPER, MEASURES
 from oda_data.clean_data.schema import ODASchema
 from oda_data.indicators.research.policy_markers import (
     _marker_modality_filter,
     _marker_score_map,
+    bilateral_policy_marker,
 )
 
 # ============================================================================
@@ -96,6 +101,61 @@ class TestMarkerModalityFilter:
 
 
 # ============================================================================
+# Helpers for bilateral_policy_marker tests
+# ============================================================================
+
+_GROUPER = [
+    c
+    for c in EXTENDED_PROVIDER_PURPOSE_GROUPER
+    if c not in [ODASchema.CURRENCY, ODASchema.PRICES]
+]
+_MEASURE = MEASURES["CRS"]["gross_disbursement"]["column"]
+
+
+@pytest.fixture
+def crs_with_markers():
+    """CRS rows with one blank, one 0, one 1 and one 2 score per marker."""
+    base = {
+        col: ["A02"] * 4 if col == ODASchema.FLOW_MODALITY else [1] * 4
+        for col in _GROUPER
+    }
+    return pd.DataFrame(
+        base
+        | {
+            ODASchema.FLOW_CODE: [11] * 4,
+            "gender": [pd.NA, 0, 1, 2],
+            "environment": [2, 1, pd.NA, 0],
+            _MEASURE: [100.0, 200.0, 300.0, 400.0],
+        }
+    )
+
+
+def _fake_read(frame: pd.DataFrame):
+    """Mimic CRSData.read: apply 'in' filters, then return only requested columns."""
+
+    def read(columns, additional_filters, **_):
+        out = frame
+        for col, _op, values in additional_filters:
+            out = out.loc[out[col].isin(values)]
+        return out[columns]
+
+    return read
+
+
+def _run(frame: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    """Call bilateral_policy_marker against a fake CRS read, skipping conversion."""
+    with (
+        patch("oda_data.api.sources.CRSData") as crs_cls,
+        patch(
+            "oda_data.indicators.research.policy_markers.convert_units",
+            side_effect=lambda d, **_: d,
+        ),
+    ):
+        crs_cls.return_value.read.side_effect = _fake_read(frame)
+        return bilateral_policy_marker(years=2023, **kwargs)
+
+
+# ============================================================================
 # Integration Tests for bilateral_policy_marker
 # ============================================================================
 
@@ -118,25 +178,19 @@ class TestBilateralPolicyMarkerFiltering:
         # Since we can't run the full function without mocking, we document the expectation
         assert set(expected_oda_flow_codes) == {11, 13, 19, 60}
 
-    def test_not_screened_filters_where_marker_is_na(self):
-        """Test that 'not_screened' filters where marker is NA."""
-        # The function should filter data where the marker column is NA
-        # Line 129-130 in policy_markers.py:
-        # if marker == "not_screened":
-        #     data = data.loc[lambda d: d[marker].isna()]
+    def test_not_screened_keeps_only_blank_marker_rows(self, crs_with_markers):
+        """Test that 'not_screened' returns only rows whose marker is blank."""
+        result = _run(crs_with_markers, marker="gender", marker_score="not_screened")
 
-        # Let's verify this logic with a sample DataFrame
-        df = pd.DataFrame(
-            {
-                "gender": [pd.NA, 1, 2, 0],
-                "value": [100.0, 200.0, 300.0, 400.0],
-            }
+        assert result["value"].sum() == 100.0
+
+    @pytest.mark.parametrize("marker", ["gender", "environment"])
+    def test_scores_sum_to_total_allocable(self, crs_with_markers, marker):
+        """Test that the four exclusive scores add up to total_allocable (#170)."""
+        parts = sum(
+            _run(crs_with_markers, marker=marker, marker_score=score)["value"].sum()
+            for score in ["principal", "significant", "not_targeted", "not_screened"]
         )
+        total = _run(crs_with_markers, marker=marker, marker_score="total_allocable")
 
-        # Simulate the not_screened filter
-        marker = "gender"
-        filtered = df.loc[lambda d: d[marker].isna()]
-
-        # Should only have the first row
-        assert len(filtered) == 1
-        assert filtered["value"].iloc[0] == 100.0
+        assert parts == total["value"].sum()
