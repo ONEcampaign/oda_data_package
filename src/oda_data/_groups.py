@@ -4,6 +4,12 @@ A ``Group`` holds members as the caller wrote them: codes, names, or other
 groups. ``_resolve`` turns them into codes for the dimension the group is
 passed to. Built-in groups hold DAC codes.
 
+A three-digit sector code is a DAC5 heading and reads every purpose code under
+it. ``oda.sectors.reported_at(151)`` reads only the CRS rows filed at the
+heading with no finer purpose code. Every three-digit code in
+``_data/sector_groups.json`` means those rows, so the built-in sector groups
+hold it as ``reported_at``.
+
 Built-in groups keep one composition in every year. ``dac_countries`` is the
 composition of the OECD's DAC countries total (20001): the 32 DAC member
 countries plus Romania, a DAC Associate that reports to DAC1 from 2008. Its sum
@@ -30,7 +36,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Self
 
 from oda_data._errors import UnsupportedQueryError
-from oda_data._names import is_aggregate, load_json, names
+from oda_data._names import SECTOR_HEADING_BELOW, is_aggregate, load_json, names
 
 if TYPE_CHECKING:
     from oda_data._types import Code, Dimension, Entity
@@ -64,7 +70,7 @@ class Group:
     """
 
     name: str
-    members: tuple[Entity, ...]
+    members: tuple[Member, ...]
     label: str
     dimension: Dimension | None
     is_dated: bool
@@ -73,7 +79,7 @@ class Group:
     def __init__(
         self,
         name: str,
-        members: Iterable[Entity] | Entity,
+        members: Iterable[Member] | Member,
         *,
         label: str | None = None,
         dimension: Dimension | None = None,
@@ -85,7 +91,7 @@ class Group:
             raise ValueError(f"group {name!r} has no members")
         for item in items:
             if isinstance(item, bool | GroupTotal) or not isinstance(
-                item, int | str | Group
+                item, int | str | Group | ReportedAt
             ):
                 raise TypeError(
                     f"group {name!r}: a member must be a code, a name, or a group, "
@@ -139,7 +145,7 @@ class Group:
 def _set(
     group: Group,
     name: str,
-    members: tuple[Entity, ...],
+    members: tuple[Member, ...],
     label: str,
     dimension: Dimension | None,
     is_dated: bool,
@@ -156,18 +162,59 @@ def _set(
         object.__setattr__(group, attribute, value)
 
 
-def _as_members(members: Iterable[Entity] | Entity) -> tuple[Entity, ...]:
-    if isinstance(members, str | int | Group | GroupTotal):
+def _as_members(members: Iterable[Member] | Member) -> tuple[Member, ...]:
+    if isinstance(members, str | int | Group | GroupTotal | ReportedAt):
         return (members,)
     return tuple(members)
+
+
+@dataclass(frozen=True, slots=True)
+class ReportedAt:
+    """The CRS rows filed at a DAC5 heading with no finer purpose code.
+
+    Build it with ``oda.sectors.reported_at(151)``. ``sectors=151`` reads the
+    heading and every purpose code under it; ``reported_at(151)`` reads the
+    rows whose purpose code is 151 itself.
+
+    Raises:
+        TypeError: ``code`` is not an int.
+        ValueError: ``code`` is not a three-digit DAC5 heading.
+    """
+
+    code: int
+
+    def __post_init__(self) -> None:
+        if isinstance(self.code, bool) or not isinstance(self.code, int):
+            raise TypeError(
+                f"reported_at() takes a DAC5 heading code, not {self.code!r}"
+            )
+        if self.code >= SECTOR_HEADING_BELOW or self.code not in names("sector"):
+            raise ValueError(
+                f"reported_at() takes a three-digit DAC5 heading, such as 151, "
+                f"not {self.code}"
+            )
+
+    def __repr__(self) -> str:
+        return f"reported_at({self.code})"
+
+
+#: A group member: an entity, or for sectors a heading's own rows.
+type Member = Entity | ReportedAt
+type SectorMember = int | str | ReportedAt | SectorGroup
 
 
 class SectorGroup(Group):
     """A named set of CRS purpose codes, such as ``oda.sectors.health``.
 
+    A three-digit member is a DAC5 heading and holds every code under it
+    (``_names.purpose_codes``): ``SectorGroup("basic_health", [122])`` holds
+    122 and 12220 to 12281. ``oda.sectors.reported_at(122)`` holds only the
+    rows filed at the heading, which is how the built-in groups list them.
+
     Args:
         name: The name that labels the group's total row.
-        members: Purpose codes, exact purpose names, or other sector groups.
+        members: Purpose codes, DAC5 headings, ``reported_at`` headings, exact
+            purpose names, or other sector groups.
         label: A longer name for display. Defaults to ``name``.
     """
 
@@ -176,7 +223,7 @@ class SectorGroup(Group):
     def __init__(
         self,
         name: str,
-        members: Iterable[int | str | SectorGroup] | int | str | SectorGroup,
+        members: Iterable[SectorMember] | SectorMember,
         *,
         label: str | None = None,
     ) -> None:
@@ -247,6 +294,26 @@ class GroupNamespace[G: Group](Mapping[str, G]):
             for name, group in self._groups.items()
         ]
         return f"oda.{self._kind}:\n" + "\n".join(lines)
+
+
+class SectorNamespace(GroupNamespace[SectorGroup]):
+    """The built-in sector groups, and ``reported_at`` for heading-level rows."""
+
+    __slots__ = ()
+
+    def reported_at(self, code: int) -> ReportedAt:
+        """Return the CRS rows filed at DAC5 heading ``code`` with no finer purpose code.
+
+        Pass it to ``sectors=`` or hold it in a ``SectorGroup``.
+        ``sectors=151`` reads the heading and every code under it;
+        ``sectors=oda.sectors.reported_at(151)`` reads only the rows whose
+        purpose code is 151.
+
+        Raises:
+            TypeError: ``code`` is not an int.
+            ValueError: ``code`` is not a three-digit DAC5 heading.
+        """
+        return ReportedAt(code)
 
 
 # Built-in groups --------------------------------------------------------------
@@ -329,12 +396,22 @@ def _sector_groups() -> Mapping[str, SectorGroup]:
     found: dict[str, SectorGroup] = {}
     for slug, sector in data["sectors"].items():
         by_broad[sector["broad"]].update(sector["codes"])
-        found[slug] = SectorGroup(slug, sector["codes"], label=sector["label"])
+        found[slug] = SectorGroup(
+            slug, _listed_codes(sector["codes"]), label=sector["label"]
+        )
     # A broad sector holds every narrower sector that maps to it, so it wins a
     # shared name (``health`` is the broad sector, not purpose code 120 alone).
     for slug, label in data["broad_sectors"].items():
-        found[slug] = SectorGroup(slug, sorted(by_broad[slug]), label=label)
+        found[slug] = SectorGroup(
+            slug, _listed_codes(sorted(by_broad[slug])), label=label
+        )
     return MappingProxyType(dict(sorted(found.items())))
+
+
+def _listed_codes(codes: Iterable[int]) -> list[int | ReportedAt]:
+    """The members for codes from ``sector_groups.json``, whose three-digit
+    codes are the rows filed at the heading."""
+    return [ReportedAt(code) if code < SECTOR_HEADING_BELOW else code for code in codes]
 
 
 @cache
@@ -362,7 +439,7 @@ groups: GroupNamespace[Group] = GroupNamespace(
 )
 
 #: Named sector groups, such as ``oda.sectors.health`` and ``oda.sectors.basic_education``.
-sectors: GroupNamespace[SectorGroup] = GroupNamespace("sectors", _sector_groups())
+sectors: SectorNamespace = SectorNamespace("sectors", _sector_groups())
 
 for _public in (Group, SectorGroup, GroupTotal, total):
     _public.__module__ = "oda_data"

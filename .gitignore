@@ -161,3 +161,9 @@ AGENTS.md
 
 # Test pollution: some tests write to a MagicMock's stringified attribute path
 MagicMock/
+
+# The oda-reader cache that examples passing cache_dir="oda-cache" create
+oda-cache/
+
+# The built documentation site
+docs/site/

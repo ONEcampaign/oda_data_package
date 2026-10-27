@@ -1,8 +1,8 @@
 """Names for the codes in each dimension, and the aggregate codes.
 
 The names come from bundled reference data: ``_data/names.json`` (providers,
-recipients, CRS purpose codes, flows, modalities, CRS finance types, and DAC1
-and DAC2A lines), ``_data/crs_channel_mapping.csv`` (channels) and
+recipients, CRS purpose codes, flows, modalities, CRS finance types, DAC1
+and DAC2A lines, and the former names of renamed codes), ``_data/crs_channel_mapping.csv`` (channels) and
 ``_data/sector_groups.json`` (broad sectors). Nothing here imports resolvekit,
 so ``_compile`` and ``_combine`` may use it.
 
@@ -125,6 +125,43 @@ def names(
             return MappingProxyType(broad)
         case _:
             return MappingProxyType({})
+
+
+#: Sector codes below this are DAC5 headings, such as 122 (Basic Health).
+SECTOR_HEADING_BELOW = 1000
+
+
+@cache
+def purpose_codes(heading: int) -> frozenset[int]:
+    """Return every sector code under the DAC5 heading ``heading``, itself included.
+
+    DAC5 headings nest by digit, so a trailing zero widens a heading: 122
+    (Basic Health) holds 122 and every code from 12210 to 12299, 120 (Health)
+    holds 120, 121, 122, 123 and their purpose codes, and 100 holds every code
+    that starts with 1. A heading thus holds each known sector code whose first
+    three digits start with the heading's digits less its trailing zeros. Only
+    the codes in ``names("sector")`` count.
+
+    Raises:
+        ValueError: ``heading`` is not a three-digit code.
+    """
+    if not 100 <= heading < SECTOR_HEADING_BELOW:
+        raise ValueError(f"{heading} is not a three-digit DAC5 heading")
+    prefix = str(heading).rstrip("0")
+    return frozenset(
+        int(code) for code in names("sector") if str(code)[:3].startswith(prefix)
+    )
+
+
+@cache
+def former_names(dimension: Dimension) -> Mapping[Code, tuple[str, ...]]:
+    """Return the names the OECD codelists gave codes of ``dimension`` before a rename.
+
+    Code 1601 (provider) was ``"Bill & Melinda Gates Foundation"`` and is now
+    ``"Gates Foundation"``. The resolver accepts both names.
+    """
+    former = load_json("names.json")["former_names"].get(dimension, {})
+    return MappingProxyType({int(code): tuple(old) for code, old in former.items()})
 
 
 def name_of(

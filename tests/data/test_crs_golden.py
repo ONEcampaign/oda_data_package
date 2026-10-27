@@ -265,10 +265,11 @@ def _by_provider(tables: OecdTables, where: str) -> dict[str, float]:
 def test_private_development_finance_is_category_30_of_private_donors(
     tables: OecdTables, basis: str, column: int
 ) -> None:
-    """Expected: 2022 category 30 rows of every provider, raw. The private
-    donors are exactly the providers whose rows the default reads; the few
-    official providers with category 30 rows answer when named."""
-    expected = _by_provider(tables, "category = 30")
+    """Expected: 2022 category 30 rows of every provider without core
+    contributions to multilaterals (``bi_multi`` 2), raw. The private donors
+    are exactly the providers whose rows the default reads; the few official
+    providers with category 30 rows answer when named."""
+    expected = _by_provider(tables, "category = 30 AND bi_multi IS DISTINCT FROM 2")
     private = {
         str(code)
         for code in resolve_group(
@@ -314,3 +315,13 @@ def test_multilateral_oof_is_category_21_multilateral_outflows(
     assert dict(zip(df["provider"], df["value"], strict=True)) == pytest.approx(
         {code: pair[column] for code, pair in expected.items()}, rel=1e-9
     )
+
+
+def test_a_sector_heading_sums_every_purpose_code_under_it(tables: OecdTables) -> None:
+    call = {"years": 2022, "providers": "France"}
+    heading = oda.get("oecd.crs.bilateral_oda", sectors=122, **call)
+    by_code = oda.get("oecd.crs.bilateral_oda", by=["sector"], **call)
+    under = by_code[by_code["sector"].astype("string").str.startswith("122")]
+
+    assert float(heading["value"].sum()) > 0
+    assert float(heading["value"].sum()) == pytest.approx(float(under["value"].sum()))

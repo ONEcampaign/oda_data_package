@@ -26,7 +26,7 @@ from oda_data._errors import (
     UnsupportedQueryError,
 )
 from oda_data._factors import FACTOR_SCHEMA
-from oda_data._groups import Group, total
+from oda_data._groups import Group, SectorGroup, sectors, total
 from oda_data._model import CRS_MARKERS, VOCABULARY, FactorTable, Indicator
 from oda_data._provenance import Release
 from oda_data._registry import crs
@@ -397,7 +397,8 @@ def test_multilateral_oof_reads_category_21_multilateral_outflows(
 
 
 #: Private development finance from Gates (a private donor) and France, beside
-#: rows of other categories that it leaves out.
+#: rows of other categories and a core contribution to a multilateral
+#: (bi_multi 2), which it leaves out. A row with no bi_multi stays in.
 _PRIVATE_ROWS = [
     _row(
         provider=GATES,
@@ -409,6 +410,7 @@ _PRIVATE_ROWS = [
         received=1.0,
     ),
     _row(provider=GATES, category=30, flow=30, bi_multi=2, disbursement=5.0),
+    _row(provider=GATES, category=30, flow=30, bi_multi=None, disbursement=3.0),
     _row(provider=GATES, disbursement=100.0),
     _row(provider=FRANCE, category=30, flow=30, bi_multi=6, disbursement=7.0),
     _row(provider=FRANCE, disbursement=9.0),
@@ -417,7 +419,7 @@ _PRIVATE_ROWS = [
 
 @pytest.mark.parametrize(
     ("basis", "expected"),
-    [("gross_disbursement", 45.0), ("commitment", 50.0), ("net_disbursement", 44.0)],
+    [("gross_disbursement", 43.0), ("commitment", 50.0), ("net_disbursement", 42.0)],
 )
 def test_private_development_finance_reads_category_30_from_private_donors(
     basis: str, expected: float
@@ -577,6 +579,47 @@ def test_broad_sectors_group_purpose_codes(ctx: Context) -> None:
         ("education", 2.0),
         ("health", 115.0),
     ]
+
+
+#: Rows at heading level (122, 120) and under three headings of Health.
+HEADING_ROWS = [
+    _row(sector=sector, disbursement=value)
+    for sector, value in (
+        (122, 1.0),
+        (12220, 2.0),
+        (12230, 4.0),
+        (12110, 8.0),
+        (120, 16.0),
+    )
+]
+
+
+@pytest.mark.parametrize(
+    ("sectors", "expected"),
+    [
+        (122, 7.0),
+        ("122", 7.0),
+        (SectorGroup("basic", [122]), 7.0),
+        ([122, 12110], 15.0),
+        (120, 31.0),  # a parent heading holds 121, 122, and 123
+        (12220, 2.0),
+        (sectors.reported_at(122), 1.0),
+        (SectorGroup("own", [sectors.reported_at(122), 12110]), 9.0),
+    ],
+    ids=[
+        "int",
+        "str",
+        "group",
+        "with-a-code",
+        "parent",
+        "purpose-code",
+        "reported-at",
+        "reported-at-in-a-group",
+    ],
+)
+def test_a_sector_heading_reads_every_code_under_it(sectors, expected) -> None:
+    with Context._from_parts(FakeTables(HEADING_ROWS), FakeFactors()) as context:
+        assert _value(context, "oecd.crs.bilateral_oda", sectors=sectors) == expected
 
 
 @pytest.mark.parametrize(

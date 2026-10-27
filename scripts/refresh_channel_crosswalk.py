@@ -4,14 +4,16 @@ channel crosswalk.
 Two independent jobs, run via subcommands:
 
 ``refresh-codelist``
-    Rewrites ``src/oda_data/_data/crs_channel_mapping.csv`` from a current
-    OECD channel codelist snapshot, and records that snapshot's vintage in a
-    sidecar JSON file (``crs_channel_mapping_vintage.json``) next to it. The
-    snapshot lists active channels only, so the script adds every channel code
-    that a CRS extract carries and the snapshot lacks (withdrawn codes), named
-    from the live OECD channel codelist, which keeps withdrawn codes, or else
-    from the name the CRS publishes. That step makes one network call to the
-    OECD codelist service.
+    Rewrites ``src/oda_data/_data/crs_channel_mapping.csv`` and records its
+    vintage in a sidecar JSON file (``crs_channel_mapping_vintage.json``) next
+    to it. Every channel name comes from the live OECD channel codelist
+    (codelist 3), the one ``scripts/check_codelists.py`` checks against. The
+    ResolveKit snapshot supplies the active codes, their acronyms, and the
+    name of a code the live list lacks. The snapshot lists active channels
+    only, so the script adds every channel code that a CRS extract carries
+    and the snapshot lacks (withdrawn codes), named from the live codelist,
+    which keeps withdrawn codes, or else from the name the CRS publishes.
+    Fetching codelist 3 is one network call to the OECD codelist service.
 
 ``review``
     Reads a CRS extract, aggregates it to (provider_code, agency_code) pairs
@@ -195,7 +197,7 @@ def load_oecd_channel_codelist(
 
     generated_from = raw.get("generated_from", {})
     vintage = {
-        "source": "resolvekit_bundled_snapshot",
+        "source": "oecd_codelist_3_names_resolvekit_snapshot_acronyms",
         "resolvekit_snapshot_version": raw.get("version"),
         "oecd_query_date": generated_from.get("oecd_query_date"),
         "oecd_source_url": generated_from.get("source_url"),
@@ -205,15 +207,21 @@ def load_oecd_channel_codelist(
     return frame, vintage
 
 
-def _withdrawn_channel_names(codelist: pd.DataFrame) -> dict[int, str]:
-    """Return each channel code of the live OECD codelist and its latest label.
+def _live_channel_names(codelist: pd.DataFrame) -> dict[int, str]:
+    """Return each channel code of the live OECD codelist and the CRS's label for it.
 
-    A code can appear under several categories or activation dates with the
-    same label. The label of the latest activation date wins.
+    A code can appear under several categories or activation dates, and with a
+    CRS row and a TOSSD row whose labels differ (11004 is "Other public
+    entities in donor country" in the CRS and "... in provider country" in
+    TOSSD). The CRS rows (``crs`` flag 1) win, since the CRS publishes their
+    label, and among them the latest activation date.
     """
     channels = codelist[codelist["codelist_id"] == CHANNEL_CODELIST_ID].copy()
     channels["code"] = channels["code"].astype(int)
-    latest = channels.sort_values(["code", "activation_date"], na_position="first")
+    channels["in_crs"] = channels["crs"].astype(str) == "1"
+    latest = channels.sort_values(
+        ["code", "in_crs", "activation_date"], na_position="first", kind="stable"
+    )
     return dict(zip(latest["code"], latest["label"].str.strip(), strict=True))
 
 
@@ -226,6 +234,31 @@ def _crs_channel_names(crs: pd.DataFrame) -> dict[int, str | None]:
         .agg(lambda names: names.str.strip().mode().min())
     )
     return {int(code): modal.get(code) for code in crs["channel_code"].unique()}
+
+
+def use_live_channel_names(
+    frame: pd.DataFrame, *, codelist: pd.DataFrame
+) -> pd.DataFrame:
+    """Name each channel in ``frame`` from the live OECD codelist.
+
+    The ResolveKit snapshot trails the OECD's renames, so its name stands only
+    for a code the live codelist lacks.
+
+    Args:
+        frame: Channel codelist as :func:`load_oecd_channel_codelist` returns it.
+        codelist: Category codelists as ``oda_reader.codelists.fetch_code_categories``
+            returns them, including codelist 3 (channel of delivery).
+
+    Returns:
+        ``frame`` with ``channel_name`` replaced by the live label where one exists.
+    """
+    listed = _live_channel_names(codelist)
+    named = frame.copy()
+    named["channel_name"] = [
+        listed.get(code) or name
+        for code, name in zip(named["channel_code"], named["channel_name"], strict=True)
+    ]
+    return named
 
 
 def add_withdrawn_channels(
@@ -250,7 +283,7 @@ def add_withdrawn_channels(
         ``frame`` plus one row per missing code, sorted by ``channel_code``.
     """
     published = _crs_channel_names(crs)
-    listed = _withdrawn_channel_names(codelist)
+    listed = _live_channel_names(codelist)
     known = frame.set_index("channel_code")["channel_name"]
 
     rows = []
@@ -283,8 +316,8 @@ def refresh_crs_channel_mapping(
     """Rewrite ``crs_channel_mapping.csv`` from the OECD codelist and record
     its vintage in a sidecar JSON file.
 
-    Makes one network call, to the OECD codelist service, for the names of
-    withdrawn channel codes.
+    Makes one network call, to the OECD codelist service, for every channel's
+    name (:func:`use_live_channel_names`) and the withdrawn channel codes.
 
     Args:
         resolvekit_source_path: ResolveKit git checkout, see
@@ -302,6 +335,7 @@ def refresh_crs_channel_mapping(
     frame, vintage = load_oecd_channel_codelist(resolvekit_source_path)
     crs = pd.read_parquet(crs_source, columns=["channel_code", "channel_name"])
     codelist = fetch_code_categories(codelist_ids=[CHANNEL_CODELIST_ID]).frame
+    frame = use_live_channel_names(frame, codelist=codelist)
     full = add_withdrawn_channels(frame, crs=crs, codelist=codelist)
     vintage["withdrawn_channel_count"] = len(full) - len(frame)
     vintage["channel_count"] = len(full)

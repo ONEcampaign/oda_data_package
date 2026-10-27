@@ -29,10 +29,11 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from oda_data._groups import sectors
+from oda_data._groups import SectorGroup, sectors
 from oda_data._model import Headline, Indicator, basis_lines, line_basis
-from oda_data._names import names
+from oda_data._names import purpose_codes
 from oda_data._registry import INDICATORS, crs, dac1, dac2a
+from oda_data._resolve import resolve_group
 from oda_data._types import Basis
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -111,10 +112,9 @@ CRS_OTHER_CATEGORIES = (
 )
 CRS_PRIVATE_PROVIDERS = (
     "3.0 reads the private donors in oda.groups.private_donors when a call "
-    "names no providers, so the category 30 rows that Denmark, Japan, Korea "
-    "and three other official providers report (USD 2.7bn in all years, "
-    "against USD 107.4bn from private donors) count only when a call names "
-    "them"
+    "names no providers, so the category 30 rows that Denmark, Japan, Korea, "
+    "Hungary and Finland report (USD 2.7bn in all years, against USD 100.3bn "
+    "from private donors) count only when a call names them"
 )
 NO_COVID_LINE = (
     "DAC1 publishes no line {line} in any year. one.crs.covid_oda counts "
@@ -135,10 +135,6 @@ EU_GNI = (
     "GNI of today's EU27 in every year, as 2.x's add_gni_share_column did"
 )
 PER_CENT = "3.0 gives ODA/GNI in per cent, while 2.x's ONE ratios were fractions"
-MARKER_ROWS = (
-    "3.0 screens modalities B031, B032 and B033 as well, counts bi_multi 1, 3, "
-    "7 and 8 only, and starts in 2010"
-)
 
 #: The reasons many rows share, by the key the map stores them under.
 SHARED_REASONS: Mapping[str, str] = {
@@ -151,7 +147,6 @@ SHARED_REASONS: Mapping[str, str] = {
     "crs_other_categories": CRS_OTHER_CATEGORIES,
     "crs_private_providers": CRS_PRIVATE_PROVIDERS,
     "per_cent": PER_CENT,
-    "marker_rows": MARKER_ROWS,
     "no_2x_number": NO_2X_NUMBER,
     "no_2x_rows": NO_2X_ROWS,
     "recipient_totals": RECIPIENT_TOTALS,
@@ -336,29 +331,41 @@ def dac2a_line(line: int) -> Mapped:
 
 
 def _sector_codes(headings: Iterable[int]) -> list[int]:
-    """Every purpose code under the three-digit sector ``headings``."""
-    prefixes = {str(heading) for heading in headings}
-    found = [code for code in names("sector") if str(code)[:3] in prefixes]
-    return sorted(int(code) for code in found)
+    """Every purpose code under the three-digit sector ``headings``.
+
+    The rule is ``purpose_codes``, the one ``sectors=`` applies to a heading.
+    """
+    return sorted(set().union(*(purpose_codes(heading) for heading in headings)))
+
+
+def _group_codes(group: SectorGroup) -> frozenset[int]:
+    """The purpose codes a built-in sector group reads, by ``sectors=``'s rule.
+
+    The groups hold one composition in every year, so any year gives it.
+    """
+    (codes,) = resolve_group(group, "sector", years=(2000,)).members.values()
+    return frozenset(int(code) for code in codes)
 
 
 def sector_argument(headings: Iterable[int]) -> object:
     """The ``sectors=`` value for every purpose code under ``headings``.
 
     The ``oda.sectors`` groups whose codes add up to exactly that set when
-    some do, larger groups first, and the codes themselves otherwise.
+    some do, larger groups first, and the headings themselves otherwise,
+    which ``sectors=`` expands by the same rule.
     """
+    headings = sorted(set(headings))
     target = set(_sector_codes(headings))
     chosen: list[str] = []
     covered: set[int] = set()
     by_size = sorted(sectors.items(), key=lambda item: (-len(item[1].members), item[0]))
     for slug, group in by_size:
-        codes = {int(code) for code in group.members}
+        codes = set(_group_codes(group))
         if codes <= target and not codes <= covered:
             chosen.append(slug)
             covered |= codes
     if covered != target:
-        return sorted(target)
+        return headings
     groups = [Expr(f"oda.sectors.{slug}") for slug in sorted(chosen)]
     return groups[0] if len(groups) == 1 else groups
 
@@ -485,7 +492,7 @@ def _gender(score: str) -> Mapped:
         "df = " + get("oecd.crs.gender_marker", by=["provider", "score", "year"]),
         f'df = df[df["score"] == "{score}"]',
     )
-    return _changes("oecd.crs.gender_marker", call, CRS_BILATERAL_ROWS, MARKER_ROWS)
+    return _changes("oecd.crs.gender_marker", call, CRS_BILATERAL_ROWS)
 
 
 def _bilateral_plus_oof() -> tuple[str, ...]:
@@ -623,13 +630,11 @@ HAND: Mapping[str, Mapped] = {
         "oecd.crs.gender_marker",
         (get("oecd.crs.gender_marker"),),
         CRS_BILATERAL_ROWS,
-        MARKER_ROWS,
     ),
     "crs_gender_allocable_total_flow_disbursement_gross": _changes(
         "oecd.crs.gender_marker",
         (get("oecd.crs.gender_marker"),),
         CRS_BILATERAL_ROWS,
-        MARKER_ROWS,
     ),
     "crs_gender_total_flow_gross": _changes(
         "oecd.crs.gender_marker",
@@ -639,7 +644,6 @@ HAND: Mapping[str, Mapped] = {
             _sum_lines(["df"], ["provider", "year"]),
         ),
         CRS_BILATERAL_ROWS,
-        MARKER_ROWS,
     ),
     "crs_bilateral_total_flow_gross_by_purpose": _changes(
         "oecd.crs.bilateral_oda",

@@ -122,7 +122,7 @@
     "1037": "International Investment Bank",
     "1038": "UN Institute for Disarmament Research",
     "1039": "UN Capital Development Fund",
-    "1040": "United Nations Office on Drugs and Crime",
+    "1040": "UN Office on Drugs and Crime",
     "1041": "Eurasian Fund for Stabilization and Development",
     "1044": "New Development Bank",
     "1045": "North American Development Bank",
@@ -144,14 +144,14 @@
     "1403": "UN Economic and Social Commission for Western Asia",
     "1404": "World Trade Organisation",
     "1406": "United Nations Industrial Development Organization",
-    "1601": "Bill & Melinda Gates Foundation",
+    "1601": "Gates Foundation",
     "1602": "Dutch Postcode Lottery",
     "1603": "Swedish Postcode Lottery",
     "1604": "People's Postcode Lottery",
     "1605": "MetLife Foundation",
     "1606": "Mastercard Foundation",
     "1608": "IKEA Foundation",
-    "1609": "Bernard van Leer Foundation",
+    "1609": "Van Leer Foundation",
     "1610": "MAVA Foundation",
     "1611": "Oak Foundation",
     "1612": "H&M Foundation",
@@ -178,7 +178,7 @@
     "1633": "LEGO Foundation",
     "1634": "Norwegian Postcode Lottery",
     "1636": "Jacobs Foundation",
-    "1637": "Arcadia Fund",
+    "1637": "Arcadia",
     "1638": "Margaret A. Cargill Foundation",
     "1639": "La Caixa Banking Foundation",
     "1640": "Bloomberg Family Foundation",
@@ -216,7 +216,7 @@
     "30": "Cyprus",
     "35": "Gibraltar",
     "45": "Malta",
-    "55": "Turkey",
+    "55": "T\u00fcrkiye",
     "57": "Kosovo",
     "61": "Slovenia",
     "62": "Croatia",
@@ -669,7 +669,7 @@
     "15170": "Women's rights organisations and movements, and government institutions",
     "15180": "Ending violence against women and girls",
     "15185": "Local government administration",
-    "15190": "Facilitation of orderly, safe, regular and responsible migration and mobili",
+    "15190": "Facilitation of orderly, safe, regular and responsible migration and mobility",
     "15196": "Government and civil society statistics and data",
     "15210": "Security system management and reform",
     "15220": "Civilian peace-building, conflict prevention and resolution",
@@ -820,7 +820,7 @@
     "32171": "Engineering",
     "32172": "Transport equipment industry",
     "32173": "Modern biofuels manufacturing",
-    "32174": "Clean cooking appliances manufacturing",
+    "32174": "Clean cooking appliances manufacturing, market development and distribution",
     "32182": "Technological research and development",
     "32210": "Mineral/mining policy and administrative management",
     "32220": "Mineral prospection and exploration",
@@ -1266,5 +1266,37 @@
       10203,
       15006
     ]
+  },
+  "former_names": {
+    "provider": {
+      "1040": [
+        "United Nations Office on Drugs and Crime"
+      ],
+      "1601": [
+        "Bill & Melinda Gates Foundation"
+      ],
+      "1609": [
+        "Bernard van Leer Foundation"
+      ],
+      "1637": [
+        "Arcadia Fund"
+      ]
+    },
+    "sector": {
+      "32174": [
+        "Clean cooking appliances manufacturing"
+      ]
+    },
+    "channel": {
+      "11000": [
+        "Provider Government"
+      ],
+      "11004": [
+        "Other public entities in provider country"
+      ],
+      "47116": [
+        "Integrated Framework for Trade-Related Technical Assistance to Least Developed Countries"
+      ]
+    }
   }
 }

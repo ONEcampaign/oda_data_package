@@ -12,6 +12,7 @@ import pytest
 import oda_data as oda
 from oda_data._errors import OfflineCacheMissError
 from oda_data._names import names
+from oda_data._resolve import resolve_group
 from oda_data._tables import OecdTables
 
 pytestmark = pytest.mark.data
@@ -58,7 +59,7 @@ def test_broad_sector_holds_the_purpose_codes_the_crs_files_under_it(
     crs: OecdTables, group: str, dac5: set[int]
 ) -> None:
     filed = {purpose for purpose, sectors in _dac5(crs).items() if sectors & dac5}
-    members = set(oda.sectors[group].members)
+    members = resolve_group(oda.sectors[group], "sector", years=[2023]).members[2023]
 
     assert filed <= members
     assert all(_dac5(crs).get(code, dac5) & dac5 for code in members)

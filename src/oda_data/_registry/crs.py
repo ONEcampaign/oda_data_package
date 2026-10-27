@@ -15,8 +15,9 @@ Each CRS row is one activity a provider reports for one year. Which rows count:
   which DAC1 counts as multilateral ODA, and code 4 is the multilateral
   organisations' own outflows.
 - Other official flows are category 21, and private development finance,
-  the flows of private foundations, is category 30. The CRS gives neither a
-  grant equivalent, so both have the cash bases only.
+  the flows of private foundations, is category 30 without ``bi_multi`` 2,
+  their core contributions to multilaterals. The CRS gives neither a grant
+  equivalent, so both have the cash bases only.
 - Net disbursements are disbursements minus amounts received.
 
 On these rules, category 10 gross disbursements match DAC1 bilateral gross
@@ -29,11 +30,14 @@ from dataclasses import replace
 
 from oda_data._model import (
     CRS_MARKERS,
+    AnyOf,
     Binding,
     Caveat,
     Filter,
     In,
     Indicator,
+    IsNull,
+    NotIn,
     Sum,
     Value,
 )
@@ -47,9 +51,12 @@ ODA_ROWS_WITH_PSI: tuple[Filter, ...] = (In("category", (10, 60)),)
 #: CRS rows that are other official flows.
 OOF_ROWS: tuple[Filter, ...] = (In("category", (21,)),)
 #: CRS rows that are private development finance, the flows of private
-#: foundations (``bi_multi`` 6, and 2 for their core contributions to
-#: multilateral organisations).
+#: foundations (mostly ``bi_multi`` 6).
 PRIVATE_ROWS: tuple[Filter, ...] = (In("category", (30,)),)
+#: Every flow except core contributions to multilateral organisations
+#: (``bi_multi`` 2), which the organisations' own outflows count again.
+#: Rows with no ``bi_multi`` stay in.
+NOT_MULTILATERAL_CORE = AnyOf((IsNull("bi_multi"), NotIn("bi_multi", (2,))))
 
 #: Flows a provider directs itself: bilateral (1), core contributions to NGOs
 #: and other private bodies (3), ex-post reporting on NGOs' activities funded
@@ -187,9 +194,10 @@ PRIVATE_DEVELOPMENT_FINANCE = Indicator(
     id="oecd.crs.private_development_finance",
     name="Private development finance",
     description="Development finance from private foundations, reported "
-    "activity by activity. It is CRS category 30, mostly bi_multi 6, with the "
-    "foundations' core contributions to multilateral organisations (bi_multi "
-    "2) included, and has no grant equivalent. By default the providers are "
+    "activity by activity. It is CRS category 30, mostly bi_multi 6, and has "
+    "no grant equivalent. The foundations' core contributions to multilateral "
+    "organisations (bi_multi 2) are left out, since the organisations' own "
+    "outflows count that money again. By default the providers are "
     "the private foundations in oda.groups.private_donors; a few official "
     "providers report category 30 rows of their own country's private flows, "
     "which a call that names them reads.",
@@ -198,6 +206,7 @@ PRIVATE_DEVELOPMENT_FINANCE = Indicator(
     dimensions=_INDICATOR_DIMENSIONS,
     default_basis="gross_disbursement",
     default_providers="private_donors",
+    rows=(NOT_MULTILATERAL_CORE,),
 )
 
 #: The first year of the marker indicators. Before 2010 the CRS leaves the aid

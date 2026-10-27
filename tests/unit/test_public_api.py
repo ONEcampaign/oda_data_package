@@ -3,6 +3,7 @@
 import pickle
 import subprocess
 import sys
+from importlib.resources import files
 
 import pytest
 
@@ -104,7 +105,12 @@ def test_a_2x_name_names_its_replacement_on_import_and_attribute_read(
 
 
 def test_version_is_the_package_version() -> None:
-    assert oda_data.__version__ == "3.0.0.dev0"
+    assert oda_data.__version__ == "3.0.0"
+
+
+def test_the_package_ships_type_information() -> None:
+    """The PEP 561 marker, which type checkers need to read the annotations."""
+    assert files("oda_data").joinpath("py.typed").is_file()
 
 
 @pytest.mark.parametrize("name", [n for n in PUBLIC_NAMES if n != "__version__"])
