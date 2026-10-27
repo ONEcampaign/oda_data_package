@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from oda_data._model import (
+    CRS_MARKERS,
     VOCABULARY,
     AnyOf,
     Between,
@@ -105,6 +106,18 @@ def test_vocabulary_names_and_sources_are_unique(table: str) -> None:
     assert len(set(sources)) == len(sources)
 
 
+@pytest.mark.parametrize("marker", CRS_MARKERS)
+def test_crs_marker_columns_label_their_scores(marker: str) -> None:
+    [column] = [c for c in VOCABULARY["crs"].columns if c.name == marker]
+    principal = {2, 3} if marker == "desertification" else {2}
+
+    assert column.labels is not None
+    assert {code for code, label in column.labels.items() if label == "principal"} == (
+        principal
+    )
+    assert column.labels[None] == "not_screened"
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
@@ -162,7 +175,7 @@ def test_binding_is_frozen_and_detached_from_its_inputs() -> None:
 
 
 def test_indicator_builds_and_is_frozen() -> None:
-    indicator = total_oda(excluded_providers=frozenset({918}))
+    indicator = total_oda(rows=(NotIn("provider", (918,), reason="counted twice"),))
     assert indicator.kind.lines["grant_equivalent"] == 11010
     with pytest.raises(dataclasses.FrozenInstanceError):
         indicator.version = 2  # type: ignore[misc]
@@ -174,11 +187,18 @@ def test_indicator_builds_and_is_frozen() -> None:
     ("overrides", "match"),
     [
         ({"rows": (NotIn("sector", (1,)),)}, "vocabulary"),
+        ({"rows": (NotIn("provider", (918,)),)}, "reason"),
         ({"default_basis": "commitment"}, "default basis"),
         ({"dimensions": ("provider", "recipient")}, "dimensions"),
         ({"kind": Sum(lines={"commitment": 1015})}, "unknown bases"),
     ],
-    ids=["rows", "default-basis", "sum-dimension", "sum-lines"],
+    ids=[
+        "rows",
+        "unexplained-exclusion",
+        "default-basis",
+        "sum-dimension",
+        "sum-lines",
+    ],
 )
 def test_indicator_refuses_inconsistent_definition(overrides: dict, match: str) -> None:
     with pytest.raises(ValueError, match=match):

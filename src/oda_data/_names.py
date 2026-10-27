@@ -1,10 +1,10 @@
 """Names for the codes in each dimension, and the aggregate codes.
 
 The names come from bundled reference data: ``_data/names.json`` (providers,
-recipients, CRS purpose codes, flows, modalities, and DAC1 and DAC2A lines),
-``_data/crs_channel_mapping.csv`` (channels) and ``_data/sector_groups.json``
-(broad sectors). Nothing here imports resolvekit, so ``_compile`` and
-``_combine`` may use it.
+recipients, CRS purpose codes, flows, modalities, CRS finance types, and DAC1
+and DAC2A lines), ``_data/crs_channel_mapping.csv`` (channels) and
+``_data/sector_groups.json`` (broad sectors). Nothing here imports resolvekit,
+so ``_compile`` and ``_combine`` may use it.
 
 Codes keep their table type: ints for every dimension except ``modality``
 (``"B01"``) and ``broad_sector`` (``"health"``).
@@ -48,7 +48,7 @@ def load_json(name: str) -> Any:
 def normalise(text: str) -> str:
     """Fold case, accents, curly quotes, and spacing, so names compare exactly.
 
-    ``"Côte d\N{RIGHT SINGLE QUOTATION MARK}Ivoire"`` and ``"cote d'ivoire"`` normalise to the same text;
+    ``"Côte d\N{RIGHT SINGLE QUOTATION MARK}Ivoire"`` and ``"cote d'ivoire"`` normalise to the same text.
     ``"Frnace"`` and ``"France"`` do not.
     """
     decomposed = unicodedata.normalize("NFKD", text)
@@ -96,7 +96,7 @@ def names(
     Args:
         dimension: The dimension. ``year``, ``score``, and ``allocation_status``
             have no names and return an empty map.
-        table: The table, for ``line`` only: DAC1 and DAC2A number their lines
+        table: The table, for ``line`` only. DAC1 and DAC2A number their lines
             separately (line 207 is peacebuilding in DAC1 and technical
             co-operation in DAC2A).
 
@@ -105,7 +105,7 @@ def names(
     """
     data = load_json("names.json")
     match dimension:
-        case "provider" | "recipient" | "sector" | "flow":
+        case "provider" | "recipient" | "sector" | "flow" | "finance_type":
             return _int_keys(data[dimension])
         case "modality":
             modalities: dict[Code, str] = dict(data["modality"])

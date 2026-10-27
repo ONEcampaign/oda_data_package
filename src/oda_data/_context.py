@@ -29,13 +29,28 @@ from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, Protocol, Self, get_args
 
+import duckdb
 import pyarrow as pa
 
-from oda_data._combine import combine, tables_for, walk
+from oda_data._combine import (
+    caveats_for,
+    check_left_out,
+    combine,
+    partial_text,
+    tables_for,
+    walk,
+)
 from oda_data._combine import records as combined_records
-from oda_data._compile import BROAD_SECTORS, ident, literals
+from oda_data._compile import (
+    BROAD_SECTORS,
+    UNLABELLED_CODE,
+    check_basis,
+    ident,
+    literals,
+)
 from oda_data._errors import (
     DimensionError,
+    UnknownEntityError,
     UnknownIndicatorError,
     UnsupportedQueryError,
 )
@@ -186,6 +201,7 @@ _FILTERS: tuple[tuple[str, Dimension], ...] = (
     ("sectors", "sector"),
     ("channels", "channel"),
     ("modalities", "modality"),
+    ("finance_types", "finance_type"),
     ("flows", "flow"),
     ("lines", "line"),
 )
@@ -226,20 +242,91 @@ def _request(
     columns: object = None,
 ) -> _Request:
     found = find_indicator(indicator)
+    passthrough = None if columns is None else _strings("columns", columns)
+    if passthrough is not None:
+        _check_passthrough(found, passthrough)
+    used = {
+        dimension: filters[argument]
+        for argument, dimension in _FILTERS
+        if filters.get(argument) is not None
+    }
+    split = found.dimensions if columns is not None else _dimensions(by)
+    _check_dimensions(found, (*used, *split))
     return _Request(
         indicator=found,
         years=_years(years),
-        filters={
-            dimension: filters[argument]
-            for argument, dimension in _FILTERS
-            if filters.get(argument) is not None
-        },
-        by=found.dimensions if columns is not None else _dimensions(by),
+        filters=used,
+        by=split,
         basis=basis,
         units=None if unit is None else _units(unit),
         allow_partial=allow_partial,
-        columns=None if columns is None else _strings("columns", columns),
+        columns=passthrough,
     )
+
+
+#: Extra advice for a table that lacks a dimension: the argument that gives
+#: the same split on that table. ``DimensionError`` prints it beside the
+#: indicator that has the dimension.
+_DIMENSION_HINTS: Mapping[tuple[TableName, Dimension], str] = {
+    ("dac1", "finance_type"): "DAC1 splits grants from other flows with flows=, "
+    "such as 1121 (disbursements, grants) and 1122 (non-grants)",
+    ("dac2a", "finance_type"): "DAC2A splits grants from loans by line: use "
+    "oecd.dac2a.lines with lines=, such as 201 (ODA grants) and 218 (net ODA "
+    "loans), or 204 (gross ODA loans) with basis='gross_disbursement'",
+}
+
+
+def _check_dimensions(indicator: Indicator, used: Iterable[Dimension]) -> None:
+    """Raise ``DimensionError`` when a call filters or splits by a dimension
+    the indicator lacks, naming the table's own path where one exists and an
+    indicator that has the dimension."""
+    for dimension in dict.fromkeys(used):
+        if dimension in indicator.dimensions:
+            continue
+        hints = [_DIMENSION_HINTS.get((indicator.binding.table, dimension))]
+        holder = _holder(indicator, dimension)
+        if holder is not None:
+            hints.append(f"Use {holder.id} for figures by {_label(dimension)}")
+        raise DimensionError(
+            f"{indicator.id} has no {dimension!r} dimension; its dimensions are "
+            f"{', '.join(indicator.dimensions)}"
+            + "".join(f". {hint}" for hint in hints if hint)
+        )
+
+
+def _holder(indicator: Indicator, dimension: Dimension) -> Indicator | None:
+    """The first indicator in the registry with ``dimension``, one on the
+    indicator's own table first."""
+    holders = [found for found in INDICATORS.values() if dimension in found.dimensions]
+    table = indicator.binding.table
+    same = [found for found in holders if found.binding.table == table]
+    return next(iter(same or holders), None)
+
+
+def _label(dimension: Dimension) -> str:
+    return dimension.replace("_", " ")
+
+
+def _check_passthrough(indicator: Indicator, columns: tuple[str, ...]) -> None:
+    """Raise when a ``records()`` column has the name of a column the result
+    already holds, such as ``channel_name`` beside ``channel``.
+
+    The result would hold one of the two under that name, and the caller
+    could not tell which.
+    """
+    dimensions = ("provider", *indicator.dimensions)
+    produced = {
+        *dimensions,
+        *(f"{d}_name" for d in dimensions if d not in _UNNAMED),
+        *_RECORD_FIXED,
+    }
+    clashes = [name for name in dict.fromkeys(columns) if name in produced]
+    if clashes:
+        raise UnsupportedQueryError(
+            f"records() already returns {', '.join(map(repr, clashes))} for "
+            f"{indicator.id}; drop {'it' if len(clashes) == 1 else 'them'} "
+            "from columns="
+        )
 
 
 def _years(years: object) -> tuple[int, ...] | None:
@@ -330,10 +417,16 @@ def _plan(
         dimension: resolve_selection(dimension, values, years=read_years, table=table)
         for dimension, values in request.filters.items()
     }
-    _check_left_out(indicator, selections)
     members = {dimension: s.codes for dimension, s in selections.items()}
     defaults: dict[str, str] = {}
     default_text: dict[Dimension, str] = {}
+    exclusions = _provider_exclusions(indicator)
+    if exclusions:
+        defaults["excluded_providers"] = "; ".join(
+            f"{', '.join(map(str, rule.values))}{_scope_text(indicator, rule)}: "
+            f"{rule.reason}"
+            for rule in exclusions
+        )
 
     if "provider" in indicator.dimensions and "provider" not in selections:
         codes, text = _default_providers(cursor, indicator, tables, read_years)
@@ -367,30 +460,10 @@ def _plan(
         allow_partial=request.allow_partial,
         rows={d: s.rows for d, s in selections.items()},
     )
+    # A left-out code explains a line the call cannot read, so it goes first.
+    check_left_out(indicator, call)
     _check_lines(cursor, indicator, call)
     return _Plan(call, selections, defaults, default_text)
-
-
-def _check_left_out(
-    indicator: Indicator, selections: Mapping[Dimension, Selection]
-) -> None:
-    """Raise when a filter names a code the indicator's row filters leave out.
-
-    Such a code would return no rows and look like missing data.
-    """
-    columns = {column: d for d, column in indicator.binding.dimensions.items()}
-    for rule in (*indicator.binding.rows, *indicator.rows):
-        if not isinstance(rule, NotIn) or rule.column not in columns:
-            continue
-        dimension = columns[rule.column]
-        selection = selections.get(dimension)
-        named = selection.codes & set(rule.values) if selection else set()
-        if named:
-            listed = ", ".join(map(str, sorted(named, key=str)))
-            reason = f": {rule.reason}" if rule.reason else ""
-            raise UnsupportedQueryError(
-                f"{indicator.id} leaves out {dimension} {listed}{reason}"
-            )
 
 
 def _check_lines(
@@ -409,8 +482,9 @@ def _check_lines(
         return
     if not isinstance(kind, Sum) or kind.lines:
         return
+    check_basis(indicator, call)
     bases = indicator.binding.bases
-    used = _concrete_bases(bases.get(call.basis), call)
+    used = _concrete_bases(bases[call.basis], call)
     flows = {basis: bases[basis] for basis in used}
     if not flows or not all(isinstance(rule, Flow) for rule in flows.values()):
         return
@@ -472,7 +546,8 @@ def _default_providers(
 
     A named default is that group's members. ``None`` is every provider in
     the indicator's tables except aggregates and private donors. Either way
-    the indicator's excluded providers are dropped, since naming one raises.
+    the providers the indicator or an indicator it combines excludes are
+    dropped, since naming one raises.
     """
     name = indicator.default_providers
     if name is not None:
@@ -490,7 +565,13 @@ def _default_providers(
             "every official provider in the table, aggregates and private donors "
             "excluded (the default)"
         )
-    return codes - indicator.excluded_providers, text
+    excluded = {
+        code
+        for rule in _provider_exclusions(indicator)
+        if rule.when is None
+        for code in rule.values
+    }
+    return codes - excluded, text
 
 
 def _member_union(members: Mapping[int, frozenset[Code]]) -> frozenset[Code]:
@@ -710,6 +791,7 @@ class Context:
         sectors: Many[int | str | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
+        finance_types: Many[int | str] | None = None,
         flows: Many[int | str] | None = None,
         lines: Many[int | str] | None = None,
         by: Many[Dimension] = ("provider", "year"),
@@ -729,6 +811,7 @@ class Context:
             sectors=sectors,
             channels=channels,
             modalities=modalities,
+            finance_types=finance_types,
             flows=flows,
             lines=lines,
             by=by,
@@ -748,6 +831,7 @@ class Context:
         sectors: Many[int | str | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
+        finance_types: Many[int | str] | None = None,
         flows: Many[int | str] | None = None,
         lines: Many[int | str] | None = None,
         by: Many[Dimension] = ("provider", "year"),
@@ -768,6 +852,7 @@ class Context:
                 "sectors": sectors,
                 "channels": channels,
                 "modalities": modalities,
+                "finance_types": finance_types,
                 "flows": flows,
                 "lines": lines,
             },
@@ -790,6 +875,7 @@ class Context:
         sectors: Many[int | str | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
+        finance_types: Many[int | str] | None = None,
         flows: Many[int | str] | None = None,
         lines: Many[int | str] | None = None,
         basis: Basis | None = None,
@@ -808,6 +894,7 @@ class Context:
                 "sectors": sectors,
                 "channels": channels,
                 "modalities": modalities,
+                "finance_types": finance_types,
                 "flows": flows,
                 "lines": lines,
             },
@@ -841,6 +928,11 @@ class Context:
                 combined = combined_records(
                     cursor, indicator, plan.call, factors, columns=request.columns
                 )
+        except duckdb.InvalidInputException as error:
+            message = str(error).removeprefix("Invalid Input Error: ")
+            if UNLABELLED_CODE not in message:
+                raise
+            raise UnknownEntityError(message) from error
         finally:
             cursor.close()
 
@@ -860,7 +952,14 @@ class Context:
             table = _shape_records(combined.table, indicator, plan)
             return _Result(table, None, record, "")
         table, schema = _shape_result(combined.table, indicator, plan)
-        text = explain(indicator, plan, table, releases, combined.fallback_providers)
+        text = explain(
+            indicator,
+            plan,
+            table,
+            releases,
+            combined.fallback_providers,
+            partial=combined.partial,
+        )
         return _Result(table, schema, record, text)
 
 
@@ -898,8 +997,10 @@ class Query:
         """Describe the result in plain text, for a log or a methodology note.
 
         Names the indicator, basis, years, providers and other filters, every
-        default the call relied on, the units and deflators, the providers
-        that took the DAC total's deflators, and the table releases.
+        default the call relied on, the providers the indicator leaves out,
+        the caveats that concern the call, the units and deflators, the
+        providers that took the DAC total's deflators, and the table
+        releases.
         """
         return self._run().explanation
 
@@ -919,7 +1020,7 @@ class Query:
         """Return the result as a polars DataFrame.
 
         Raises:
-            ImportError: polars is not installed; install ``oda-data[polars]``.
+            ImportError: polars is not installed. Install ``oda-data[polars]``.
         """
         try:
             import polars as pl
@@ -978,11 +1079,12 @@ _PLURALS: Mapping[str, str] = {
     "sector": "sectors",
     "channel": "channels",
     "modality": "modalities",
+    "finance_type": "finance types",
     "flow": "flows",
     "line": "lines",
 }
 
-#: The most codes explain() names one by one; more are counted.
+#: The most codes explain() names one by one. More are counted.
 _LISTED = 5
 
 
@@ -992,8 +1094,14 @@ def explain(
     result: pa.Table,
     releases: Mapping[str, Release],
     fallback: frozenset[int],
+    *,
+    partial: tuple[int, int] | None = None,
 ) -> str:
-    """Describe a result in plain text, one sentence per line."""
+    """Describe a result in plain text, one sentence per line.
+
+    ``partial`` is ``Combined.partial``: the table's last year and how many
+    summed providers that reported the year before have not reported it.
+    """
     table = indicator.binding.table
     years = _result_years(result, plan.call)
     lines = [
@@ -1010,8 +1118,15 @@ def explain(
             continue
         if dimension == "provider":
             lines.append(f"{phrase[0].upper()}{phrase[1:]}.")
+            lines.extend(_excluded_text(indicator, plan.call, table))
         else:
             lines.append(f"{_PLURALS[dimension].capitalize()}: {phrase}.")
+    lines.extend(
+        f"Caveat: {_sentence(caveat.text)}"
+        for caveat in caveats_for(indicator, plan.call)
+    )
+    if partial is not None:
+        lines.append(_sentence(partial_text(*partial)))
     lines.append(_unit_text(indicator, plan, fallback))
     downloads = "; ".join(
         f"{_TABLE_LABELS[name]} downloaded {release.downloaded:%Y-%m-%d}"
@@ -1019,6 +1134,60 @@ def explain(
     )
     lines.append(f"{downloads}. {result.num_rows:,} rows.")
     return "\n".join(lines)
+
+
+def _provider_exclusions(indicator: Indicator) -> tuple[NotIn, ...]:
+    """The provider exclusions of the indicator and the indicators it
+    combines, each once."""
+    return tuple(
+        dict.fromkeys(
+            rule for part in walk(indicator) for rule in part.provider_exclusions
+        )
+    )
+
+
+def _excluded_text(
+    indicator: Indicator, call: ResolvedCall, table: TableName
+) -> list[str]:
+    """A sentence for each provider exclusion the call can meet, naming the
+    providers, the rows it covers, and the reason."""
+    return [
+        f"Leaves out {_codes_text('provider', frozenset(rule.values), table)}"
+        f"{_scope_text(indicator, rule)}: {rule.reason.removesuffix('.')}."
+        for rule in _provider_exclusions(indicator)
+        if _meets(indicator, call, rule)
+    ]
+
+
+def _scope_text(indicator: Indicator, rule: NotIn) -> str:
+    """`` on line 106`` for an exclusion scoped to line 106, or nothing."""
+    if rule.when is None:
+        return ""
+    codes = _join([str(code) for code in rule.when.values])
+    return f" on {_scope_dimension(indicator, rule) or rule.when.column} {codes}"
+
+
+def _meets(indicator: Indicator, call: ResolvedCall, rule: NotIn) -> bool:
+    """Whether a call can read rows a scoped exclusion covers: it filters
+    none of the scope's dimension, or names a code in the scope."""
+    if rule.when is None:
+        return True
+    dimension = _scope_dimension(indicator, rule)
+    named = None if dimension is None else call.members.get(dimension)
+    return named is None or bool(named & set(rule.when.values))
+
+
+def _scope_dimension(indicator: Indicator, rule: NotIn) -> Dimension | None:
+    """The dimension whose codes scope an exclusion, if one holds its column."""
+    if rule.when is None:
+        return None
+    columns = {column: d for d, column in indicator.binding.dimensions.items()}
+    return columns.get(rule.when.column)
+
+
+def _sentence(text: str) -> str:
+    text = text[0].upper() + text[1:]
+    return text if text.endswith(".") else f"{text}."
 
 
 def _result_years(result: pa.Table, call: ResolvedCall) -> tuple[int, ...] | None:
@@ -1038,6 +1207,9 @@ def _basis_text(
         return f"{label} {_span(years)}" if years else label
     before = _basis_label(rule.before, table)
     after = _basis_label(rule.after, table)
+    if before == after:
+        label = f"headline basis: {before}"
+        return f"{label} {_span(years)}" if years else label
     if years is None:
         parts = [f"{before} to {rule.year - 1}", f"{after} from {rule.year}"]
     else:
@@ -1180,6 +1352,7 @@ def get(
     sectors: Many[int | str | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
+    finance_types: Many[int | str] | None = None,
     flows: Many[int | str] | None = None,
     lines: Many[int | str] | None = None,
     by: Many[Dimension] = ("provider", "year"),
@@ -1203,19 +1376,26 @@ def get(
         sectors: CRS purpose codes, names, and ``oda.sectors`` groups.
         channels: Channel codes or names.
         modalities: Modality codes, such as ``"B01"``.
+        finance_types: CRS type of finance codes or names, such as 110
+            (``"Standard grant"``). DAC1 splits grants from loans with
+            ``flows=``, and DAC2A with ``lines=``.
         flows: Flow codes or names.
         lines: DAC1 or DAC2A line codes or names.
         by: The dimensions the result splits by.
         basis: The basis, or ``None`` for the indicator's default.
-        unit: A unit or units; ``None`` is current USD. A ratio takes none.
-        allow_partial: Sum a group total in a year in which a member has
-            stopped reporting. Without it the total is null in that year. A
-            member that has not yet reported, or that skips a year and
-            reports again, counts as zero either way.
+        unit: A unit or units. ``None`` is current USD. A ratio takes none.
+        allow_partial: Accept partial sums. Without it a group total is null
+            in a year in which a member has stopped reporting, and a sum
+            across providers warns when the table's last year is partial.
+            With it the group total sums the members that reported, and the
+            sum across providers does not warn; ``explain()`` still names the
+            partial year. A member that has not yet reported, or that skips a
+            year and reports again, counts as zero either way.
 
     Raises:
         UnknownIndicatorError: No indicator has that id.
-        UnknownEntityError: A filter value matched nothing.
+        UnknownEntityError: A filter value matched nothing, or the table
+            holds a policy-marker score with no label.
         AmbiguousEntityError: A name could mean more than one entity.
         DimensionError: The indicator lacks a dimension the call uses.
         BasisRangeError: The basis does not cover a year asked for.
@@ -1234,6 +1414,7 @@ def get(
         sectors=sectors,
         channels=channels,
         modalities=modalities,
+        finance_types=finance_types,
         flows=flows,
         lines=lines,
         by=by,
@@ -1253,6 +1434,7 @@ def query(
     sectors: Many[int | str | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
+    finance_types: Many[int | str] | None = None,
     flows: Many[int | str] | None = None,
     lines: Many[int | str] | None = None,
     by: Many[Dimension] = ("provider", "year"),
@@ -1274,6 +1456,7 @@ def query(
         sectors=sectors,
         channels=channels,
         modalities=modalities,
+        finance_types=finance_types,
         flows=flows,
         lines=lines,
         by=by,
@@ -1294,6 +1477,7 @@ def records(
     sectors: Many[int | str | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
+    finance_types: Many[int | str] | None = None,
     flows: Many[int | str] | None = None,
     lines: Many[int | str] | None = None,
     basis: Basis | None = None,
@@ -1323,6 +1507,7 @@ def records(
         sectors=sectors,
         channels=channels,
         modalities=modalities,
+        finance_types=finance_types,
         flows=flows,
         lines=lines,
         basis=basis,

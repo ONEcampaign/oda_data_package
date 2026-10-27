@@ -2,7 +2,7 @@
 
 Everything here is data. ``_compile`` and ``_combine`` read these types,
 ``_tables`` and ``_factors`` implement the protocols, and the registry builds
-indicators from them. The module imports nothing heavy at run time: DuckDB and
+indicators from them. The module imports nothing heavy at run time. DuckDB and
 Arrow appear only in annotations.
 
 A call runs in three stages, and each stage is a DuckDB relation:
@@ -30,7 +30,7 @@ A call runs in three stages, and each stage is a DuckDB relation:
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -64,11 +64,20 @@ class Column:
         source: The raw column in the Parquet file that oda-reader's ``scan``
             returns. The view exposes it as ``CAST(source AS type) AS name``.
         type: The DuckDB type of the logical column.
+        labels: The label of each code, ``None`` keyed for a null. A call
+            that groups or filters by the column shows the labels in place of
+            the codes, and a code with no label raises when the query runs.
+            ``None`` when the column shows its codes.
     """
 
     name: str
     source: str
     type: ColumnType
+    labels: Mapping[Code | None, str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.labels is not None:
+            object.__setattr__(self, "labels", _frozen(self.labels))
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,7 +109,8 @@ def _c(name: str, source: str, type_: ColumnType = "BIGINT") -> Column:
     return Column(name, source, type_)
 
 
-#: CRS policy-marker columns. Each holds 0, 1, 2, or null (not screened).
+#: CRS policy-marker columns. Each holds 0, 1, 2 or null (not screened);
+#: desertification also holds 3.
 CRS_MARKERS: tuple[str, ...] = (
     "gender",
     "environment",
@@ -115,6 +125,25 @@ CRS_MARKERS: tuple[str, ...] = (
     "climate_adaptation",
     "desertification",
 )
+
+#: What each policy-marker score means. A null score means the activity was
+#: not screened against the marker.
+_SCORE_LABELS: Mapping[Code | None, str] = {
+    2: "principal",
+    1: "significant",
+    0: "not_targeted",
+    None: "not_screened",
+}
+
+
+def _marker_column(marker: str) -> Column:
+    """A policy-marker column with its score labels. Desertification also
+    scores 3, principal and in support of an action programme against
+    desertification, which the OECD counts as principal."""
+    labels = _SCORE_LABELS
+    if marker == "desertification":
+        labels = {**labels, 3: "principal"}
+    return Column(marker, marker, "BIGINT", labels)
 
 
 #: Logical columns per table. ``_tables`` builds each view from this map.
@@ -164,7 +193,7 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
                 _c("disbursement", "usd_disbursement", "DOUBLE"),
                 _c("received", "usd_received", "DOUBLE"),
                 _c("grant_equivalent", "usd_grant_equiv", "DOUBLE"),
-                *(_c(marker, marker) for marker in CRS_MARKERS),
+                *map(_marker_column, CRS_MARKERS),
             ),
             passthrough=True,
         ),
@@ -203,14 +232,19 @@ class In:
 class NotIn:
     """Rows whose ``column`` holds none of ``values``. Null rows are dropped.
 
+    With ``when``, the rule applies only to the rows ``when`` matches, such as
+    the providers left out of line 106 alone, and keeps every other row.
+
     On a binding's or an indicator's ``rows``, a call that filters the
     dimension held in ``column`` by one of ``values`` raises
-    ``UnsupportedQueryError``, with ``reason`` in the message.
+    ``UnsupportedQueryError``, with ``reason`` in the message. With ``when``,
+    it raises only if the call also names one of ``when.values``.
     """
 
     column: str
     values: tuple[Code, ...]
     reason: str = ""
+    when: In | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,8 +288,10 @@ def filter_columns(filters: tuple[Filter, ...]) -> Iterator[str]:
     for item in filters:
         if isinstance(item, AnyOf):
             yield from filter_columns(item.filters)
-        else:
-            yield item.column
+            continue
+        yield item.column
+        if isinstance(item, NotIn) and item.when is not None:
+            yield item.when.column
 
 
 # Bases -----------------------------------------------------------------------
@@ -267,8 +303,10 @@ class Value:
 
     Args:
         column: The value column, such as ``disbursement``.
-        minus: A value column subtracted from ``column``, null read as 0. Net
-            disbursements are ``Value("disbursement", minus="received")``.
+        minus: A value column subtracted from ``column``. Net disbursements
+            are ``Value("disbursement", minus="received")``. Either column's
+            null reads as 0, so a repayment with no disbursement counts; a row
+            with both null has no value on the basis and is left out.
         rows: Filters that apply under this basis only.
         from_year: The first year the basis covers. Earlier years raise
             ``BasisRangeError``.
@@ -292,11 +330,15 @@ class Flow:
             (non-grants) of gross disbursements 1120. A call that filters
             ``flow`` reads the parts it names in place of ``code``, each part
             its own row; a flow outside ``parts`` raises.
+        only_lines: Lines the table publishes under this flow alone, such as
+            the grant-equivalent lines 11010 and 12000. Every other flow of
+            the binding reads no row of them.
     """
 
     code: int
     from_year: int | None = None
     parts: tuple[int, ...] = ()
+    only_lines: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -345,6 +387,10 @@ class Binding:
             marker column.
         bases: Each basis the table offers and its rule.
         rows: Filters that apply to every call, such as current USD only.
+        members_hold_eu_share: Whether an EU member's figures include its
+            contribution to EU Institutions (918), as on DAC1, whose
+            multilateral ODA counts it. A call on such a table that sums 918
+            with a member it names counts that money twice, so it raises.
 
     Raises:
         ValueError: If a column is not in the table's vocabulary, or a
@@ -355,6 +401,7 @@ class Binding:
     dimensions: Mapping[Dimension, str]
     bases: Mapping[Basis, BasisRule]
     rows: tuple[Filter, ...] = ()
+    members_hold_eu_share: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "dimensions", _frozen(self.dimensions))
@@ -453,7 +500,7 @@ class MethodFunction(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class Method:
-    """An indicator computed by a function rather than compiled.
+    """An indicator whose stage 1 rows come from a function.
 
     Args:
         function: The function, which follows ``MethodFunction``.
@@ -472,10 +519,14 @@ type Kind = Sum | Ratio | Derived | Method
 
 @dataclass(frozen=True, slots=True)
 class Caveat:
-    """A warning the engine emits when a call reads what it concerns.
+    """A note on what an indicator counts.
+
+    A caveat with a basis or years is a warning the engine emits when a call
+    reads its basis in one of its years. A caveat with neither concerns every
+    call, so it does not warn. ``describe()`` and ``explain()`` show it.
 
     Args:
-        text: The warning.
+        text: The note.
         basis: The concrete basis it concerns, such as ``grant_equivalent``,
             which a headline call reads from its switch year. ``None`` for
             every basis.
@@ -505,16 +556,16 @@ class Indicator:
         default_providers: The name of a group in ``oda.groups`` a call gets
             when it names no providers, or ``None`` for every provider in the
             table except aggregates.
-        rows: Filters on top of the binding's.
-        excluded_providers: DAC provider codes the indicator excludes. A
-            call that names one raises.
-        caveats: Warnings the engine emits with a result that reads what
-            each concerns.
+        rows: Filters on top of the binding's. A ``NotIn`` on the provider
+            column excludes those providers. A call that names one raises,
+            and explain() and provenance give its ``reason``.
+        caveats: Notes on what the indicator counts; see ``Caveat``.
         version: Bumped when a published number changes.
 
     Raises:
         ValueError: If ``rows`` names a column outside the table vocabulary,
-            the default basis is not in the binding, a ``Sum`` names a
+            a provider exclusion on the binding or the indicator has no
+            reason, the default basis is not in the binding, a ``Sum`` names a
             dimension the binding lacks, or ``Sum.lines`` names a basis the
             binding lacks.
     """
@@ -528,7 +579,6 @@ class Indicator:
     default_basis: Basis
     default_providers: str | None
     rows: tuple[Filter, ...] = ()
-    excluded_providers: frozenset[int] = frozenset()
     caveats: tuple[Caveat, ...] = ()
     version: int = 1
 
@@ -541,6 +591,9 @@ class Indicator:
             raise ValueError(
                 f"{self.id}: columns not in the {binding.table} vocabulary: {unknown}"
             )
+        unexplained = [rule for rule in self.provider_exclusions if not rule.reason]
+        if unexplained:
+            raise ValueError(f"{self.id}: a provider exclusion needs a reason")
         if self.default_basis not in binding.bases:
             raise ValueError(
                 f"{self.id}: default basis {self.default_basis!r} is not in the binding"
@@ -552,6 +605,110 @@ class Indicator:
             stray = sorted(set(self.kind.lines) - set(binding.bases))
             if stray:
                 raise ValueError(f"{self.id}: lines name unknown bases {stray}")
+
+    @property
+    def provider_exclusions(self) -> tuple[NotIn, ...]:
+        """The ``NotIn`` rules on the provider column, the binding's first.
+
+        A rule with ``when`` leaves the providers out of some rows only, so
+        they stay among the providers a call reads by default.
+        """
+        column = self.binding.dimensions.get("provider")
+        return tuple(
+            rule
+            for rule in (*self.binding.rows, *self.rows)
+            if isinstance(rule, NotIn) and rule.column == column and rule.values
+        )
+
+
+def basis_lines(indicator: Indicator, /) -> Mapping[Basis, int]:
+    """Each concrete basis of a one-line indicator and the line it reads.
+
+    The line comes from ``Sum.lines`` (DAC1) or a ``Line`` basis (DAC2A).
+    Empty for an indicator that reads rows rather than one line.
+    """
+    found: dict[Basis, int] = {}
+    if isinstance(indicator.kind, Sum):
+        found |= indicator.kind.lines
+    for basis, rule in indicator.binding.bases.items():
+        if isinstance(rule, Line):
+            found[basis] = rule.code
+    return found
+
+
+def line_basis(indicator: Indicator, code: Code, /) -> Basis:
+    """The basis of a lines indicator that reads line ``code``.
+
+    The default basis when it reads the line, otherwise the first basis of the
+    binding that does, such as ``gross_disbursement`` for DAC2A line 240.
+    Falls back to the default basis when none does.
+    """
+    binding = indicator.binding
+    order = sorted(binding.bases, key=lambda name: name != indicator.default_basis)
+    return next(
+        (name for name in order if _reads_line(binding, binding.bases[name], code)),
+        indicator.default_basis,
+    )
+
+
+def _reads_line(binding: Binding, rule: BasisRule, code: Code) -> bool:
+    """Whether a basis rule reads rows of line ``code``, from the registry alone.
+
+    A ``Value`` basis reads what its line filters keep, a ``Flow`` basis every
+    line that no other flow holds alone, and a headline what both of its
+    bases read.
+    """
+    match rule:
+        case Value(rows=rows):
+            column = binding.dimensions["line"]
+            for item in rows:
+                if item.column != column:
+                    continue
+                if isinstance(item, In) and code not in item.values:
+                    return False
+                if (
+                    isinstance(item, NotIn)
+                    and item.when is None
+                    and code in item.values
+                ):
+                    return False
+            return True
+        case Flow():
+            return not any(
+                code in other.only_lines
+                for other in binding.bases.values()
+                if isinstance(other, Flow) and other != rule
+            )
+        case Headline(before=before, after=after):
+            return all(
+                _reads_line(binding, binding.bases[part], code)
+                for part in (before, after)
+            )
+        case _:
+            return True
+
+
+def line_exclusions(named: tuple[Indicator, ...], /) -> tuple[NotIn, ...]:
+    """The row exclusions of each named indicator, scoped to its lines.
+
+    A lines indicator carries these, so a line it reads counts the rows the
+    named indicator on that line counts, and no others.
+
+    Raises:
+        ValueError: A named indicator holds a row filter other than an
+            unscoped ``NotIn``, which cannot be scoped to its lines.
+    """
+    rules: list[NotIn] = []
+    for indicator in named:
+        lines = tuple(sorted(set(basis_lines(indicator).values())))
+        for rule in indicator.rows:
+            if not isinstance(rule, NotIn) or rule.when is not None or not lines:
+                raise ValueError(
+                    f"{indicator.id}: only an unscoped NotIn on a one-line "
+                    "indicator can carry over to its lines"
+                )
+            rules.append(replace(rule, when=In("line", lines)))
+    return tuple(rules)
 
 
 # Resolved calls --------------------------------------------------------------
@@ -595,8 +752,9 @@ class ResolvedCall:
         groups: The groups the call named, with per-year members.
         totals: Names of groups in ``groups`` whose total rows the call asked
             for with ``oda.total()``.
-        allow_partial: Whether a group total sums the members that reported
-            when some did not.
+        allow_partial: Whether the caller accepts partial sums: a group
+            total sums the members that reported when some did not, and a
+            sum across providers over a partial last year does not warn.
         rows: Each dimension and the codes the result shows as their own
             rows. Other codes in ``members`` feed group totals only, so
             ``providers=oda.total(g7)`` holds the G7 in ``members`` and an

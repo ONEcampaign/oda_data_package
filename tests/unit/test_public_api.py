@@ -86,7 +86,8 @@ def test_public_classes_and_functions_report_the_package_module(name: str) -> No
 
 
 @pytest.mark.parametrize(
-    "module", ["_context", "_errors", "_groups", "_provenance", "_units", "_unbuilt"]
+    "module",
+    ["_context", "_discover", "_errors", "_groups", "_provenance", "_units"],
 )
 def test_public_names_report_the_package_module_before_any_attribute_read(
     module: str,
@@ -115,12 +116,6 @@ def test_indicator_id_is_the_generated_literal() -> None:
     from oda_data import _ids, _types
 
     assert _types.IndicatorId is _ids.IndicatorId
-
-
-@pytest.mark.parametrize("name", ["indicators"])
-def test_unbuilt_functions_raise_not_implemented(name: str) -> None:
-    with pytest.raises(NotImplementedError):
-        getattr(oda_data, name)()
 
 
 def _make_error(cls: type[oda_data.OdaDataError]) -> oda_data.OdaDataError:

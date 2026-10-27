@@ -17,6 +17,7 @@ from oda_data._names import aggregate_codes, is_aggregate, name_of, names, norma
         ("channel", 41114, None, "United Nations Development Programme"),
         ("flow", 1140, None, "Disbursements, net"),
         ("modality", "A01", None, "Budget support"),
+        ("finance_type", 110, None, "Standard grant"),
         ("line", 1010, "dac1", "Official Development Assistance (ODA)"),
         ("line", 207, "dac2a", "Technical cooperation, disbursements"),
         ("broad_sector", "health", None, "Health"),
@@ -24,6 +25,14 @@ from oda_data._names import aggregate_codes, is_aggregate, name_of, names, norma
 )
 def test_name_of_a_code(dimension, code, table, name) -> None:
     assert name_of(dimension, code, table=table) == name
+
+
+@pytest.mark.parametrize("dimension", ["finance_type", "channel"])
+def test_names_are_unique(dimension) -> None:
+    # A shared name would make that name ambiguous as a filter.
+    found = [normalise(name) for name in names(dimension).values()]
+    assert found
+    assert len(set(found)) == len(found)
 
 
 def test_lines_are_numbered_per_table() -> None:

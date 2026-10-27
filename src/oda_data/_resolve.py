@@ -1,6 +1,6 @@
 """Strict resolution of filter arguments into codes.
 
-Every filter takes a code or an exact name; providers, recipients, and sectors
+Every filter takes a code or an exact name. Providers, recipients, and sectors
 also take groups. A name matches when its normalised text (``_names.normalise``)
 equals one of:
 
@@ -67,7 +67,16 @@ _THREE_LETTER = ("oecd:dotstat", "iso3")
 
 #: The dimensions a call can filter on.
 FILTER_DIMENSIONS: frozenset[str] = frozenset(
-    {"provider", "recipient", "sector", "channel", "modality", "flow", "line"}
+    {
+        "provider",
+        "recipient",
+        "sector",
+        "channel",
+        "modality",
+        "finance_type",
+        "flow",
+        "line",
+    }
 )
 
 _GROUP_DIMENSIONS = frozenset({"provider", "recipient", "sector"})
@@ -140,7 +149,7 @@ def resolve_selection(
         AmbiguousEntityError: A name could mean more than one entity.
         UnsupportedQueryError: A group holds an aggregate code, or EU
             Institutions (918) with a provider that was an EU member in one of
-            ``years``; two groups share a name.
+            ``years``, or two groups share a name.
     """
     _check_dimension(dimension)
     year_list = tuple(sorted(set(years)))
@@ -199,7 +208,7 @@ def resolve_group(
     """Resolve a group's members into codes for each year.
 
     A dated group (``group.dated()``) holds in each year only the members of
-    that year; any other group holds every member in every year. Nested
+    that year. Any other group holds every member in every year. Nested
     groups contribute their members.
 
     Raises:
@@ -298,7 +307,7 @@ def resolve_entity(
         table: The indicator's table. ``line`` needs it.
 
     Raises:
-        UnknownEntityError: Nothing matched; ``suggestions`` holds near matches.
+        UnknownEntityError: Nothing matched. ``suggestions`` holds near matches.
         AmbiguousEntityError: The name could mean more than one entity.
         TypeError: ``value`` is not an int or a string.
     """
