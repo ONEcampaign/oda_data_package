@@ -285,7 +285,7 @@ oda.get("one.dac1.non_core_oda", years=2023)
 
 ### `one.dac1.total_oda_eu_attributed`
 
-Total ODA, with the row of EU Institutions (918) reduced by what the other providers in the call paid them (line 2102 on the same basis), so 918 and its funders add up without counting that money twice. Every other provider's row is its total ODA. 918's row depends on the providers named beside it, so name the providers to sum, as in providers=[oda.groups.eu27, 918] with by=['year'].
+Total ODA, with the row of EU Institutions (918) reduced by what every other provider paid them that year (line 2102 on the same basis), so 918 adds up with any of its funders without counting that money twice. Every other provider's row is its total ODA. 918's row is the same whichever providers the call names; oecd.dac1.total_oda gives 918's own spending.
 
 - Name: Total ODA, EU Institutions net of their funders
 - Kind: method
@@ -294,6 +294,8 @@ Total ODA, with the row of EU Institutions (918) reduced by what the other provi
 - Bases: `headline` (default), `net_disbursement`, `gross_disbursement`, `commitment`, `grant_equivalent` (2018 on)
 - Default providers: every official provider in the table, aggregates excluded
 - Values: USD millions unless `unit=` says otherwise
+- Caveat: 918's row is negative in a year in which its funders' recorded contributions exceed the ODA EU Institutions report.
+- Caveat: 918's row in DAC1's last year is null until the providers that paid it the year before report line 2102; allow_partial=True nets the contributions reported so far.
 
 ```python
 import oda_data as oda

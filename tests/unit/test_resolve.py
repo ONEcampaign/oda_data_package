@@ -133,14 +133,16 @@ def test_a_dimension_without_filters_raises() -> None:
 def test_selection_keeps_member_rows_apart_from_total_only_groups() -> None:
     dac = oda.groups.dac_countries
     both = resolve_selection("provider", [dac, oda.total(dac), "Turkey"], years=[2023])
-    assert both.rows == both.codes == frozenset({*dac.members, 55})
+    assert both.rows == frozenset({55})
+    assert both.codes == frozenset({*dac.members, 55})
+    assert [(g.name, g.shown) for g in both.groups] == [("dac_countries", True)]
     assert both.totals == ("dac_countries",)
     assert both.labels == {"dac_countries": "DAC countries"}
 
     total_only = resolve_selection("provider", oda.total(oda.groups.g7), years=[2023])
     assert total_only.rows == frozenset()
     assert total_only.codes == frozenset(oda.groups.g7.members)
-    assert [g.name for g in total_only.groups] == ["g7"]
+    assert [(g.name, g.shown) for g in total_only.groups] == [("g7", False)]
 
 
 def test_filters_are_sets() -> None:

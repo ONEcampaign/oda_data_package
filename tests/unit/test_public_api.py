@@ -1,9 +1,11 @@
 """The package surface: names, modules, errors, and import cost."""
 
+import ast
 import pickle
 import subprocess
 import sys
 from importlib.resources import files
+from pathlib import Path
 
 import pytest
 
@@ -64,6 +66,23 @@ def test_all_is_pinned() -> None:
 
 def test_all_matches_the_lazy_table() -> None:
     assert set(oda_data.__all__) == {"__version__", *oda_data._LAZY}
+
+
+def test_type_checking_imports_match_the_lazy_table() -> None:
+    """Checkers read the ``TYPE_CHECKING`` imports; ``__getattr__`` serves the rest."""
+    tree = ast.parse(Path(oda_data.__file__).read_text())
+    block = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.If) and ast.unparse(node.test) == "TYPE_CHECKING"
+    )
+    imported = {
+        alias.name: stmt.module
+        for stmt in block.body
+        if isinstance(stmt, ast.ImportFrom)
+        for alias in stmt.names
+    }
+    assert imported == oda_data._LAZY
 
 
 def test_every_name_resolves() -> None:

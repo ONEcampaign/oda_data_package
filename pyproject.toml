@@ -27,7 +27,7 @@ classifiers = [
 
 dependencies = [
     "duckdb>=1.1.0",
-    "oda-reader>=1.14.0rc1",
+    "oda-reader>=1.15.0rc1",
     "pandas>=2.2.0",
     "pyarrow>=17.0.0",
     "pydeflate>=2.7.0rc1",
@@ -133,7 +133,7 @@ line-ending = "auto"
 python-version = "3.12"
 
 [tool.ty.src]
-include = ["src/oda_data"]
+include = ["src/oda_data", "tests/unit/typing_checks.py"]
 
 # pandas and numpy stubs are incomplete; treating them as Any avoids a cascade
 # of false positives without disabling checks on this package's own code.

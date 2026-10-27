@@ -12,7 +12,7 @@ import duckdb
 import pyarrow as pa
 import pytest
 
-from oda_data._combine import combine, records, tables_for
+from oda_data._combine import combine, nulled_text, records, tables_for
 from oda_data._errors import (
     BasisRangeError,
     DimensionError,
@@ -28,9 +28,11 @@ from oda_data._model import (
     Flow,
     Headline,
     In,
+    Incomplete,
     Indicator,
     Line,
     Method,
+    MethodRows,
     NotIn,
     Ratio,
     ResolvedCall,
@@ -247,7 +249,7 @@ def with_total(
         members={g.dimension: codes},
         rows=rows,
         groups=(g,),
-        totals=(g.name,),
+        totals=(g.key,),
         **overrides,
     )
 
@@ -374,7 +376,7 @@ def test_crs_reporting_is_any_row_for_the_provider_year(
         by=("provider",),
         members={"provider": frozenset(members), "recipient": frozenset({248})},
         groups=(g,),
-        totals=("pair",),
+        totals=(g.key,),
     )
 
     result = combine(con, BILATERAL, resolved, FakeFactors()).table
@@ -467,6 +469,73 @@ def test_dated_group_sums_each_years_members(con: duckdb.DuckDBPyConnection) -> 
     assert totals(result, "year") == {(2017,): 10.0, (2018,): 33.0}
 
 
+@pytest.mark.parametrize(
+    ("named", "expected"),
+    [
+        (set(), {("1", 2017): 10.0, ("1", 2018): 11.0, ("2", 2018): 22.0}),
+        (
+            {2},
+            {
+                ("1", 2017): 10.0,
+                ("2", 2017): 20.0,
+                ("1", 2018): 11.0,
+                ("2", 2018): 22.0,
+            },
+        ),
+    ],
+    ids=["group-only", "member-named-too"],
+)
+def test_a_shown_dated_group_holds_each_member_in_its_years(
+    con: duckdb.DuckDBPyConnection, named: set, expected: dict
+) -> None:
+    g = ResolvedGroup(
+        "dated",
+        "provider",
+        {2017: frozenset({1}), 2018: frozenset({1, 2})},
+        shown=True,
+    )
+
+    result = combine(con, TOTAL_ODA, with_total(g, shown=named), FakeFactors()).table
+
+    totals = {("dated", 2017): 10.0, ("dated", 2018): 33.0}
+    assert values(result, "provider", "year") == expected | totals
+
+
+@pytest.mark.parametrize("years", [(2017, 2018), (2018,)], ids=["two-years", "last"])
+@pytest.mark.parametrize(
+    ("members_2018", "warns"),
+    [({1, 2}, False), ({1, 3}, True)],
+    ids=["left-before-it-stopped", "a-member-when-it-stopped"],
+)
+def test_a_sum_warns_of_providers_it_holds_in_the_last_year(
+    con: duckdb.DuckDBPyConnection, members_2018: set, warns: bool, years: tuple
+) -> None:
+    # Provider 3 reports nothing in 2018, the table's last year. Provider 14
+    # last reported in 2015, so it has no part in the partial year.
+    con.execute("INSERT INTO dac1 VALUES (14, 2015, 1010, 1140, 'A', 1.0)")
+    g = ResolvedGroup(
+        "dated",
+        "provider",
+        {2017: frozenset({1, 3, 14}), 2018: frozenset({*members_2018, 14})},
+        shown=True,
+    )
+    resolved = call(
+        by=("year",),
+        years=years,
+        members={"provider": frozenset({1, 2, 3, 14})},
+        rows={"provider": frozenset()},
+        groups=(g,),
+    )
+
+    if warns:
+        with pytest.warns(
+            OdaDataWarning, match="2018 is partial: 1 provider that reported 2017"
+        ):
+            combine(con, TOTAL_ODA, resolved, FakeFactors())
+    else:
+        combine(con, TOTAL_ODA, resolved, FakeFactors())
+
+
 def test_total_needs_its_dimension_in_by(con: duckdb.DuckDBPyConnection) -> None:
     with pytest.raises(UnsupportedQueryError) as raised:
         combine(
@@ -504,7 +573,7 @@ def test_a_provider_in_two_groups_counts_once(con: duckdb.DuckDBPyConnection) ->
         members={"provider": frozenset({1, 2, 3})},
         rows={"provider": frozenset()},
         groups=(first, second),
-        totals=("first", "second"),
+        totals=(first.key, second.key),
     )
 
     summed = combine(con, TOTAL_ODA, resolved, FakeFactors()).table
@@ -554,6 +623,9 @@ def test_aggregates_are_never_summed_with_members(
         (TOTAL_ODA, ("year",), 12, (2020,), True, True),
         (TOTAL_ODA, ("year",), 12, (2021,), True, False),
         (TOTAL_ODA, ("year",), 12, None, True, True),
+        (TOTAL_ODA, ("year",), 8, (2017,), True, True),
+        (TOTAL_ODA, ("year",), 8, (2018,), True, True),
+        (TOTAL_ODA, ("year",), 8, (2016,), True, False),
         (ODA_GNI, ("year",), 4, (2017, 2018), True, True),
         (BILATERAL, ("year",), 4, (2019,), True, False),
     ],
@@ -564,6 +636,9 @@ def test_aggregates_are_never_summed_with_members(
         "uk-while-a-member",
         "uk-after-it-left",
         "uk-every-year",
+        "a-non-member-that-pays-918",
+        "a-payer-yet-to-report-the-last-year",
+        "a-non-member-in-a-year-it-pays-nothing",
         "a-ratio-over-dac1",
         "a-binding-whose-members-leave-out-their-eu-share",
     ],
@@ -577,9 +652,11 @@ def test_eu_institutions_are_never_summed_with_named_eu_members(
     named: bool,
     raises: bool,
 ) -> None:
-    # France (4) is an EU member; the United Kingdom (12) was one to 2020. A
-    # default holds no entry in ``rows``. Only DAC1 members' figures hold their
-    # contribution to EU Institutions.
+    # France (4) is an EU member; the United Kingdom (12) was one to 2020.
+    # Norway (8) pays 918 through line 2102 in 2017, the year before the
+    # table's last. A default holds no entry in ``rows``. Only DAC1 members'
+    # figures hold their contribution to EU Institutions.
+    con.execute("INSERT INTO dac1 VALUES (8, 2017, 2102, 1140, 'A', 1.0)")
     providers = frozenset({918, member})
     resolved = call(
         basis=indicator.default_basis,
@@ -595,6 +672,38 @@ def test_eu_institutions_are_never_summed_with_named_eu_members(
             combine(con, indicator, resolved, FakeFactors())
     else:
         combine(con, indicator, resolved, FakeFactors())
+
+
+@pytest.mark.parametrize(
+    ("members", "raises"),
+    [
+        ({2017: {918}, 2018: {2}}, False),
+        ({2017: {918, 2}, 2018: {2}}, True),
+    ],
+    ids=["never-in-one-year", "in-one-year"],
+)
+def test_a_shown_dated_group_sums_918_with_a_member_only_within_a_year(
+    con: duckdb.DuckDBPyConnection, members: dict, raises: bool
+) -> None:
+    # Belgium (2) has been an EU member since 1958.
+    g = ResolvedGroup(
+        "dated",
+        "provider",
+        {year: frozenset(codes) for year, codes in members.items()},
+        shown=True,
+    )
+    resolved = call(
+        by=("year",),
+        members={"provider": frozenset({918, 2})},
+        rows={"provider": frozenset()},
+        groups=(g,),
+    )
+
+    if raises:
+        with pytest.raises(UnsupportedQueryError, match="918"):
+            combine(con, TOTAL_ODA, resolved, FakeFactors())
+    else:
+        combine(con, TOTAL_ODA, resolved, FakeFactors())
 
 
 @pytest.mark.parametrize(
@@ -767,23 +876,56 @@ def test_ratio_total_pairs_members_that_have_reported(
 
 
 @pytest.mark.parametrize(
-    ("returns", "expected"),
-    [(True, 100 * 11.0 / 1100.0), (False, None)],
-    ids=["interior-oda-gap-left-out", "trailing-oda-gap-is-null"],
+    ("oda_2019", "allow_partial", "expected"),
+    [
+        (12, False, 100 * 11.0 / 1100.0),
+        (None, False, None),
+        (1, False, None),
+        (1, True, 100 * 11.0 / 1100.0),
+    ],
+    ids=[
+        "interior-oda-gap-left-out",
+        "trailing-oda-gap-is-null",
+        "trailing-oda-gap-before-the-last-year-is-null",
+        "trailing-oda-gap-allow-partial",
+    ],
 )
+@pytest.mark.parametrize("summed", ["total", "by-year"])
 def test_ratio_total_nulls_only_on_a_member_that_stopped_reporting(
-    con: duckdb.DuckDBPyConnection, returns: bool, expected: float | None
+    con: duckdb.DuckDBPyConnection,
+    oda_2019: int | None,
+    allow_partial: bool,
+    expected: float | None,
+    summed: str,
 ) -> None:
     # Provider 12 reports ODA in 2017 and none in 2018, and GNI in both. A
-    # 2019 ODA row makes 2018 an interior gap in its numerator.
-    if returns:
-        con.execute("INSERT INTO dac1 VALUES (12, 2019, 11010, 1160, 'A', 9.0)")
+    # 2019 ODA row of provider 12 makes 2018 an interior gap in its
+    # numerator; one of provider 1 makes 2019 the table's last year.
+    if oda_2019 is not None:
+        con.execute(
+            f"INSERT INTO dac1 VALUES ({oda_2019}, 2019, 11010, 1160, 'A', 9.0)"
+        )
+    # Summed outside by, the ratio agrees with the total, except that a
+    # member yet to report the table's last year leaves its pair out with a
+    # warning.
     g = group("pair", {1, 12}, years=(2018,))
-    resolved = with_total(g, shown=set(), units=(), years=(2018,))
+    resolved = with_total(
+        g, shown=set(), units=(), years=(2018,), allow_partial=allow_partial
+    )
+    if summed == "by-year":
+        pair = frozenset({1, 12})
+        resolved = replace(
+            resolved, by=("year",), rows={"provider": pair}, groups=(), totals=()
+        )
 
-    result = combine(con, ODA_GNI, resolved, FakeFactors()).table
+    if summed == "by-year" and oda_2019 is None and not allow_partial:
+        with pytest.warns(OdaDataWarning, match="2018 is partial: 1 provider"):
+            result = combine(con, ODA_GNI, resolved, FakeFactors()).table
+        expected = 100 * 11.0 / 1100.0
+    else:
+        result = combine(con, ODA_GNI, resolved, FakeFactors()).table
 
-    assert totals(result, "year") == {(2018,): pytest.approx(expected)}
+    assert values(result, "year") == {(2018,): pytest.approx(expected)}
 
 
 def test_ratio_rows_carry_the_numerators_basis_in_each_year(
@@ -827,24 +969,24 @@ def test_derived_uses_the_basis_of_each_year(con: duckdb.DuckDBPyConnection) -> 
 
 
 @pytest.mark.parametrize(
-    ("by", "providers", "allow_partial", "expected", "nulled"),
+    ("by", "providers", "allow_partial", "expected", "incomplete"),
     [
         (
             ("provider", "year"),
             {1, 2, 6},
             False,
             {("1", 2019): 7.0, ("2", 2019): None, ("6", 2019): 1.0},
-            (2019, frozenset({2})),
+            {(2, 2019)},
         ),
         (
             ("provider", "year"),
             {1, 2, 6},
             True,
             {("1", 2019): 7.0, ("2", 2019): 24.0, ("6", 2019): 1.0},
-            None,
+            {(2, 2019)},
         ),
-        (("year",), {2}, False, {(2019,): None}, (2019, frozenset({2}))),
-        (("year",), {6}, False, {(2019,): 1.0}, None),
+        (("year",), {2}, False, {(2019,): None}, {(2, 2019)}),
+        (("year",), {6}, False, {(2019,): 1.0}, set()),
     ],
     ids=["by-provider", "allow-partial", "one-provider", "interior-gap-is-zero"],
 )
@@ -854,7 +996,7 @@ def test_derived_member_row_is_null_when_a_part_drops_in_the_last_year(
     providers: set,
     allow_partial: bool,
     expected: dict,
-    nulled: tuple | None,
+    incomplete: set,
 ) -> None:
     _preliminary_2019(con)
     resolved = call(
@@ -869,7 +1011,52 @@ def test_derived_member_row_is_null_when_a_part_drops_in_the_last_year(
 
     keys = ("provider", "year") if "provider" in by else ("year",)
     assert values(combined.table, *keys) == expected
-    assert combined.nulled == nulled
+    assert {(c.provider, c.year) for c in combined.incomplete} == incomplete
+
+
+@pytest.mark.parametrize("years", [(2018, 2019), (2019,)], ids=["two-years", "last"])
+def test_a_shown_dated_group_of_one_provider_a_year_shows_its_own_rows(
+    con: duckdb.DuckDBPyConnection, years: tuple
+) -> None:
+    """The group holds provider 1 in 2018 and provider 2 in 2019, which has not
+    yet reported refugee costs, so the 2019 row is provider 2's own and null
+    whichever years the call asks for."""
+    _preliminary_2019(con)
+    g = ResolvedGroup(
+        "dated",
+        "provider",
+        {2018: frozenset({1}), 2019: frozenset({2})},
+        shown=True,
+    )
+    resolved = call(
+        by=("year",),
+        years=years,
+        members={"provider": frozenset({1, 2})},
+        rows={"provider": frozenset()},
+        groups=(g,),
+    )
+
+    result = combine(con, ODA_EXCL_IDRC, resolved, FakeFactors()).table
+
+    expected = {(2018,): 11.0 - 2.0, (2019,): None}
+    assert values(result, "year") == {(y,): expected[(y,)] for y in years}
+
+
+@pytest.mark.parametrize(
+    ("codes", "expected"),
+    [
+        ({4}, "2018 rows are null for France (4), which reported"),
+        (
+            {1, 2, 3, 4, 5, 6, 7},
+            "2018 rows are null for Austria (1), Belgium (2), Denmark (3), "
+            "France (4), Germany (5) and 2 more, which reported",
+        ),
+    ],
+)
+def test_nulled_text_names_providers_up_to_the_listed_cap(
+    codes: set[int], expected: str
+) -> None:
+    assert nulled_text(2018, codes).startswith(expected)
 
 
 def test_derived_member_rows_before_the_last_year_are_never_null(
@@ -896,28 +1083,53 @@ class Imputation:
 
     def __call__(
         self, cursor: duckdb.DuckDBPyConnection, call: ResolvedCall, /
-    ) -> pa.Table:
+    ) -> MethodRows:
         self.seen.append(call)
         providers = cursor.sql("SELECT count(DISTINCT provider) FROM crs").fetchall()
         assert providers == [(3,)]  # the engine pushes no provider filter
-        return pa.table(
-            {
-                "provider": pa.array([1, 1, 2, 20001], pa.int64()),
-                "year": pa.array([2019, 2019, 2019, 2019], pa.int64()),
-                "basis": ["gross_disbursement"] * 4,
-                "allocation_status": [
-                    "allocated",
-                    "unallocated",
-                    "allocated",
-                    "allocated",
-                ],
-                "channel_name": ["a", "b", "c", "d"],
-                "value": [1.0, 2.0, 4.0, 100.0],
-            }
+        return MethodRows(_IMPUTED)
+
+
+_IMPUTED = pa.table(
+    {
+        "provider": pa.array([1, 1, 2, 20001], pa.int64()),
+        "year": pa.array([2019, 2019, 2019, 2019], pa.int64()),
+        "basis": ["gross_disbursement"] * 4,
+        "allocation_status": [
+            "allocated",
+            "unallocated",
+            "allocated",
+            "allocated",
+        ],
+        "channel_name": ["a", "b", "c", "d"],
+        "value": [1.0, 2.0, 4.0, 100.0],
+    }
+)
+
+
+class Partial:
+    """A fake method whose provider 1 value in 2019, given to Kenya (248) and
+    Egypt (300), misses an input that provider 4 did not report."""
+
+    def __call__(
+        self, cursor: duckdb.DuckDBPyConnection, call: ResolvedCall, /
+    ) -> MethodRows:
+        return MethodRows(
+            pa.table(
+                {
+                    "provider": pa.array([1, 1, 2], pa.int64()),
+                    "recipient": pa.array([248, 300, 248], pa.int64()),
+                    "year": pa.array([2019, 2019, 2019], pa.int64()),
+                    "basis": ["gross_disbursement"] * 3,
+                    "allocation_status": ["allocated"] * 3,
+                    "value": [0.5, 0.5, 4.0],
+                }
+            ),
+            incomplete=(Incomplete(1, 2019, frozenset({4})),),
         )
 
 
-def imputed(function: Imputation, **overrides: object) -> Indicator:
+def imputed(function: Imputation | Partial, **overrides: object) -> Indicator:
     fields: dict = {
         "id": "one.crs.imputed_multilateral_oda",
         "name": "Imputed multilateral ODA",
@@ -991,6 +1203,121 @@ def test_method_basis_before_its_start_raises(con: duckdb.DuckDBPyConnection) ->
             call(basis="grant_equivalent", years=(2019,)),
             FakeFactors(),
         )
+
+
+def test_the_last_year_check_reads_a_method_for_two_years_only(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    # 2019 is the CRS's last year, so the check reads 2018 and 2019 alone.
+    function = Imputation()
+    g = group("duo", {1, 2}, years=(2019,))
+    resolved = with_total(g, shown=set(), basis="gross_disbursement", years=(2019,))
+
+    combine(con, imputed(function), resolved, FakeFactors())
+
+    assert [seen.years for seen in function.seen] == [(2019,), (2018, 2019)]
+
+
+@pytest.mark.parametrize(
+    ("allow_partial", "expected"),
+    [
+        (False, {"1": None, "2": 4.0, "duo": None}),
+        (True, {"1": 1.0, "2": 4.0, "duo": 5.0}),
+    ],
+    ids=["null", "allow-partial"],
+)
+def test_a_methods_incomplete_cell_nulls_its_row_and_totals(
+    con: duckdb.DuckDBPyConnection, allow_partial: bool, expected: dict
+) -> None:
+    g = group("duo", {1, 2}, years=(2019,))
+    resolved = with_total(
+        g,
+        shown={1, 2},
+        basis="gross_disbursement",
+        years=(2019,),
+        allow_partial=allow_partial,
+    )
+
+    combined = combine(con, imputed(Partial()), resolved, FakeFactors())
+
+    assert {
+        key: value for (key,), value in values(combined.table, "provider").items()
+    } == expected
+    assert combined.incomplete == (Incomplete(1, 2019, frozenset({4})),)
+    [note] = combined.notes
+    assert "(1) in 2019" in note
+    assert "(4)" in note
+
+
+@pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
+def test_a_sum_across_providers_is_null_where_it_holds_a_methods_cell(
+    con: duckdb.DuckDBPyConnection, allow_partial: bool
+) -> None:
+    """A Method's incomplete cell can overstate a sum, so the sum is null as a
+    provider total holding it is, and does not merely warn."""
+    resolved = call(
+        basis="gross_disbursement",
+        by=("year",),
+        years=(2019,),
+        members={"provider": frozenset({1, 2})},
+        rows={"provider": frozenset({1, 2})},
+        allow_partial=allow_partial,
+    )
+
+    combined = combine(con, imputed(Partial()), resolved, FakeFactors())
+
+    assert values(combined.table, "year") == {(2019,): 5.0 if allow_partial else None}
+    assert combined.incomplete == (Incomplete(1, 2019, frozenset({4})),)
+
+
+@pytest.mark.parametrize(
+    ("by", "allow_partial", "expected"),
+    [
+        (
+            ("provider", "recipient"),
+            False,
+            {
+                ("1", "248"): None,
+                ("1", "300"): None,
+                ("2", "248"): 4.0,
+                ("1", "pair"): None,
+                ("2", "pair"): 4.0,
+            },
+        ),
+        (
+            ("provider", "recipient"),
+            True,
+            {
+                ("1", "248"): 0.5,
+                ("1", "300"): 0.5,
+                ("2", "248"): 4.0,
+                ("1", "pair"): 1.0,
+                ("2", "pair"): 4.0,
+            },
+        ),
+        (("recipient",), False, {("248",): None, ("300",): None, ("pair",): None}),
+    ],
+    ids=["one-provider", "allow-partial", "summed-providers"],
+)
+def test_a_recipient_total_is_null_where_it_holds_an_incomplete_cell(
+    con: duckdb.DuckDBPyConnection, by: tuple, allow_partial: bool, expected: dict
+) -> None:
+    indicator = imputed(
+        Partial(), dimensions=("provider", "recipient", "year", "allocation_status")
+    )
+    g = group("pair", {248, 300}, years=(2019,), dimension="recipient")
+    resolved = with_total(
+        g,
+        by=by,
+        basis="gross_disbursement",
+        years=(2019,),
+        allow_partial=allow_partial,
+    )
+
+    combined = combine(con, indicator, resolved, FakeFactors())
+
+    assert values(combined.table, *by) == expected
+    assert combined.incomplete == (Incomplete(1, 2019, frozenset({4})),)
 
 
 # Errors, warnings, tables -------------------------------------------------------------

@@ -1,11 +1,13 @@
 """DuckDB views over the OECD tables that oda-reader's ``scan`` serves.
 
 ``OecdTables`` implements ``_model.Tables`` for one ``Context``. It holds one
-in-memory DuckDB connection. The first call that needs a table scans it with
+in-memory DuckDB connection. The first call that needs a table leases it from
 oda-reader, checks its release against the Context's pins, and creates a view
 named after the table that exposes the logical columns in ``VOCABULARY``. The
 table then keeps that release for the life of the Context, so every query and
-the conversion factors read the same files.
+the conversion factors read the same files. The lease stops oda-reader from
+deleting a file while the Context reads it, however many newer releases
+another Context or process scans, until ``close()``.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from oda_data._types import TableName
 
 if TYPE_CHECKING:
     import duckdb
-    from oda_reader import ScannedTable
+    from oda_reader import ScannedTable, TableLease
 
 TABLES: tuple[TableName, ...] = get_args(TableName.__value__)
 
@@ -62,7 +64,7 @@ class OecdTables:
         self._cache_dir = cache_dir
         self._offline = offline
         self._pins = pins
-        self._scanned: dict[TableName, ScannedTable] = {}
+        self._leases: dict[TableName, TableLease] = {}
         self._lock = threading.Lock()
         self._connection: duckdb.DuckDBPyConnection | None = None
 
@@ -98,15 +100,19 @@ class OecdTables:
         )
 
     def close(self) -> None:
-        """Close the DuckDB connection. Cursors taken from it stop working.
+        """Close the DuckDB connection and release the tables' leases.
 
-        A later call opens a new connection and scans again.
+        Cursors taken from the connection stop working, and oda-reader may
+        delete files of superseded releases. A later call opens a new
+        connection and scans again.
         """
         with self._lock:
             if self._connection is not None:
                 self._connection.close()
                 self._connection = None
-            self._scanned.clear()
+            for held in self._leases.values():
+                held.close()
+            self._leases.clear()
 
     def _open(self) -> duckdb.DuckDBPyConnection:
         if self._connection is None:
@@ -116,25 +122,30 @@ class OecdTables:
         return self._connection
 
     def _ensure(self, table: TableName) -> ScannedTable:
-        """Scan ``table`` and create its view, once per Context. Hold the lock."""
-        if (scanned := self._scanned.get(table)) is not None:
-            return scanned
+        """Lease ``table`` and create its view, once per Context. Hold the lock."""
+        if (held := self._leases.get(table)) is not None:
+            return held.table
         if table not in VOCABULARY:
             raise ValueError(f"unknown table {table!r}; use one of {list(TABLES)}")
 
-        scanned = self._scan(table)
-        pin = self._pins.get(table)
-        if pin is not None and scanned.release != pin:
-            raise ReleaseMismatchError(
-                f"The {table} table pinned to release {pin!r} is at release "
-                f"{scanned.release!r} in the cache"
-            )
-        self._open().execute(_view_sql(VOCABULARY[table], scanned))
-        self._scanned[table] = scanned
+        held = self._lease(table)
+        try:
+            scanned = held.table
+            pin = self._pins.get(table)
+            if pin is not None and scanned.release != pin:
+                raise ReleaseMismatchError(
+                    f"The {table} table pinned to release {pin!r} is at release "
+                    f"{scanned.release!r} in the cache"
+                )
+            self._open().execute(_view_sql(VOCABULARY[table], scanned))
+        except BaseException:
+            held.close()
+            raise
+        self._leases[table] = held
         return scanned
 
-    def _scan(self, table: TableName) -> ScannedTable:
-        """Scan ``table``, preferring a cached copy that carries the pinned release."""
+    def _lease(self, table: TableName) -> TableLease:
+        """Lease ``table``, preferring a cached copy that carries the pinned release."""
         import oda_reader
         from oda_reader import BulkFileNotCachedError, BulkPayloadCorruptError
         from pyarrow import ArrowException
@@ -144,15 +155,16 @@ class OecdTables:
         try:
             if pin is not None and not self._offline:
                 try:
-                    cached = oda_reader.scan(
+                    cached = oda_reader.lease(
                         table, cache_dir=self._cache_dir, offline=True
                     )
                 except BulkFileNotCachedError:
                     pass
                 else:
-                    if cached.release == pin:
+                    if cached.table.release == pin:
                         return cached
-            return oda_reader.scan(
+                    cached.close()
+            return oda_reader.lease(
                 table, cache_dir=self._cache_dir, offline=self._offline
             )
         except BulkFileNotCachedError as error:

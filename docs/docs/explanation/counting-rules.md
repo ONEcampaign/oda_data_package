@@ -1,6 +1,6 @@
 # Counting rules
 
-Every number oda-data returns comes from a rule about which rows of an OECD table count. This page sets out those rules and the reason for each. The figures come from the DAC1, DAC2A, and CRS releases of October 2026.
+Every number oda-data returns comes from a rule about which rows of an OECD table count. The figures come from the DAC1, DAC2A, and CRS releases of October 2026.
 
 ## The headline basis
 
@@ -32,7 +32,11 @@ On DAC2A each line carries its own basis. Line 206 and its parts are net disburs
 
 EU member states report their contributions to the EU budget for development as their own multilateral ODA (DAC1 line 2102). The EU Institutions then report that money again as their own ODA. Adding 918 to its members counts it twice.
 
-On DAC1 and Multisystem indicators, oda-data refuses a sum or group total that holds 918 and a country that was an EU member in any year of the call, the United Kingdom from 1973 to 2020 included. `oda.groups.dac_countries` leaves 918 out. On the CRS and DAC2A, money is counted where it is spent, so 918 and its members add up and the rule does not apply. `one.dac1.total_oda_eu_attributed` gives the DAC1 sum, which is 918's row less what the other providers in the call paid it.
+On DAC1 and Multisystem indicators, oda-data refuses a sum or group total that holds 918 and a country that was an EU member in any year of the call, the United Kingdom from 1973 to 2020 included. On DAC1 it also refuses 918 beside any provider that reports line 2102 in a year of the call, such as the United Kingdom after 2020, Norway, and Türkiye. In DAC1's last year, a provider with line 2102 the year before counts too, since most have not reported it yet. Multisystem has no line 2102, so there the rule refuses 918 beside EU members only. `oda.groups.dac_countries` leaves 918 out. On the CRS and DAC2A, money is counted where it is spent, so 918 and its members add up and the rule does not apply. `one.dac1.total_oda_eu_attributed` gives the DAC1 sum. Its 918 row is 918's ODA less the line 2102 that every other provider reported that year, the United Kingdom, Norway, and Türkiye included. Each dollar then sits in the row of the provider that paid it, so 918 adds up once with any set of providers, and its row is the same whichever providers the call names. `oecd.dac1.total_oda` gives 918's own spending.
+
+The 918 row is negative in a year in which providers recorded more contributions than the EU Institutions reported as ODA. That happens in 21 years from 1971 to 2019. In 2019, on grant equivalents, providers recorded USD 15,866 million against 918's 14,937 million, so the row is USD -928 million. oda-data shows the row as computed.
+
+In DAC1's last year, a preliminary one, most providers have not yet reported line 2102. In 2025, 26 of the 28 providers that paid 918 in 2024 had not. A provider that paid in the year before the last and has no line 2102 in the last year makes 918's last-year row null, unless the call passes `allow_partial=True`. So is every sum that holds the row: an `oda.total()` group, and a sum across providers outside `by`, such as `providers=[oda.groups.eu27, 918]` with `by=["year"]`. A sum that kept the row would count the unreported payments twice, in the members' ODA and in 918's. `explain()` names those providers. A provider with no line 2102 in an earlier year paid nothing that year.
 
 918 has no GNI on DAC1. `one.dac1.gni` gives it the summed GNI of each year's EU members, and `one.dac1.gni_fixed_eu27` the GNI of today's 27 members in every year.
 
@@ -56,9 +60,13 @@ Provider codes from 20000 up, such as the DAC countries total (20001), are OECD 
 
 The OECD publishes each table's latest year before every provider has reported it. In the October 2026 releases, 30 DAC countries had reported 2024 in-donor refugee costs and not 2025, and the CRS held 2025 activities from a handful of providers.
 
-A total over those providers reads as the full total and is not. oda-data makes a group total null in a year in which a member that reported in an earlier year has reported nothing in that year or any later one. A member that has not started reporting counts as zero, and so does a member that skips a year and reports again: Spain and Portugal skip 1971 to 1979 in DAC1, Hungary 1993 to 2002. A sum across providers that names no group returns its total for the last year, warns with `OdaDataWarning`, and has `explain()` count the providers missing. `allow_partial=True` sums whoever reported and silences the warning.
+A total over those providers reads as the full total and is not. oda-data makes a group total null in a year in which a member that reported in an earlier year has reported nothing in that year or any later one. A member that has not started reporting counts as zero, and so does a member that skips a year and reports again: Spain and Portugal skip 1971 to 1979 in DAC1, Hungary 1993 to 2002. A sum across providers outside `by` returns its total for the last year, warns with `OdaDataWarning`, and has `explain()` count the missing providers that reported the year before. A provider that stopped earlier counts as zero there and does not count in the warning. `allow_partial=True` sums whoever reported and silences the warning.
 
-The same rule applies to the parts of a derived indicator. In the table's last year, a provider that reported one of the lines core ODA subtracts the year before, and has not reported it yet, gets a null core ODA row.
+The same rule applies to the parts of a derived indicator. In the table's last year, a provider that reported one of the lines core ODA subtracts the year before, and has not reported it yet, gets a null core ODA row. A recipient total of that provider's rows is null too.
+
+A ratio over several providers, a group total or a sum outside `by`, leaves out a member with a denominator and no numerator. Once a member's numerator stops while its denominator goes on, as with GNI and no ODA, the ratio is null in those years unless the call passes `allow_partial=True`.
+
+A row is one provider's when `provider` is in `by`, or when the call shows one provider in the row's year, as a dated group can. The rule follows each year, so a call for several years gives each year the row a call for that year alone gives.
 
 ## CRS and DAC1 totals
 

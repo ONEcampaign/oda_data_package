@@ -19,7 +19,7 @@ from oda_data._tables import OecdTables
 pytestmark = pytest.mark.data
 
 DAC_TOTAL = 20001
-FRANCE, GERMANY, UK = 4, 5, 12
+FRANCE, GERMANY, UK, NORWAY = 4, 5, 12, 8
 
 
 @pytest.fixture(scope="module")
@@ -227,17 +227,24 @@ def test_a_total_over_a_preliminary_year_is_null_where_members_drop_a_line(
     assert oda_total["value"].notna().all() and len(oda_total) == 1
 
 
-@pytest.mark.parametrize(("year", "raises"), [(2015, True), (2022, False)])
-def test_eu_institutions_and_the_uk_are_summed_only_after_it_left(
-    dac1: OecdTables, year: int, raises: bool
+@pytest.mark.parametrize(
+    ("provider", "year", "raises"),
+    [(UK, 2015, True), (UK, 2022, True), (NORWAY, 1992, True), (NORWAY, 2022, False)],
+    ids=["uk-a-member", "uk-pays-after-it-left", "norway-pays", "norway-pays-nothing"],
+)
+def test_eu_institutions_are_summed_only_with_providers_that_do_not_pay_them(
+    dac1: OecdTables, provider: int, year: int, raises: bool
 ) -> None:
-    """The United Kingdom reported its EU contributions as its own
-    multilateral ODA until 2020."""
+    """A provider that pays EU Institutions (918), as an EU member or through
+    line 2102, holds that payment in its own multilateral ODA. The United
+    Kingdom left the EU in 2020 and reports line 2102 after it; Norway
+    reports it in 1992 only."""
+    call = {"years": year, "providers": [918, provider], "by": ["year"]}
     if raises:
         with pytest.raises(oda.UnsupportedQueryError, match="918"):
-            oda.get("oecd.dac1.total_oda", years=year, providers=[918, UK], by=["year"])
+            oda.get("oecd.dac1.total_oda", **call)
     else:
-        oda.get("oecd.dac1.total_oda", years=year, providers=[918, UK], by=["year"])
+        oda.get("oecd.dac1.total_oda", **call)
 
 
 def test_current_eur_before_the_ecu_series_raises(dac1: OecdTables) -> None:

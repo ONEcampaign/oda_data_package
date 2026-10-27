@@ -34,7 +34,7 @@ from __future__ import annotations
 import difflib
 import threading
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -112,10 +112,10 @@ class Selection:
         codes: Every code the filter reads: codes named directly and the
             members of every group, in any year. This is the
             ``ResolvedCall.members`` entry.
-        rows: The codes that appear as their own rows: codes named directly
-            and the members of groups passed without ``oda.total()``. A
-            group passed only as ``oda.total(group)`` adds its members to
-            ``codes`` and not to ``rows``.
+        rows: The codes named directly, which appear as their own rows in
+            every year. The members of a group passed without
+            ``oda.total()`` appear in the years they are members, so the
+            group is ``shown`` and its members stay out of ``rows``.
         groups: Every group named, with its members in each year.
         totals: Names of the groups passed as ``oda.total(group)``.
         labels: Each group's name and its display label, for total rows.
@@ -187,12 +187,12 @@ def resolve_selection(
         group = resolved.get(target.name) or resolve_group(
             target, dimension, years=year_list, table=table
         )
-        resolved[target.name] = group
         if as_total:
             if target.name not in totals:
                 totals.append(target.name)
         else:
-            rows.update(*group.members.values())
+            group = replace(group, shown=True)
+        resolved[target.name] = group
 
     codes = set(rows)
     for group in resolved.values():

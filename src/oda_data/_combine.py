@@ -9,21 +9,34 @@ Arrow table in the result shape. It builds on the compiler's stages in
   parts negated. Each is converted to the call's units at row grain by ``converted``.
 - ``Ratio`` reads its numerator and denominator in current USD, pairs them
   per member, and divides sums. It refuses units.
-- Member rows sum by ``by`` plus ``SPLIT_COLUMNS``. Group totals sum the
-  same rows over each group's members in each year. Unless the call allows
-  partial totals, a total is null in a year in which a member is missing by
-  either of two rules. A member that reported to the table in an earlier year
-  has stopped, with no row in that year or any later one (``stopped_years``). Or, in
-  the table's last year, a member that has rows for the indicator in the year
-  before has none, as when a preliminary year holds only some members' detail
-  lines (``_dropped``). A member that has not yet reported, or that skips a
-  year and reports again later, counts as zero. A ratio applies the first
-  rule to its numerator's and its denominator's own rows, which covers the
-  second.
-- A ``Derived`` member's own row is null by the second rule, applied to each
-  part, unless the call allows partial totals: a member that reports total
-  ODA in the last year but not yet the refugee costs it reported the year
-  before has a core ODA row that reads as complete (``_nulled_members``).
+- Member rows sum by ``by`` plus ``SPLIT_COLUMNS``. A group passed without
+  ``oda.total()`` shows each member in the years it is a member, and a code
+  named directly shows in every year. Group totals sum the same rows over
+  each group's members in each year.
+- Incomplete inputs follow one rule for every kind. Each leaf, a ``Sum`` or a
+  ``Method``, yields ``Incomplete`` cells, the provider-years its value covers
+  only in part. A provider that reported to one of the leaf's tables in an
+  earlier year and has no row in that year or any later one has stopped
+  (``_stopped``). So has a provider with no row for a ratio's ``Sum`` side in
+  that year or later, as GNI without ODA (``_side_stopped``). In the table's
+  last year, a provider that has rows for the leaf in the year before and
+  none in it has not yet reported, as when a preliminary year holds only some
+  members' detail lines (``_dropped``). The leaf reads those two years alone.
+  A ``Method`` adds the cells it reports
+  itself, such as EU Institutions' (918) GNI in a year after an EU member's
+  last GNI. A ``Derived`` or ``Ratio`` holds the cells of its parts. A
+  provider that has not yet reported, or that skips a year and reports again,
+  counts as zero.
+- Unless the call allows partial values, a row is null where it holds an
+  incomplete cell, and a provider total is null in a year in which a
+  member's cell is. A row sums providers when ``provider`` is outside ``by``
+  and the call shows more than one provider in the row's year. Such a row
+  keeps its value where a provider that reported the year before is missing
+  from the table's last year, and warns of it, since the sum then covers only
+  the providers that have reported. It is null where it holds a ``Method``'s
+  cell, which can overstate it. A ratio pairs each member's numerator with
+  its denominator, and a member with no row on one side leaves its pair out
+  of a total.
 
 ``records`` returns stage 2 for ``Sum`` and ``Method`` indicators.
 
@@ -52,8 +65,17 @@ from oda_data._compile import (
     literal,
     literals,
 )
-from oda_data._errors import OdaDataWarning, UnsupportedQueryError
-from oda_data._model import Derived, Headline, In, Method, NotIn, Ratio, Sum
+from oda_data._errors import BasisRangeError, OdaDataWarning, UnsupportedQueryError
+from oda_data._model import (
+    Derived,
+    Headline,
+    In,
+    Incomplete,
+    Method,
+    NotIn,
+    Ratio,
+    Sum,
+)
 from oda_data._names import (
     EU_INSTITUTIONS,
     PROVIDER_AGGREGATE_FROM,
@@ -64,7 +86,7 @@ from oda_data._names import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
@@ -72,6 +94,7 @@ if TYPE_CHECKING:
         Binding,
         Caveat,
         Factors,
+        GroupKey,
         Indicator,
         ResolvedCall,
         ResolvedGroup,
@@ -79,6 +102,13 @@ if TYPE_CHECKING:
     from oda_data._types import Basis, Code, Dimension, TableName
 
 _AGGREGATE_DIMENSIONS: tuple[Dimension, ...] = ("provider", "recipient")
+
+
+#: The most codes a sentence names one by one. More are counted.
+LISTED = 5
+
+#: The DAC1 line of what a provider pays EU Institutions (918).
+_EU_PAYMENT_LINE = 2102
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,21 +125,53 @@ class Combined:
             ``by``, then each total in the order of ``call.totals``. For
             ``records``, stage 2 rows with table types.
         fallback_providers: Providers whose factors came from the DAC total.
-        partial: For a sum across providers that reads the table's last year,
-            that year and the number of the summed providers that reported
-            the year before and have not reported it; ``None`` otherwise.
-        nulled: For a ``Derived`` indicator, the table's last year and the
-            providers whose own row is null in it, since a part they reported
-            the year before is missing; ``None`` when no row is nulled.
-        notes: The notes of each ``Method`` part on its rows, such as the EU
-            members missing from 918's GNI.
+        incomplete: The incomplete cells the result holds: those its member
+            and total rows hold, which are null unless the call allows
+            partial values, and those a sum across providers warns of.
+        notes: Sentences for ``explain()`` on the incomplete cells, then the
+            notes of each ``Method`` part, such as the EU members counted as
+            zero in 918's GNI.
     """
 
     table: pa.Table
     fallback_providers: frozenset[int]
-    partial: tuple[int, int] | None = None
-    nulled: tuple[int, frozenset[Code]] | None = None
+    incomplete: tuple[Incomplete, ...] = ()
     notes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _Rows:
+    """Rows read for a call, with the cells its ``Method`` parts report.
+
+    Args:
+        rows: Stage 1 rows, or for a ratio its numerator and denominator
+            pairs.
+        incomplete: The ``Incomplete`` cells each ``Method`` part returned.
+        notes: Each ``Method`` part's notes.
+    """
+
+    rows: DuckDBPyRelation
+    incomplete: frozenset[Incomplete] = frozenset()
+    notes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _Held:
+    """The incomplete cells behind each part of a result.
+
+    Args:
+        own: Cells that make a member row null unless the call allows
+            partial values.
+        totals: Cells of the providers a provider total sums in the year,
+            and the cells another total's rows hold.
+        summed: Cells a sum across providers outside ``by`` warns of: those of
+            providers missing from the table's last year that reported the
+            year before.
+    """
+
+    own: frozenset[Incomplete] = frozenset()
+    totals: frozenset[Incomplete] = frozenset()
+    summed: frozenset[Incomplete] = frozenset()
 
 
 def tables_for(indicator: Indicator, /) -> tuple[TableName, ...]:
@@ -134,7 +196,9 @@ def combine(
     """Compute an indicator for a resolved call.
 
     Emits each scoped caveat of the indicator, and of its parts, that
-    concerns a basis and year the call reads, as an ``OdaDataWarning``.
+    concerns a basis and year the call reads, as an ``OdaDataWarning``, and,
+    unless the call allows partial values, one for a sum across providers
+    some of which have not reported the table's last year.
 
     Args:
         cursor: A cursor holding a view for each of ``tables_for(indicator)``,
@@ -146,7 +210,8 @@ def combine(
         factors: The Context's factor source.
 
     Returns:
-        The result rows and the providers that took fallback factors.
+        The result rows, the providers that took fallback factors, and the
+        incomplete cells the rows hold.
 
     Raises:
         DimensionError: The call groups, filters or totals by a dimension the
@@ -154,39 +219,48 @@ def combine(
         UnsupportedQueryError: ``oda.total()`` without its dimension in
             ``by``; a total over a group holding an aggregate code; an
             aggregate code summed with other codes; EU Institutions (918)
-            summed with EU members it names, or a total over a group holding
-            both in one year, on a binding whose members' figures hold their EU
-            share; a code the indicator's row filters leave out;
-            ``unit=`` on a ratio; a basis the indicator lacks.
+            summed with a provider that pays it in one year, or a total over
+            a group holding both in one year, on a binding whose members'
+            figures hold their EU share; a code the indicator's row filters
+            leave out; ``unit=`` on a ratio; a basis the indicator lacks.
         BasisRangeError: The call asks for years before the basis starts.
         MissingFactorError: A provider-year lacks a factor.
         ValueError: The call breaks the ``ResolvedCall`` contract: a total's
             group lacks a year the rows hold, or ``rows`` narrows a dimension
             that is neither in ``by`` nor a group's.
     """
-    _check_call(indicator, call)
+    _check_call(cursor, indicator, call)
     _warn_caveats(indicator, call)
 
     if isinstance(indicator.kind, Ratio):
-        rows = _ratio_rows(cursor, indicator, call)
-        result = _assemble(cursor, indicator, call, rows, ratio=True)
-        return Combined(result, frozenset(), notes=_notes(cursor, indicator, call))
+        read = _ratio_rows(cursor, indicator, call)
+        rows, fallback = read.rows, frozenset[int]()
+    else:
+        read = _stage1(cursor, indicator, call)
+        stage2, fallback = _in_units(cursor, indicator, read.rows, call, factors)
+        rows = _materialize(cursor, stage2)
 
-    stage1 = _stage1(cursor, indicator, call)
-    stage2, fallback = _in_units(cursor, indicator, stage1, call, factors)
-    rows = _materialize(cursor, stage2)
-    nulled = _nulled_members(cursor, indicator, call, rows)
-    table = _assemble(cursor, indicator, call, rows, ratio=False, nulled=nulled)
-    partial = _partial_sum(cursor, indicator, call, rows)
-    if partial is not None and not call.allow_partial:
-        warnings.warn(
-            f"{indicator.id}: {partial_text(*partial)}", OdaDataWarning, stacklevel=2
-        )
-    return Combined(table, fallback, partial, nulled, _notes(cursor, indicator, call))
+    years = _years(rows)
+    last = _last_year(cursor, indicator)
+    cells = read.incomplete | _reporting_gaps(cursor, indicator, call, years, last)
+    table, held = _assemble(
+        cursor, indicator, call, rows, cells, years=years, last=last
+    )
+    if held.summed and not call.allow_partial:
+        for text in _summed_text(held.summed, last):
+            warnings.warn(f"{indicator.id}: {text}", OdaDataWarning, stacklevel=2)
+    incomplete = held.own | held.totals | held.summed
+    return Combined(
+        table,
+        fallback,
+        tuple(sorted(incomplete, key=_cell_order)),
+        (*_incomplete_text(held, call, last), *read.notes),
+    )
 
 
 def partial_text(year: int, count: int, /) -> str:
-    """The note on a sum across providers whose last year is partial."""
+    """The note on a sum across providers some of which reported the year
+    before the table's last year and have not reported it."""
     providers = "provider" if count == 1 else "providers"
     return (
         f"{year} is partial: {count} {providers} that reported {year - 1} "
@@ -195,23 +269,113 @@ def partial_text(year: int, count: int, /) -> str:
     )
 
 
-def nulled_text(year: int, codes: Iterable[Code], /, *, listed: int) -> str:
+def nulled_text(year: int, codes: Iterable[Code], /, *, listed: int = LISTED) -> str:
     """The note on providers whose own row is null in a partial last year.
 
     It names the first ``listed`` providers, in order of name, and counts the
     rest.
     """
-    known = names("provider")
-    labels = sorted(f"{known.get(code, code)} ({code})" for code in codes)
-    have = "has" if len(labels) == 1 else "have"
-    shown = ", ".join(labels[:listed])
-    if len(labels) > listed:
-        shown += f" and {len(labels) - listed} more"
+    have = "has" if len(set(codes)) == 1 else "have"
     return (
-        f"{year} rows are null for {shown}, which reported a part "
-        f"of the indicator in {year - 1} and {have} not reported it in {year}; "
-        "allow_partial=True returns the partial values"
+        f"{year} rows are null for {_providers_text(codes, listed=listed)}, which "
+        f"reported a part of the indicator in {year - 1} and {have} not reported "
+        f"it in {year}; allow_partial=True returns the partial values"
     )
+
+
+def reported_text(
+    provider: Code,
+    years: Iterable[int],
+    missing: Iterable[Code],
+    /,
+    *,
+    inputs: str = "its inputs",
+    nulled: bool,
+    listed: int = LISTED,
+) -> str:
+    """The note on a provider whose value in ``years`` is incomplete while
+    ``missing`` have not reported ``inputs``, such as 918's GNI without a
+    member's GNI, or 918's attributed ODA before its funders report line
+    2102."""
+    [label] = _labels("provider", [provider])
+    have = "has" if len(set(missing)) == 1 else "have"
+    text = (
+        f"{label} in {_joined([str(year) for year in sorted(years)])} is "
+        f"incomplete: {_providers_text(missing, listed=listed)} {have} not "
+        f"reported {inputs}"
+    )
+    if nulled:
+        text += (
+            ", so its rows and the totals that hold it are null; "
+            "allow_partial=True returns the partial values"
+        )
+    return text
+
+
+def _incomplete_text(held: _Held, call: ResolvedCall, last: int | None) -> list[str]:
+    """The sentences ``explain()`` writes on a result's incomplete cells."""
+    lines = _summed_text(held.summed, last)
+    if not call.allow_partial:
+        own: dict[int, set[Code]] = {}
+        for cell in held.own:
+            if _is_own_gap(cell):
+                own.setdefault(cell.year, set()).add(cell.provider)
+        lines += [nulled_text(year, codes) for year, codes in sorted(own.items())]
+    nulled = frozenset() if call.allow_partial else held.own | held.totals
+    lines += _reported_text(held.own | held.totals, nulled=nulled)
+    return lines
+
+
+def _summed_text(summed: frozenset[Incomplete], last: int | None) -> list[str]:
+    """The sentence on a sum across providers some of which have not reported
+    the table's last year."""
+    if not summed or last is None:
+        return []
+    return [partial_text(last, len({cell.provider for cell in summed}))]
+
+
+def _reported_text(
+    cells: Iterable[Incomplete], *, nulled: frozenset[Incomplete]
+) -> list[str]:
+    """One sentence per provider and missing inputs on the cells a ``Method``
+    reported, with the years they hold."""
+    runs: dict[tuple[Code, frozenset[Code], str, bool], list[int]] = {}
+    for cell in sorted(cells, key=_cell_order):
+        if not _is_own_gap(cell):
+            key = (cell.provider, cell.missing, cell.inputs, cell in nulled)
+            runs.setdefault(key, []).append(cell.year)
+    return [
+        reported_text(provider, years, missing, inputs=inputs, nulled=is_null)
+        for (provider, missing, inputs, is_null), years in runs.items()
+    ]
+
+
+def _is_own_gap(cell: Incomplete) -> bool:
+    """Whether the cell's provider itself did not report. Other cells name the
+    members or funders its value sums."""
+    return cell.missing == {cell.provider}
+
+
+def _cell_order(cell: Incomplete) -> tuple[str, int, tuple[str, ...]]:
+    return (str(cell.provider), cell.year, tuple(sorted(map(str, cell.missing))))
+
+
+def _labels(dimension: Dimension, codes: Iterable[Code]) -> list[str]:
+    known = names(dimension)
+    return sorted(f"{known.get(code, code)} ({code})" for code in codes)
+
+
+def _providers_text(codes: Iterable[Code], *, listed: int) -> str:
+    """The providers in order of name, the first ``listed`` named and the
+    rest counted."""
+    labels = _labels("provider", set(codes))
+    if len(labels) > listed:
+        return f"{', '.join(labels[:listed])} and {len(labels) - listed} more"
+    return _joined(labels)
+
+
+def _joined(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
 
 
 def records(
@@ -238,13 +402,13 @@ def records(
             f"records() needs a summed indicator; {indicator.id} is a "
             f"{type(indicator.kind).__name__}"
         )
-    _check_call(indicator, call)
+    _check_call(cursor, indicator, call)
     _warn_caveats(indicator, call)
 
     if isinstance(indicator.kind, Sum):
         view = cursor.table(indicator.binding.table)
         _check_columns(indicator, columns, view.columns)
-    stage1 = _stage1(cursor, indicator, call, columns=columns, keep_all=True)
+    stage1 = _stage1(cursor, indicator, call, columns=columns, keep_all=True).rows
     if isinstance(indicator.kind, Method):
         _check_columns(indicator, columns, stage1.columns)
     stage2, fallback = _in_units(cursor, indicator, stage1, call, factors)
@@ -336,7 +500,9 @@ def _listed(codes: Iterable[Code]) -> str:
     return ", ".join(map(str, sorted(codes, key=str)))
 
 
-def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
+def _check_call(
+    cursor: DuckDBPyConnection, indicator: Indicator, call: ResolvedCall
+) -> None:
     check_dimensions(indicator, call)
     check_left_out(indicator, call)
 
@@ -347,9 +513,10 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
                 f"rows narrows {dimension!r}, which is neither in by nor a group's"
             )
 
-    groups = {group.name: group for group in call.groups}
-    for name in call.totals:
-        group = groups[name]
+    groups = {group.key: group for group in call.groups}
+    for key in call.totals:
+        group = groups[key]
+        name = group.name
         if group.dimension not in call.by:
             raise UnsupportedQueryError(
                 f"oda.total({name!r}) needs {group.dimension!r} in by, or its "
@@ -379,7 +546,7 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
                 f"so they cannot be summed with them; add {dimension!r} to by"
             )
 
-    _check_eu_share(indicator, call)
+    _check_eu_share(cursor, indicator, call)
 
     if indicator.is_money:
         if not call.units:
@@ -395,51 +562,111 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
         raise UnsupportedQueryError(f"{indicator.id} is {why}; it takes no unit=")
 
 
-def _check_eu_share(indicator: Indicator, call: ResolvedCall) -> None:
-    """Refuse a sum of EU Institutions (918) with an EU member, on an
-    indicator whose members' figures hold their EU contribution.
+def _check_eu_share(
+    cursor: DuckDBPyConnection, indicator: Indicator, call: ResolvedCall
+) -> None:
+    """Refuse a sum of EU Institutions (918) with a provider that pays it, on
+    an indicator whose providers' figures hold what they pay 918.
 
     Such a sum counts that money twice. Other tables, and indicators that
     attribute 918's flows to its funders, sum them freely.
     """
-    if not any(binding.members_hold_eu_share for binding in _bindings(indicator)):
+    bindings = [b for b in _bindings(indicator) if b.members_hold_eu_share]
+    if not bindings:
         return
-    reason = (
-        "which were EU members in a year of the call; members report their EU "
-        "contributions as their own multilateral ODA, so their sum counts that "
-        "money twice"
-    )
+    sums = [entry for entry in _provider_sums(call) if EU_INSTITUTIONS in entry[2]]
+    if not sums:
+        return
 
-    # Named providers only, since a default is no sum the caller chose.
-    providers = call.members.get("provider", frozenset())
-    if "provider" in call.rows and "provider" not in call.by:
-        clashes = sorted(providers & eu_members(call.years), key=str)
-        if EU_INSTITUTIONS in providers and clashes:
+    paid = _eu_payers(cursor, bindings)
+    clashes: dict[GroupKey | None, set[Code]] = {}
+    for key, years, codes in sums:
+        if found := codes & _payers(paid, years):
+            clashes.setdefault(key, set()).update(found)
+    reason = (
+        "which paid EU Institutions in a year of the call, as EU members or "
+        f"through DAC1 line {_EU_PAYMENT_LINE}; their figures hold those "
+        "payments as their own multilateral ODA, so the sum counts that money "
+        "twice"
+    )
+    for key, codes in clashes.items():
+        listed = sorted(codes, key=str)
+        if key is None:
             raise UnsupportedQueryError(
-                f"the providers summed hold EU Institutions (918) and {clashes}, "
+                f"the providers summed hold EU Institutions (918) and {listed}, "
                 f"{reason}; add 'provider' to by"
             )
-
-    # A dated group may hold 918 and a member in different years only.
-    groups = {group.name: group for group in call.groups}
-    for name in call.totals:
-        group = groups[name]
-        if group.dimension != "provider":
-            continue
-        clashes = sorted(
-            {
-                code
-                for year, held in group.members.items()
-                if EU_INSTITUTIONS in held
-                for code in held & eu_members([year])
-            },
-            key=str,
+        raise UnsupportedQueryError(
+            f"group {key[1]!r} holds EU Institutions (918) and providers "
+            f"{listed}, {reason}"
         )
-        if clashes:
-            raise UnsupportedQueryError(
-                f"group {name!r} holds EU Institutions (918) and providers "
-                f"{clashes}, {reason}"
-            )
+
+
+def _provider_sums(
+    call: ResolvedCall,
+) -> Iterator[tuple[GroupKey | None, Iterable[int] | None, frozenset[Code]]]:
+    """The sums of providers the caller chose, each with the years it covers
+    (``None`` for every year): the member rows outside ``by`` (key ``None``),
+    then each provider total.
+
+    Named providers only. A default is the engine's choice.
+    """
+    direct = call.rows.get("provider")
+    if direct is not None and "provider" not in call.by:
+        years = sorted(
+            {
+                year
+                for group in call.groups
+                if group.shown and group.dimension == "provider"
+                for year in group.members
+            }
+        )
+        if not years:
+            yield None, call.years, direct
+        for year, codes in (_shown_codes(call, "provider", years) or {}).items():
+            yield None, (year,), codes
+    groups = {group.key: group for group in call.groups}
+    for key in call.totals:
+        if key[0] == "provider":
+            for year, codes in groups[key].members.items():
+                yield key, (year,), codes
+
+
+def _eu_payers(
+    cursor: DuckDBPyConnection, bindings: Iterable[Binding]
+) -> dict[int, set[Code]]:
+    """The providers other than 918 that report DAC1 line 2102 in each year,
+    when a binding reads DAC1.
+
+    In DAC1's last year, a provider with line 2102 the year before counts
+    too, since most have not reported it yet.
+    """
+    binding = next((b for b in bindings if b.table == "dac1"), None)
+    if binding is None:
+        return {}
+    provider, year, line = (
+        ident(binding.dimensions[name]) for name in ("provider", "year", "line")
+    )
+    rows = cursor.sql(
+        f"SELECT DISTINCT {provider}, CAST({year} AS BIGINT) FROM dac1 "
+        f"WHERE {line} = {_EU_PAYMENT_LINE} AND {provider} != {EU_INSTITUTIONS}"
+    ).fetchall()
+    [(last,)] = cursor.sql(f"SELECT max(CAST({year} AS BIGINT)) FROM dac1").fetchall()
+    paid: dict[int, set[Code]] = {}
+    for code, reported in rows:
+        paid.setdefault(reported, set()).add(code)
+    if last is not None:
+        paid.setdefault(last, set()).update(paid.get(last - 1, ()))
+    return paid
+
+
+def _payers(paid: Mapping[int, set[Code]], years: Iterable[int] | None) -> set[Code]:
+    """The providers that pay 918 in any of ``years``: the EU members then,
+    and those in ``paid``."""
+    found: set[Code] = set(eu_members(years))
+    for year in paid if years is None else years:
+        found |= paid.get(year, set())
+    return found
 
 
 def _warn_caveats(indicator: Indicator, call: ResolvedCall) -> None:
@@ -559,18 +786,19 @@ def _stage1(
     *,
     columns: tuple[str, ...] = (),
     keep_all: bool = False,
-) -> DuckDBPyRelation:
-    """Rows at row grain in current USD, for any kind but ``Ratio``.
+) -> _Rows:
+    """Rows at row grain in current USD, for any kind but ``Ratio``, with
+    the cells its ``Method`` parts report.
 
     Columns as ``_compile.filtered``, without ``line`` for a ``Derived``.
     """
     match indicator.kind:
         case Sum():
             read = _read_call(indicator, call)
-            rows = filtered(cursor, indicator, read, columns=columns)
+            found = _Rows(filtered(cursor, indicator, read, columns=columns))
         case Method():
             read = _read_call(indicator, call)
-            rows = _method_rows(cursor, indicator, read, keep_all=keep_all)
+            found = _method_rows(cursor, indicator, read, keep_all=keep_all)
         case Derived(plus=plus, minus=minus):
             return _derived_rows(cursor, call, plus, minus)
         case Ratio():
@@ -579,35 +807,14 @@ def _stage1(
             )
 
     if not _screens_recipients(indicator, call):
-        return rows
-    rows = rows.filter(f"NOT coalesce({_aggregate_sql('recipient')}, FALSE)")
+        return found
+    rows = found.rows.filter(f"NOT coalesce({_aggregate_sql('recipient')}, FALSE)")
     wanted = {*call.by, *(group.dimension for group in call.groups), *columns}
-    if keep_all or "recipient" in wanted:
-        return rows
-    return rows.select(
-        ", ".join(ident(name) for name in rows.columns if name != "recipient")
-    )
-
-
-def _notes(
-    cursor: DuckDBPyConnection, indicator: Indicator, call: ResolvedCall
-) -> tuple[str, ...]:
-    """The notes of each ``Method`` part, read with the call the part reads
-    its rows with."""
-    match indicator.kind:
-        case Method(notes=notes) if notes is not None:
-            return notes(cursor, _read_call(indicator, call))
-        case Ratio():
-            return tuple(
-                note
-                for part, part_call in _ratio_parts(indicator, call)
-                for note in _notes(cursor, part, part_call)
-            )
-        case Derived(plus=plus, minus=minus):
-            return tuple(
-                note for part in (*plus, *minus) for note in _notes(cursor, part, call)
-            )
-    return ()
+    if not (keep_all or "recipient" in wanted):
+        rows = rows.select(
+            ", ".join(ident(name) for name in rows.columns if name != "recipient")
+        )
+    return replace(found, rows=rows)
 
 
 def _method_rows(
@@ -616,11 +823,13 @@ def _method_rows(
     read: ResolvedCall,
     *,
     keep_all: bool,
-) -> DuckDBPyRelation:
-    """Run a ``Method`` and filter its rows as the compiler filters a table."""
+) -> _Rows:
+    """Run a ``Method`` and filter its rows, and the cells it reports, as the
+    compiler filters a table."""
     assert isinstance(indicator.kind, Method)
     check_basis(indicator, read)
-    table = indicator.kind.function(cursor, read)
+    result = indicator.kind.function(cursor, read)
+    table = result.table
 
     keys = [
         "provider",
@@ -647,9 +856,17 @@ def _method_rows(
         conditions.append(excluded)
     if conditions:
         rows = rows.filter(" AND ".join(conditions))
-    if keep_all:
-        return rows
-    return rows.select(", ".join(map(ident, needed)))
+    if not keep_all:
+        rows = rows.select(", ".join(map(ident, needed)))
+
+    providers = read.members.get("provider")
+    incomplete = frozenset(
+        cell
+        for cell in result.incomplete
+        if (providers is None or cell.provider in providers)
+        and (read.years is None or cell.year in read.years)
+    )
+    return _Rows(rows, incomplete, result.notes)
 
 
 def _derived_rows(
@@ -657,26 +874,30 @@ def _derived_rows(
     call: ResolvedCall,
     plus: tuple[Indicator, ...],
     minus: tuple[Indicator, ...],
-) -> DuckDBPyRelation:
+) -> _Rows:
     """Each part on the call's basis, which a headline splits by year, with
     the ``minus`` parts negated. Each part's own lines are dropped, since
     the parts' lines differ by construction."""
     parts = [(part, 1) for part in plus] + [(part, -1) for part in minus]
     names: list[str] | None = None
     union: DuckDBPyRelation | None = None
+    incomplete: set[Incomplete] = set()
+    notes: list[str] = []
     for part, sign in parts:
-        rows = _stage1(cursor, part, call)
+        read = _stage1(cursor, part, call)
+        incomplete |= read.incomplete
+        notes += read.notes
         if names is None:
             names = [
                 name
-                for name in rows.columns
+                for name in read.rows.columns
                 if name != "value" and (name != "line" or "line" in call.by)
             ]
         select = ", ".join(map(ident, names)) + f", value * {sign} AS value"
-        rows = rows.select(select)
+        rows = read.rows.select(select)
         union = rows if union is None else union.union(rows)
     assert union is not None  # a Derived has at least one part
-    return union
+    return _Rows(union, frozenset(incomplete), tuple(notes))
 
 
 def _materialize(
@@ -694,8 +915,9 @@ def _materialize(
 
 def _ratio_rows(
     cursor: DuckDBPyConnection, indicator: Indicator, call: ResolvedCall
-) -> DuckDBPyRelation:
-    """Numerators paired with denominators at member grain.
+) -> _Rows:
+    """Numerators paired with denominators at member grain, with the cells
+    the parts' ``Method``s report.
 
     Columns: the stage 1 keys, ``basis`` (the numerator's concrete basis in
     each year), ``num`` and ``den``. A member-year with a denominator and no
@@ -703,8 +925,9 @@ def _ratio_rows(
     total leaves out. A member-year with no denominator has no row.
     """
     (numerator, num_call), (denominator, den_call) = _ratio_parts(indicator, call)
-    num_rows = _stage1(cursor, numerator, num_call)
-    den_rows = _stage1(cursor, denominator, den_call)
+    num_read = _stage1(cursor, numerator, num_call)
+    den_read = _stage1(cursor, denominator, den_call)
+    num_rows, den_rows = num_read.rows, den_read.rows
 
     keys = [name for name in num_rows.columns if name not in {"basis", "line", "value"}]
     listed = ", ".join(map(ident, keys))
@@ -718,7 +941,11 @@ def _ratio_rows(
         "n.num AS num",
         "d.den AS den",
     ]
-    return cursor.from_arrow(paired.select(", ".join(select)).to_arrow_table())
+    return _Rows(
+        cursor.from_arrow(paired.select(", ".join(select)).to_arrow_table()),
+        num_read.incomplete | den_read.incomplete,
+        num_read.notes + den_read.notes,
+    )
 
 
 def _ratio_parts(
@@ -753,47 +980,194 @@ def _assemble(
     indicator: Indicator,
     call: ResolvedCall,
     rows: DuckDBPyRelation,
+    cells: frozenset[Incomplete],
     *,
-    ratio: bool,
-    nulled: tuple[int, frozenset[Code]] | None = None,
-) -> pa.Table:
-    """Member rows, then each total. ``nulled`` names a year and the providers
-    whose member rows are null in it."""
-    value = (
-        "100 * coalesce(sum(num), 0) / nullif(sum(den), 0)" if ratio else "sum(value)"
-    )
+    years: list[int],
+    last: int | None,
+) -> tuple[pa.Table, _Held]:
+    """Member rows, then each total, and the incomplete cells behind each.
+
+    ``years`` are the years ``rows`` hold, and ``last`` the table's last
+    year, of which a sum across providers warns.
+    """
     always = [name for name in SPLIT_COLUMNS if name in rows.columns]
     keys = list(dict.fromkeys([*call.by, *always]))
-
-    members = rows
-    for dimension, codes in call.rows.items():
-        if dimension in rows.columns:
-            members = members.filter(_in(dimension, codes))
-    if nulled is None:
-        summed = _aggregate(members, keys, value)
-        tables = [_shape(summed, indicator, call, flag=_member_flag(call))]
-    else:
-        year, codes = nulled
-        partial = (
-            f"bool_or(year = {year} AND provider IN ({literals(sorted(codes))})) "
-            "AS partial"
+    own = _own_years(call, years)
+    value = "sum(value)"
+    ratio = isinstance(indicator.kind, Ratio)
+    if ratio:
+        # A sum leaves out a member with no numerator, as a total does.
+        paired = "num IS NOT NULL"
+        if own:
+            paired += f" OR year IN ({literals(sorted(own))})"
+        value = (
+            f"100 * coalesce(sum(num), 0) / nullif(sum(den) FILTER (WHERE {paired}), 0)"
         )
-        summed = _aggregate(members, keys, value, partial)
-        tables = [
-            _shape(
-                summed,
-                indicator,
-                call,
-                flag=_member_flag(call),
-                value="CASE WHEN partial THEN NULL ELSE value END",
-            )
-        ]
+    # A summed row is null where it holds a Method's cell and, for a ratio,
+    # where a member's side has stopped, as a provider total is.
+    nulling = frozenset(
+        cell
+        for cell in cells
+        if cell.year in own
+        or not _is_own_gap(cell)
+        or (ratio and not _not_yet_reported(cell, cells, last))
+    )
+    rows = _marked(cursor, rows, nulling)
 
-    groups = {group.name: group for group in call.groups}
-    for name in call.totals:
-        group = groups[name]
-        tables.append(_total(cursor, indicator, call, rows, group, keys, value, ratio))
-    return pa.concat_tables(tables)
+    members = _member_rows(cursor, call, rows, years)
+    summed = _aggregate(members, keys, value, "bool_or(incomplete) AS partial")
+    tables = [
+        _shape(
+            summed,
+            indicator,
+            call,
+            flag=_member_flag(call),
+            value=_unless_partial(call),
+        )
+    ]
+    held = _Held(
+        own=_held(members, nulling),
+        summed=_summed_cells(call, cells, own, years, last),
+    )
+
+    groups = {group.key: group for group in call.groups}
+    in_totals: set[Incomplete] = set()
+    for key in call.totals:
+        table, inside = _total(
+            cursor, indicator, call, rows, groups[key], keys, value, cells, nulling
+        )
+        tables.append(table)
+        in_totals |= inside
+    return pa.concat_tables(tables), replace(held, totals=frozenset(in_totals))
+
+
+def _marked(
+    cursor: DuckDBPyConnection, rows: DuckDBPyRelation, cells: frozenset[Incomplete]
+) -> DuckDBPyRelation:
+    """``rows`` with ``incomplete``, whether the row's provider-year is a
+    cell."""
+    if not cells:
+        return rows.select("*, FALSE AS incomplete")
+    keys = sorted({(cell.provider, cell.year) for cell in cells}, key=str)
+    gaps = pa.table(
+        {
+            "provider": pa.array([provider for provider, _ in keys], pa.int64()),
+            "year": pa.array([year for _, year in keys], pa.int64()),
+        }
+    )
+    select = [f"r.{ident(name)}" for name in rows.columns]
+    select.append("g.provider IS NOT NULL AS incomplete")
+    return (
+        rows.set_alias("r")
+        .join(
+            cursor.from_arrow(gaps).set_alias("g"),
+            "r.provider = g.provider AND r.year = g.year",
+            how="left",
+        )
+        .select(", ".join(select))
+    )
+
+
+def _held(
+    rows: DuckDBPyRelation, cells: frozenset[Incomplete]
+) -> frozenset[Incomplete]:
+    """The cells of ``cells`` that mark one of ``rows``."""
+    if not cells:
+        return frozenset()
+    found = set(rows.filter("incomplete").select("provider, year").fetchall())
+    return frozenset(cell for cell in cells if (cell.provider, cell.year) in found)
+
+
+def _unless_partial(call: ResolvedCall) -> str:
+    """SQL for a summed row's value: null where it holds an incomplete cell
+    (``partial``), unless the call allows partial values."""
+    return (
+        "value" if call.allow_partial else "CASE WHEN partial THEN NULL ELSE value END"
+    )
+
+
+def _own_years(call: ResolvedCall, years: Sequence[int]) -> set[int]:
+    """The years in which each member row is one provider's: every year with
+    ``provider`` in ``by``, else those in which the rows show one provider."""
+    if "provider" in call.by:
+        return set(years)
+    shown = _shown_codes(call, "provider", years)
+    if shown is None:
+        return set()
+    return {year for year, codes in shown.items() if len(codes) == 1}
+
+
+def _summed_cells(
+    call: ResolvedCall,
+    cells: frozenset[Incomplete],
+    own: set[int],
+    years: list[int],
+    last: int | None,
+) -> frozenset[Incomplete]:
+    """The cells a sum across providers outside ``by`` warns of: those of the
+    providers it holds in the table's last year that have not reported it
+    and reported the year before."""
+    if last is None or last not in years or last in own:
+        return frozenset()
+    shown = _shown_codes(call, "provider", [last])
+    return frozenset(
+        cell
+        for cell in cells
+        if _not_yet_reported(cell, cells, last)
+        and (shown is None or cell.provider in shown[last])
+    )
+
+
+def _not_yet_reported(
+    cell: Incomplete, cells: frozenset[Incomplete], last: int | None
+) -> bool:
+    """Whether ``cell`` is a provider's own gap in the table's last year after
+    it reported the year before. A provider that stopped earlier has a cell
+    the year before."""
+    return (
+        cell.year == last
+        and _is_own_gap(cell)
+        and Incomplete(cell.provider, cell.year - 1, cell.missing) not in cells
+    )
+
+
+def _shown_codes(
+    call: ResolvedCall, dimension: Dimension, years: Sequence[int]
+) -> dict[int, frozenset[Code]] | None:
+    """The codes of ``dimension`` the member rows hold in each of ``years``:
+    those in ``call.rows`` in every year and each shown group's members in
+    the years they are members, the membership the group's total uses.
+
+    Without ``call.rows`` for the dimension, the rows hold every code in
+    ``call.members``, and ``None`` means every code.
+    """
+    codes = call.rows.get(dimension)
+    if codes is None:
+        members = call.members.get(dimension)
+        return None if members is None else dict.fromkeys(years, members)
+    shown = [g for g in call.groups if g.shown and g.dimension == dimension]
+    for group in shown:
+        _check_years(group, years)
+    return {
+        year: codes.union(*(group.members[year] for group in shown)) for year in years
+    }
+
+
+def _member_rows(
+    cursor: DuckDBPyConnection,
+    call: ResolvedCall,
+    rows: DuckDBPyRelation,
+    years: list[int],
+) -> DuckDBPyRelation:
+    """The rows the result shows as their own: in each dimension of
+    ``call.rows``, the codes ``_shown_codes`` gives for the row's year."""
+    members = rows
+    for dimension in call.rows:
+        if dimension in rows.columns:
+            shown = _shown_codes(call, dimension, years)
+            assert shown is not None  # the dimension is in call.rows
+            members = _within(cursor, members, dimension, shown)
+    return members
 
 
 def _total(
@@ -804,17 +1178,56 @@ def _total(
     group: ResolvedGroup,
     keys: list[str],
     value: str,
-    ratio: bool,
-) -> pa.Table:
-    """One group's total rows, summed over its members in each year."""
+    cells: frozenset[Incomplete],
+    nulling: frozenset[Incomplete],
+) -> tuple[pa.Table, frozenset[Incomplete]]:
+    """One group's total rows, summed over its members in each year, and the
+    incomplete cells they hold.
+
+    A provider total holds the cells of the members it sums and is null in a
+    year with one. Any other total row is null where it holds a row marked
+    incomplete, as a member row is. Neither is null when the call allows
+    partial values.
+    """
     dimension = group.dimension
-    years = sorted(
-        {
-            year
-            for (year,) in rows.select("year").distinct().fetchall()
-            if year is not None
-        }
+    years = _years(rows)
+    _check_years(group, years)
+    inside = _within(cursor, rows, dimension, group.members)
+    if isinstance(indicator.kind, Ratio):
+        inside = inside.filter("num IS NOT NULL")
+
+    if dimension == "provider":
+        held = frozenset(
+            cell
+            for cell in cells
+            if cell.year in years and cell.provider in group.members[cell.year]
+        )
+        missing = sorted({cell.year for cell in held})
+        partial = f"bool_or(year IN ({literals(missing)}))" if missing else "FALSE"
+    else:
+        held = _held(inside, nulling)
+        partial = "bool_or(incomplete)"
+    summed = _aggregate(
+        inside, [k for k in keys if k != dimension], value, f"{partial} AS partial"
     )
+    table = _shape(
+        summed,
+        indicator,
+        call,
+        flag="TRUE",
+        labels={dimension: group.name},
+        value=_unless_partial(call),
+    )
+    return table, held
+
+
+def _years(rows: DuckDBPyRelation) -> list[int]:
+    """The years ``rows`` hold, sorted."""
+    found = rows.select("year").distinct().fetchall()
+    return sorted(year for (year,) in found if year is not None)
+
+
+def _check_years(group: ResolvedGroup, years: Iterable[int]) -> None:
     absent = [year for year in years if year not in group.members]
     if absent:
         raise ValueError(
@@ -822,240 +1235,192 @@ def _total(
             "rows hold"
         )
 
-    membership = _membership(group, years)
-    inside = rows.set_alias("r").join(
-        cursor.from_arrow(membership).set_alias("m"),
-        f"r.{ident(dimension)} = m.code AND r.year = m.year",
-        how="semi",
-    )
-    if ratio:
-        inside = inside.filter("num IS NOT NULL")
 
-    missing: set[int] = set()
-    if dimension == "provider" and not call.allow_partial:
-        if ratio:
-            missing = _ratio_gaps(cursor, indicator, call, group, years)
-        else:
-            missing = _unreported(cursor, indicator, group, years)
-            missing |= _dropped(cursor, indicator, call, group, years)
-
-    partial = (
-        f"bool_or(year IN ({literals(sorted(missing))})) AS partial" if missing else ""
-    )
-    summed = _aggregate(inside, [k for k in keys if k != dimension], value, partial)
-    return _shape(
-        summed,
-        indicator,
-        call,
-        flag="TRUE",
-        labels={dimension: group.name},
-        value="CASE WHEN partial THEN NULL ELSE value END" if missing else "value",
-    )
-
-
-def _membership(group: ResolvedGroup, years: Iterable[int]) -> pa.Table:
-    pairs = [(year, code) for year in years for code in group.members[year]]
+def _within(
+    cursor: DuckDBPyConnection,
+    rows: DuckDBPyRelation,
+    dimension: Dimension,
+    members: Mapping[int, frozenset[Code]],
+) -> DuckDBPyRelation:
+    """The rows whose ``dimension`` code is in ``members`` for the row's year."""
+    pairs = [(year, code) for year, codes in members.items() for code in codes]
     codes = [code for _, code in pairs]
     code_type = pa.int64() if all(isinstance(c, int) for c in codes) else pa.string()
-    return pa.table(
+    membership = pa.table(
         {
             "year": pa.array([year for year, _ in pairs], pa.int64()),
             "code": pa.array(codes, code_type),
         }
     )
+    return rows.set_alias("r").join(
+        cursor.from_arrow(membership).set_alias("m"),
+        f"r.{ident(dimension)} = m.code AND r.year = m.year",
+        how="semi",
+    )
 
 
-def _unreported(
-    cursor: DuckDBPyConnection,
-    indicator: Indicator,
-    group: ResolvedGroup,
-    years: list[int],
-) -> set[int]:
-    """Years in which a member has stopped reporting to one of the
-    indicator's tables (see ``stopped_years``).
-
-    Any row counts as reporting. On CRS, that is any row for the provider and
-    year.
-    """
-    codes = _codes(group, years)
-    missing: set[int] = set()
-    for last in _last_reports(cursor, indicator, codes):
-        missing |= stopped_years(group, years, last)
-    return missing
+# Incomplete cells ------------------------------------------------------------
 
 
-def _last_reports(
-    cursor: DuckDBPyConnection, indicator: Indicator, codes: list[Code]
-) -> list[dict[Code, int]]:
-    """For each table the indicator reads, each provider in ``codes`` and the
-    last year it has any row."""
-    if not codes:
-        return []
-    by_table = {binding.table: binding for binding in _bindings(indicator)}
-    reports = []
-    for table, binding in by_table.items():
-        provider = ident(binding.dimensions["provider"])
-        year = ident(binding.dimensions["year"])
-        last = cursor.sql(
-            f"SELECT {provider}, max(CAST({year} AS BIGINT)) "
-            f"FROM {ident(table)} WHERE {provider} IN ({literals(codes)}) "
-            f"GROUP BY {provider}"
-        ).fetchall()
-        reports.append(dict(last))
-    return reports
-
-
-def _ratio_gaps(
+def _reporting_gaps(
     cursor: DuckDBPyConnection,
     indicator: Indicator,
     call: ResolvedCall,
-    group: ResolvedGroup,
     years: list[int],
-) -> set[int]:
-    """Years in which a member has stopped reporting a numerator, or a
-    denominator (see ``stopped_years``).
+    last: int | None,
+) -> frozenset[Incomplete]:
+    """The cells of every leaf by the engine's two rules (``_stopped`` and
+    ``_dropped``), for the providers the call names, in ``years``, and, when
+    ``years`` holds the table's last year ``last``, in the year before, so a
+    sum can tell a provider that reported then from one that stopped earlier.
 
-    Each part's own rows set the last year, so this holds ``_dropped``'s
-    rule as well. A member with rows for a part in the year before the
-    table's last year and none in it has stopped reporting that part.
+    A call that names no providers has none. A ``Sum`` or ``Method`` alone
+    has rows only where its provider reported, and a ``Method`` reports its
+    own cells, so the two rules matter to a result that sums providers alone.
     """
-    codes = _codes(group, years)
-    if not codes:
-        return set()
-    missing: set[int] = set()
-    for part, part_call in _ratio_parts(indicator, call):
-        history = _stage1(cursor, part, replace(part_call, years=None))
-        last = (
-            history.filter(f"provider IN ({literals(codes)})")
-            .aggregate("provider, max(CAST(year AS BIGINT))", "provider")
-            .fetchall()
-        )
-        missing |= stopped_years(group, years, dict(last))
-    return missing
+    if isinstance(indicator.kind, Sum | Method) and not _sums_providers(call, years):
+        return frozenset()
+    reads = [
+        (leaf, leaf_call, codes)
+        for leaf, leaf_call in _leaf_calls(indicator, call)
+        if (codes := _read_call(leaf, leaf_call).members.get("provider"))
+    ]
+    tables: dict[TableName, tuple[Binding, set[Code]]] = {}
+    for leaf, _, codes in reads:
+        tables.setdefault(leaf.binding.table, (leaf.binding, set()))[1].update(codes)
+
+    checked = years
+    if last is not None and last in years:
+        checked = sorted({*years, last - 1})
+    cells: set[Incomplete] = set()
+    for binding, codes in tables.values():
+        cells |= _stopped(cursor, binding, codes, checked)
+    for leaf, leaf_call, codes in reads:
+        cells |= _dropped(cursor, leaf, leaf_call, codes, years)
+    if isinstance(indicator.kind, Ratio):
+        for side, side_call in _ratio_parts(indicator, call):
+            codes = _read_call(side, side_call).members.get("provider")
+            if isinstance(side.kind, Sum) and codes:
+                cells |= _side_stopped(cursor, side, side_call, checked)
+    return frozenset(cells)
+
+
+def _sums_providers(call: ResolvedCall, years: list[int]) -> bool:
+    """Whether the result sums providers: in a provider total, or in member
+    rows of a year outside ``_own_years``."""
+    totals = any(key[0] == "provider" for key in call.totals)
+    return totals or _own_years(call, years) != set(years)
+
+
+def _leaf_calls(
+    indicator: Indicator, call: ResolvedCall
+) -> Iterator[tuple[Indicator, ResolvedCall]]:
+    """Each ``Sum`` and ``Method`` the indicator reads, with the call it reads
+    its rows with (a ratio's denominator its own basis)."""
+    match indicator.kind:
+        case Sum() | Method():
+            yield indicator, call
+        case Ratio():
+            for part, part_call in _ratio_parts(indicator, call):
+                yield from _leaf_calls(part, part_call)
+        case Derived(plus=plus, minus=minus):
+            for part in (*plus, *minus):
+                yield from _leaf_calls(part, call)
+
+
+def _stopped(
+    cursor: DuckDBPyConnection,
+    binding: Binding,
+    codes: Iterable[Code],
+    years: list[int],
+) -> set[Incomplete]:
+    """The cells of providers that have stopped reporting to the binding's
+    table: each of ``years`` after the last year in which the provider has
+    any row. On CRS, that is any row for the provider and year."""
+    provider = ident(binding.dimensions["provider"])
+    year = ident(binding.dimensions["year"])
+    last = cursor.sql(
+        f"SELECT {provider}, max(CAST({year} AS BIGINT)) "
+        f"FROM {ident(binding.table)} "
+        f"WHERE {provider} IN ({literals(sorted(codes, key=str))}) "
+        f"GROUP BY {provider}"
+    ).fetchall()
+    return {
+        Incomplete(code, year, frozenset({code}))
+        for code, reported in last
+        for year in years
+        if reported < year
+    }
+
+
+def _side_stopped(
+    cursor: DuckDBPyConnection,
+    side: Indicator,
+    call: ResolvedCall,
+    years: list[int],
+) -> set[Incomplete]:
+    """The cells of providers whose rows for a ratio's ``Sum`` side have
+    stopped while the other side may go on, as GNI without ODA: each of
+    ``years`` after the provider's last row for the side under the call's
+    filters.
+
+    One query reads each named provider's last year, the side's filters and
+    the call's providers pushed into the scan. A ``Method`` side reports its
+    own cells, and a provider that has not yet reported a side leaves its
+    pair out of a sum.
+    """
+    every_year = replace(call, years=None, by=("provider", "year"))
+    last = (
+        _stage1(cursor, side, every_year)
+        .rows.aggregate("provider, max(CAST(year AS BIGINT)) AS last", "provider")
+        .fetchall()
+    )
+    return {
+        Incomplete(code, year, frozenset({code}))
+        for code, reported in last
+        for year in years
+        if reported < year
+    }
 
 
 def _dropped(
     cursor: DuckDBPyConnection,
-    indicator: Indicator,
+    leaf: Indicator,
     call: ResolvedCall,
-    group: ResolvedGroup,
+    codes: Iterable[Code],
     years: list[int],
-) -> set[int]:
-    """The table's last year, when a member has rows for the indicator in the
-    year before and none in it (see ``_dropped_codes``)."""
-    last = _last_year(cursor, indicator)
-    if last is None or last not in years:
-        return set()
-    codes = sorted(group.members[last], key=str)
-    return {last} if _dropped_codes(cursor, indicator, call, codes, last) else set()
-
-
-def _dropped_codes(
-    cursor: DuckDBPyConnection,
-    indicator: Indicator,
-    call: ResolvedCall,
-    codes: list[Code],
-    last: int,
-) -> set[Code]:
-    """The providers in ``codes`` with rows for the indicator in the year
-    before ``last``, the table's last year, and none in it.
+) -> set[Incomplete]:
+    """The cells of providers with rows for the leaf in the year before its
+    table's last year and none in it, when ``years`` holds the last year.
 
     The last year of DAC1 is preliminary. Every member reports total ODA, but
     only a few report detail lines such as in-donor refugee costs, so a total
-    over the reporters reads as the full total. A provider with no rows in the
-    year before, such as one that reports debt relief in some years only,
-    counts as zero. Rows are the indicator's rows under the call's filters.
-
-    A ``Derived`` indicator checks each part, since a member that reports
-    total ODA but not yet in-donor refugee costs has rows for their
-    difference that read as complete.
+    over the reporters reads as the full total. A provider with no rows in
+    the year before, such as one that reports debt relief in some years only,
+    counts as zero. Rows are the leaf's under the call's filters, read for
+    those two years alone, which a ``Method``'s rows allow.
     """
-    if not codes:
+    last = _last_year(cursor, leaf)
+    if last is None or last not in years:
         return set()
-    if isinstance(indicator.kind, Derived):
-        parts = (*indicator.kind.plus, *indicator.kind.minus)
-        dropped: set[Code] = set()
-        for part in parts:
-            dropped |= _dropped_codes(cursor, part, call, codes, last)
-        return dropped
-    history = _stage1(cursor, indicator, replace(call, years=None))
+    try:
+        rows = _stage1(cursor, leaf, replace(call, years=(last - 1, last))).rows
+    except BasisRangeError:
+        # The basis starts in the last year, so no provider has its rows the
+        # year before.
+        return set()
+    codes = sorted(codes, key=str)
     seen = set(
-        history.filter(
-            f"provider IN ({literals(codes)}) AND year IN ({last - 1}, {last})"
-        )
+        rows.filter(f"provider IN ({literals(codes)})")
         .select("provider, CAST(year AS BIGINT) AS year")
         .distinct()
         .fetchall()
     )
     return {
-        code for code in codes if (code, last - 1) in seen and (code, last) not in seen
+        Incomplete(code, last, frozenset({code}))
+        for code in codes
+        if (code, last - 1) in seen and (code, last) not in seen
     }
-
-
-def _nulled_members(
-    cursor: DuckDBPyConnection,
-    indicator: Indicator,
-    call: ResolvedCall,
-    rows: DuckDBPyRelation,
-) -> tuple[int, frozenset[Code]] | None:
-    """The table's last year and the providers whose own ``Derived`` row is
-    null in it: those with a part they reported the year before and not in
-    it (``_dropped_codes``).
-
-    A member row is one provider's when ``provider`` is in ``by`` or the call
-    reads one provider. A sum over several is ``_partial_sum``'s. A part the
-    provider never reports, or skips in an earlier year, counts as zero. A
-    provider with no row in the last year is left out, since it has no row to
-    null.
-    """
-    if not isinstance(indicator.kind, Derived) or call.allow_partial:
-        return None
-    providers: frozenset[Code] = call.rows.get(
-        "provider", call.members.get("provider", frozenset())
-    )
-    if "provider" not in call.by and len(providers) != 1:
-        return None
-    last = _last_year(cursor, indicator)
-    if last is None:
-        return None
-    # A provider with no row in the last year has no row to null.
-    shown = rows.filter(f"year = {last}").select("provider").distinct().fetchall()
-    codes = sorted({code for (code,) in shown} & providers, key=str)
-    dropped = _dropped_codes(cursor, indicator, call, codes, last)
-    return (last, frozenset(dropped)) if dropped else None
-
-
-def _partial_sum(
-    cursor: DuckDBPyConnection,
-    indicator: Indicator,
-    call: ResolvedCall,
-    rows: DuckDBPyRelation,
-) -> tuple[int, int] | None:
-    """The table's last year and how many providers summed in it reported
-    the year before and have not reported it, for a result that sums across
-    providers; ``None`` when no such provider exists.
-
-    A provider has not reported when it has no row in the table that year,
-    the rule ``stopped_years`` applies to group totals, or no row for the indicator
-    under the call's filters (``_dropped_codes``). Group totals are null in
-    such a year instead, and a result split by provider shows who reported.
-    """
-    if "provider" in call.by:
-        return None
-    codes = sorted(_read_call(indicator, call).members.get("provider", ()), key=str)
-    last = _last_year(cursor, indicator)
-    if len(codes) < 2 or last is None:
-        return None
-    if not rows.filter(f"year = {last}").limit(1).fetchall():
-        return None
-    stopped = {
-        code
-        for reports in _last_reports(cursor, indicator, codes)
-        for code, year in reports.items()
-        if year == last - 1
-    }
-    stopped |= _dropped_codes(cursor, indicator, call, codes, last)
-    return (last, len(stopped)) if stopped else None
 
 
 def _last_year(cursor: DuckDBPyConnection, indicator: Indicator) -> int | None:
@@ -1069,26 +1434,6 @@ def _last_year(cursor: DuckDBPyConnection, indicator: Indicator) -> int | None:
         if last is not None:
             lasts.append(last)
     return max(lasts, default=None)
-
-
-def _codes(group: ResolvedGroup, years: list[int]) -> list[Code]:
-    return sorted(set().union(*(group.members[year] for year in years)), key=str)
-
-
-def stopped_years(
-    group: ResolvedGroup, years: list[int], last: dict[Code, int]
-) -> set[int]:
-    """Years in which a member has stopped reporting: it reported in an
-    earlier year and has no row in that year or any later year of the table.
-
-    ``last`` holds each member's last reporting year in the whole table. A
-    member not yet reporting, or between two reporting years, counts as zero.
-    """
-    return {
-        year
-        for year in years
-        if any(last.get(code, year) < year for code in group.members[year])
-    }
 
 
 def _member_flag(call: ResolvedCall) -> str:

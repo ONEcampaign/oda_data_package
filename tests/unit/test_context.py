@@ -24,10 +24,11 @@ from oda_data import _context
 from oda_data._context import Context
 from oda_data._errors import (
     DimensionError,
+    OfflineCacheMissError,
     UnknownIndicatorError,
     UnsupportedQueryError,
 )
-from oda_data._factors import FACTOR_SCHEMA
+from oda_data._factors import FACTOR_SCHEMA, DacFactors
 from oda_data._groups import Group, total
 from oda_data._model import (
     Binding,
@@ -492,6 +493,73 @@ def test_a_member_that_did_not_report_empties_the_total(ctx: Context) -> None:
     assert "which is empty in 2018" in q.explain()
 
 
+@pytest.mark.parametrize(
+    ("named", "norway_in_1990"),
+    [([], False), ([9], True)],
+    ids=["group-only", "member-named-too"],
+)
+def test_a_dated_group_shows_each_member_in_its_years(
+    tables: FakeTables, named: list[int], norway_in_1990: bool
+) -> None:
+    # Norway (9) left the DAC in 1973 and rejoined in 1991.
+    tables.connection.execute("DELETE FROM dac1")
+    tables.connection.executemany(
+        "INSERT INTO dac1 VALUES (?, ?, ?, ?, 'A', ?)",
+        [
+            (4, 1990, 1010, 1140, 10.0),
+            (9, 1990, 1010, 1140, 20.0),
+            (4, 2024, 11010, 1160, 10.0),
+            (9, 2024, 11010, 1160, 20.0),
+        ],
+    )
+    ctx = Context._from_parts(tables, FakeFactors())
+    dac = oda.groups.dac_countries.dated()
+    providers = [dac, total(dac), *named]
+    columns = ("provider", "year", "value")
+
+    both = ctx.get("oecd.dac1.total_oda", years=[1990, 2024], providers=providers)
+    each = pd.concat(
+        ctx.get("oecd.dac1.total_oda", years=year, providers=providers)
+        for year in (1990, 2024)
+    )
+    summed = ctx.get(
+        "oecd.dac1.total_oda", years=[1990, 2024], providers=dac, by=["year"]
+    )
+
+    assert sorted(_rows(both, *columns)) == sorted(_rows(each, *columns))
+    assert (("9", 1990, 20.0) in _rows(both, *columns)) is norway_in_1990
+    totals = both[both["is_aggregate"]]
+    assert _rows(totals, *columns) == [
+        ("dac_countries", 1990, 10.0),
+        ("dac_countries", 2024, 30.0),
+    ]
+    assert _rows(summed, "year", "value") == [(1990, 10.0), (2024, 30.0)]
+
+
+def test_groups_of_one_name_in_two_dimensions_keep_their_own_totals(
+    ctx: Context,
+) -> None:
+    donors = Group("focus", [4], label="Focus donors", dimension="provider")
+    places = Group("focus", [248], label="Focus places", dimension="recipient")
+    q = ctx.query(
+        "oecd.crs.bilateral_oda",
+        years=2019,
+        providers=[4, total(donors)],
+        recipients=[248, total(places)],
+        by=["provider", "recipient"],
+    )
+
+    df = q.to_pandas()
+
+    columns = ("provider", "provider_name", "recipient", "recipient_name", "value")
+    assert _rows(df[df["is_aggregate"]], *columns) == [
+        ("focus", "Focus donors", "248", "Kenya", 3.0),
+        ("4", "France", "focus", "Focus places", 3.0),
+    ]
+    assert "The total of 1 Focus donors" in q.explain()
+    assert "the total of 1 Focus places" in q.explain()
+
+
 def test_broad_sectors_split_crs_rows(ctx: Context) -> None:
     df = ctx.get("oecd.crs.bilateral_oda", by=["broad_sector"])
 
@@ -517,6 +585,27 @@ def test_units_add_rows_and_record_the_factor_release(tables: FakeTables) -> Non
         ("USD", pd.NA, 3.0),
     ]
     assert dict(q.provenance.tables) == {"crs": CRS_RELEASE, "dac1": DAC1_RELEASE}
+
+
+class CrsOnlyTables(FakeTables):
+    """An offline cache that holds CRS and no DAC1."""
+
+    def release(self, table: str) -> Release:
+        if table == "dac1":
+            raise OfflineCacheMissError("the cache holds no dac1 table")
+        return super().release(table)
+
+    def path(self, table: str) -> object:
+        raise OfflineCacheMissError(f"the cache holds no {table} table")
+
+
+def test_a_current_usd_call_reads_no_dac1() -> None:
+    tables = CrsOnlyTables()
+    ctx = Context._from_parts(tables, DacFactors(tables))
+    q = ctx.query("oecd.crs.bilateral_oda", providers="France", by=["provider"])
+
+    assert _rows(q.to_pandas(), "value") == [(3.0,)]
+    assert dict(q.provenance.tables) == {"crs": CRS_RELEASE}
 
 
 # Records ---------------------------------------------------------------------------
@@ -672,36 +761,6 @@ def test_a_headline_of_one_basis_reads_as_one_span(
     )
 
     assert _context._basis_text(indicator, "headline", years) == expected
-
-
-@pytest.mark.parametrize(
-    ("codes", "expected"),
-    [
-        ({4}, "2018 rows are null for France (4), which reported"),
-        (
-            {1, 2, 3, 4, 5, 6, 7},
-            "2018 rows are null for Austria (1), Belgium (2), Denmark (3), "
-            "France (4), Germany (5) and 2 more, which reported",
-        ),
-    ],
-)
-def test_explain_names_nulled_members_up_to_the_listed_cap(
-    ctx: Context, monkeypatch: pytest.MonkeyPatch, codes: set[int], expected: str
-) -> None:
-    combine = _context.combine
-
-    def nulling(*args: object, **kwargs: object) -> object:
-        found = combine(*args, **kwargs)
-        return dataclasses.replace(found, nulled=(2018, frozenset(codes)))
-
-    monkeypatch.setattr(_context, "combine", nulling)
-
-    text = ctx.query("oecd.dac1.total_oda").explain().splitlines()
-
-    nulled = [line for line in text if line.startswith("2018 rows are null")]
-    assert len(nulled) == 1
-    assert nulled[0].startswith(expected)
-    assert nulled[0].endswith("allow_partial=True returns the partial values.")
 
 
 def test_explain_states_defaults_and_fallback_deflators(tables: FakeTables) -> None:

@@ -2,15 +2,15 @@
 
 Both versions read the same cached OECD tables: 3.0 through its own views,
 2.8.2 through ``scripts/v2_reference.py``, which feeds 2.x's bulk readers the
-same Parquet files. A difference is a counting rule or a 2.x defect, never a
-revision. Each row names the 2.x code, its status in the 2.x map, and the
+same Parquet files. A difference is a counting rule or a 2.x defect.
+Each row names the 2.x code, its status in the 2.x map, and the
 map's reason, so the table can go straight into the migration guide's
 "numbers that change":
 
     export ODA_READER_CACHE_DIR=~/Library/Caches/oda-data-v3-shared
     uv run python scripts/imputation_delta.py > delta.md
 
-Values are current USD millions. ODA/GNI is in per cent; 2.x returns a
+Values are current USD millions. ODA/GNI is in per cent. 2.x returns a
 fraction, which the table shows multiplied by 100.
 """
 
@@ -26,7 +26,7 @@ import pandas as pd
 from v2_reference import cached_tables, run_in_2x
 
 import oda_data as oda
-from oda_data import _compat, _context
+from oda_data import _compat, _context, _names
 
 FRANCE, NORWAY, EU_INSTITUTIONS, IDA, UKRAINE = 4, 8, 918, 905, 85
 
@@ -104,6 +104,24 @@ DELTAS = (
         ),
         {"years": [2022], "providers": [EU_INSTITUTIONS]},
         scale=100,
+    ),
+    Delta(
+        "EU Institutions' attributed ODA, net flows",
+        "get_eui_plus_bilateral_providers_indicator",
+        {
+            "function": "eu_attributed",
+            "code": "DAC1.10.1010",
+            "arguments": {
+                "years": [2019],
+                "providers": [*sorted(_names.eu27()), EU_INSTITUTIONS],
+                "measure": ["net_disbursement"],
+            },
+        },
+        {"years": [2019], "providers": [EU_INSTITUTIONS]},
+        call=('oda.get("one.dac1.total_oda_eu_attributed", basis="net_disbursement")',),
+        status="changes",
+        reason="2.x netted the line 2102 of today's EU27 only; 3.0 nets that of "
+        "every provider other than 918.",
     ),
     Delta(
         "DAC2A bilateral ODA, France to Ukraine",
@@ -213,7 +231,7 @@ def run_3x(
 ) -> pd.DataFrame:
     """Run a 3.0 call written as Python lines on ``context``, every ``oda.get``
     taking ``arguments`` too, ``recipients`` only where the indicator has
-    recipients. A one-line call is an expression; a longer one leaves its
+    recipients. A one-line call is an expression. A longer one leaves its
     result in ``df``."""
 
     def get(indicator: str, /, **given: object) -> pd.DataFrame:

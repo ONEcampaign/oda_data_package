@@ -237,7 +237,7 @@ def test_resolved_call_holds_codes_and_is_frozen() -> None:
                 members={2022: frozenset({4, 5}), 2023: frozenset({4, 5})},
             ),
         ),
-        totals=("G2",),
+        totals=(("provider", "G2"),),
     )
     members["recipient"] = frozenset({248})
     assert set(call.members) == {"provider"}
@@ -248,8 +248,24 @@ def test_resolved_call_holds_codes_and_is_frozen() -> None:
 
 
 def test_resolved_call_refuses_a_total_without_its_group() -> None:
+    g7 = ResolvedGroup("G7", "provider", {2024: frozenset({4})})
     with pytest.raises(ValueError, match="totals"):
-        ResolvedCall(basis="headline", units=(), by=("year",), totals=("G7",))
+        ResolvedCall(
+            basis="headline",
+            units=(),
+            by=("provider",),
+            groups=(g7,),
+            totals=(("recipient", "G7"),),
+        )
+
+
+def test_resolved_call_refuses_two_groups_with_one_key() -> None:
+    first = ResolvedGroup("G7", "provider", {2024: frozenset({4})})
+    second = ResolvedGroup("G7", "provider", {2024: frozenset({5})})
+    with pytest.raises(ValueError, match="share"):
+        ResolvedCall(
+            basis="headline", units=(), by=("provider",), groups=(first, second)
+        )
 
 
 def test_model_import_stays_light() -> None:
