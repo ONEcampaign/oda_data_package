@@ -2,7 +2,7 @@
 name = "oda_data"
 version = "2.9.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 license = {text = "MIT"}
 readme = "README.md"
@@ -17,9 +17,9 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
     "cachetools>=6.2.0",
     "filelock>=3.20.0",
-    "oda-reader>=1.9.0",
+    "oda-reader>=1.13.0",
     "platformdirs>=4.0.0",
     "pandas[excel,parquet,performance]>=2.2.0",
     "pydeflate>=2.3.3",
@@ -60,12 +60,11 @@ test = [
 ]
 # Maintenance-only tooling for scripts/refresh_channel_crosswalk.py. Never a
 # runtime dependency of the oda_data package; excluded from the default
-# groups below so a plain `uv sync` never requires it (resolvekit needs
-# Python >=3.12, oda_data supports >=3.11). Install explicitly with
-# `uv sync --group maintenance`.
+# groups below so a plain `uv sync` never requires it. Install explicitly
+# with `uv sync --group maintenance`.
 maintenance = [
-    "resolvekit==0.1.12 ; python_version >= '3.12'",
-    "pyyaml>=6.0 ; python_version >= '3.12'",
+    "resolvekit==0.1.12",
+    "pyyaml>=6.0",
 ]
 
 [tool.uv]
@@ -78,8 +77,8 @@ default-groups = ["dev", "test"]
 # Set the maximum line length
 line-length = 88
 
-# Target Python 3.11+
-target-version = "py311"
+# Target Python 3.12+
+target-version = "py312"
 
 # Lint/format notebooks too
 extend-include = ["*.ipynb"]
@@ -167,7 +166,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ty.environment]
-python-version = "3.11"
+python-version = "3.12"
 
 [tool.ty.src]
 include = ["src/oda_data"]

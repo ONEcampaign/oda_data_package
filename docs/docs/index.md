@@ -72,7 +72,7 @@ gender_data = bilateral_policy_marker(
 
 ## Requirements
 
-- Python 3.11 or higher
+- Python 3.12 or higher
 - Compatible with all major operating systems
 
 ## Installation

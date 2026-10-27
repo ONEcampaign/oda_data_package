@@ -9,4 +9,4 @@ project_description: A python package to work with Official Development Assistan
 project_name: oda_data
 project_slug: oda_data
 project_type: package
-python_version: '3.11'
+python_version: '3.12'

@@ -33,7 +33,7 @@ The latest version of the package can be installed using pip:
 pip install oda-data --upgrade
 ```
 
-The package is compatible with Python 3.11 and above.
+The package is compatible with Python 3.12 and above.
 
 ## Basic usage
 

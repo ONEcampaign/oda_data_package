@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the ODA Data Package! This guide 
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.12 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 - Git
 
@@ -228,10 +228,7 @@ def test_bulk_download():
 
 Tests run automatically via GitHub Actions when you open or update a pull request. The test suite runs on:
 
-- **Operating Systems**: Ubuntu, macOS, and Windows
-- **Python Versions**: 3.11, 3.12, and 3.13
-
-This gives us a comprehensive test matrix of **9 combinations** to ensure the package works across different platforms.
+The full suite runs on Ubuntu with Python 3.12, 3.13 and 3.14. The fast tests also run on macOS and Windows with Python 3.13.
 
 You can view test results in the "Checks" tab of your pull request. All tests must pass before your PR can be merged.
 

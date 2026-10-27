@@ -12,6 +12,9 @@ _IMPORT_CHECK = """
 import logging
 import sys
 
+root = logging.getLogger()
+root_before = (list(root.handlers), root.level)
+
 import oda_data
 import oda_data.api.oecd
 import oda_data.api.sources
@@ -23,6 +26,7 @@ import oda_data.clean_data.dtypes
 import oda_data.tools.cache
 
 assert "oda_data.logger" not in sys.modules
+assert (list(root.handlers), root.level) == root_before
 loggers = {
     name: logger
     for name, logger in logging.root.manager.loggerDict.items()
@@ -37,7 +41,8 @@ for name, logger in loggers.items():
 
 
 def test_import_leaves_logging_configuration_to_the_application():
-    """Importing oda_data sets no handlers or levels, and its loggers propagate."""
+    """Importing oda_data, oda_reader included, leaves the root logger alone,
+    sets no handlers or levels on its own loggers, and lets them propagate."""
     result = subprocess.run(
         [sys.executable, "-c", _IMPORT_CHECK],
         capture_output=True,

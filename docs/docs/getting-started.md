@@ -4,7 +4,7 @@ This guide will help you install the ODA Data Package and get your first ODA dat
 
 ## Installation
 
-The package requires Python 3.11 or higher. Install it using pip:
+The package requires Python 3.12 or higher. Install it using pip:
 
 ```bash
 pip install oda-data --upgrade

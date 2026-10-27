@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **oda_data leaves logging configuration to the application.** Importing it adds no handlers and sets no levels. Each module logs under the `oda_data` logger, and records propagate to the root logger. An application that doesn't configure logging sees only oda_data's warnings and errors, where it used to see INFO messages on stderr. Closes #172.
+- oda_data leaves logging configuration to the application. Importing it adds no handlers and sets no levels, and it requires oda_reader 1.13.0 or later, which stops configuring the root logger at import. Each module logs under the `oda_data` logger, and records propagate to the root logger. An application that doesn't configure logging sees only oda_data's warnings and errors, where it used to see INFO messages on stderr. Closes #172.
 
 To turn oda_data's INFO messages back on:
 
@@ -22,13 +22,19 @@ logging.getLogger("oda_data").setLevel(logging.INFO)
 
 ### Deprecated
 
-- **The `oda_data.logger` module and its `setup_logger` function** are deprecated and will be removed in 3.0. Importing the module emits a `DeprecationWarning`. Its `logger` is the unconfigured `oda_data` package logger, and `setup_logger` still attaches an INFO handler and stops propagation for the logger it names. Configure `logging.getLogger("oda_data")` instead.
+- The `oda_data.logger` module and its `setup_logger` function are deprecated and will be removed in 3.0. Importing the module emits a `DeprecationWarning`. Its `logger` is the unconfigured `oda_data` package logger, and `setup_logger` still attaches an INFO handler and stops propagation for the logger it names. Configure `logging.getLogger("oda_data")` instead.
 
-## [2.8.2] - 2026-10-16
+### Removed
+
+- Support for Python 3.11. oda_data needs Python 3.12 or later, as oda_reader has since 1.10.0, so it can require oda_reader 1.13.0. On Python 3.11, stay on 2.8.2.
+
+## [2.8.2] - 2026-10-27
 
 ### Fixed
 
-- **`bilateral_policy_marker` returned all allocable aid for `marker_score="not_screened"`.** The not-screened branch compared the marker name instead of the score, and the read left out the marker column, so no filter was ever applied. It now returns only rows with a blank marker, and principal, significant, not_targeted and not_screened add up to total_allocable. Figures previously read from `not_screened` will fall sharply: for the United States in 2023, gender aid not screened goes from $46,038m to $0. Closes #170.
+- `bilateral_policy_marker` returned all allocable aid for `marker_score="not_screened"`. The not-screened branch compared the marker name instead of the score, and the read left out the marker column, so no filter was applied. It now returns only rows with a blank marker, and principal, significant, not_targeted and not_screened add up to total_allocable. Figures previously read from `not_screened` will fall sharply. For the United States in 2023, gender aid not screened goes from $46,038m to $0. Closes #170.
+- `bilateral_policy_marker` counts desertification marker value 3, a principal objective that supports an action programme, under `principal` and `total_targeted`. Those rows were counted in `total_allocable` but missing from both scores.
+- `bilateral_policy_marker` raises `ValueError` for a marker or score it doesn't know, such as `marker_score="principle"`, where it used to return all allocable aid. The `PolicyMarker` type lists all eight documented markers.
 
 ## [2.8.1] - 2026-09-22
 
