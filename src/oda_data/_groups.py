@@ -441,5 +441,5 @@ groups: GroupNamespace[Group] = GroupNamespace(
 #: Named sector groups, such as ``oda.sectors.health`` and ``oda.sectors.basic_education``.
 sectors: SectorNamespace = SectorNamespace("sectors", _sector_groups())
 
-for _public in (Group, SectorGroup, GroupTotal, total):
+for _public in (Group, SectorGroup, ReportedAt, GroupTotal, total):
     _public.__module__ = "oda_data"

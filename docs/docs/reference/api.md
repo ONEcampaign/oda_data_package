@@ -246,8 +246,6 @@ Returns a group's total as one row, with `is_aggregate = True`. Pass it beside t
 
 Read-only mappings of the built-in groups, by attribute or key: `oda.groups.g7` or `oda.groups["g7"]`. `oda.groups` holds provider and recipient groups. `oda.sectors` holds `SectorGroup`s of CRS purpose codes, such as `oda.sectors.health`. A misspelt name raises `AttributeError` with near matches.
 
-`oda.sectors.reported_at(code)` returns a `ReportedAt`, which stands for the CRS activities filed at DAC5 heading `code` with no finer purpose code. Pass it to `sectors=` or hold it in a `SectorGroup`. It prints as `reported_at(151)`, and the built-in groups print their heading-level members that way, so a group built from `oda.sectors.conflict_peace_and_security.members` reads the same rows. A code of 1000 or more, or one that is not a heading, raises `ValueError`.
-
 ### `SectorGroup`
 
 ```py
@@ -256,6 +254,16 @@ class SectorGroup(Group):
 ```
 
 A `Group` of CRS purpose codes, purpose names, or other sector groups. A heading ending in zero covers the headings under it: 120 (Health) holds 121, 122, and 123. A three-digit code such as 122 is a DAC5 heading and reads every purpose code under it. `oda.sectors.reported_at(122)` reads only the activities filed at the heading with no finer purpose code, which is how the built-in groups list them.
+
+### `ReportedAt`
+
+```py
+@dataclass(frozen=True)
+class ReportedAt:
+    code: int
+```
+
+`oda.sectors.reported_at(code)` returns a `ReportedAt`, which stands for the CRS activities filed at DAC5 heading `code` with no finer purpose code. Pass it to `sectors=` or hold it in a `SectorGroup`. It prints as `reported_at(151)`, and the built-in groups print their heading-level members that way, so a group built from `oda.sectors.conflict_peace_and_security.members` reads the same rows. A code of 1000 or more, or one that is not a heading, raises `ValueError`. Import `ReportedAt` to annotate a variable or to test a group member with `isinstance`.
 
 ## Provenance
 

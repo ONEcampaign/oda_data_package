@@ -27,7 +27,7 @@ oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oec
 - `oda.records()` returns the rows behind a summed indicator, with extra table columns through `columns=`.
 - `oda.groups`, `oda.sectors`, `oda.Group`, and `oda.total()` for groups and their totals, and `group.dated()` for membership by year.
 - `oda.search()`, `oda.describe()`, `oda.indicators()`, and `oda.add_names()`.
-- `oda.sectors.reported_at(code)` for the CRS activities filed at a DAC5 heading with no finer purpose code, such as `sectors=oda.sectors.reported_at(151)`.
+- `oda.sectors.reported_at(code)`, which returns an importable `oda.ReportedAt`, for the CRS activities filed at a DAC5 heading with no finer purpose code, such as `sectors=oda.sectors.reported_at(151)`.
 - `scripts/check_codelists.py`, run every Monday, compares the codes the package uses with the OECD's latest codelists. It fails on a code the codelists lack, a code the package names differently, and an active CRS purpose code, channel, finance type, or modality the package has no name for.
 - `finance_types=` and a `finance_type` dimension on CRS indicators, and a `flow` dimension and `flows=` on DAC1.
 - Errors with stable codes, each a subclass of `OdaDataError`, and `OdaDataWarning` for caveats such as a partial last year.

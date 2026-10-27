@@ -48,6 +48,7 @@ PUBLIC_NAMES = sorted(
         "Group",
         "GroupTotal",
         "SectorGroup",
+        "ReportedAt",
         "total",
         "groups",
         "sectors",
@@ -145,6 +146,12 @@ def test_public_names_report_the_package_module_before_any_attribute_read(
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert result.stdout.strip() == "[]"
+
+
+def test_reported_at_is_the_type_sectors_reported_at_returns() -> None:
+    from oda_data import ReportedAt
+
+    assert isinstance(oda_data.sectors.reported_at(151), ReportedAt)
 
 
 def test_indicator_id_is_the_generated_literal() -> None:
