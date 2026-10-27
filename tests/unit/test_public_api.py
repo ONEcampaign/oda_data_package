@@ -70,8 +70,37 @@ def test_every_name_resolves() -> None:
 
 
 def test_unknown_attribute_raises_attribute_error() -> None:
-    with pytest.raises(AttributeError):
-        _ = oda_data.OECDClient
+    with pytest.raises(AttributeError) as error:
+        _ = oda_data.no_such_name
+    assert not isinstance(error.value, oda_data.RemovedIn3Error)
+
+
+def test_a_2x_name_raises_removed_in_3_without_loading_pandas() -> None:
+    code = (
+        "import sys, oda_data\n"
+        "try:\n"
+        "    oda_data.OECDClient\n"
+        "except oda_data.RemovedIn3Error as error:\n"
+        "    print(error.code, 'oda.get(' in str(error))\n"
+        "print('pandas' in sys.modules)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    assert result.stdout.split() == ["removed_in_3", "True", "False"]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    ["from oda_data import ODAData", "import oda_data; oda_data.ODAData"],
+)
+def test_a_2x_name_names_its_replacement_on_import_and_attribute_read(
+    statement: str,
+) -> None:
+    with pytest.raises(oda_data.RemovedIn3Error) as error:
+        exec(statement, {})
+    assert "load_indicator" in str(error.value)
+    assert not isinstance(error.value, AttributeError)
 
 
 def test_version_is_the_package_version() -> None:
@@ -161,7 +190,7 @@ def test_error_survives_pickle(name: str) -> None:
         ("BasisRangeError", ValueError),
         ("UnsupportedQueryError", ValueError),
         ("DataUnavailableError", ConnectionError),
-        ("RemovedIn3Error", AttributeError),
+        ("RemovedIn3Error", ImportError),
     ],
 )
 def test_error_subclasses_a_builtin(name: str, builtin: type[Exception]) -> None:

@@ -15,7 +15,7 @@ equals one of:
 A name that matches both a code and a group, or several codes, raises
 ``AmbiguousEntityError``. resolvekit matches typos silently ("Frnace" gives
 France at confidence 0.95), so its match counts only when the input equals one
-of that entity's names or codes; otherwise the match becomes a suggestion in
+of that entity's names or codes. Otherwise the match becomes a suggestion in
 ``UnknownEntityError``. The bundled data is consulted first, so ``"Congo"`` as a
 recipient is DAC code 234, the OECD's own label.
 
@@ -41,10 +41,8 @@ from oda_data._errors import (
 from oda_data._groups import Group, GroupTotal, groups, sectors
 from oda_data._model import ResolvedGroup
 from oda_data._names import (
-    EU_INSTITUTIONS,
     aggregate_codes,
     channel_acronyms,
-    eu_members,
     is_aggregate,
     names,
     normalise,
@@ -55,7 +53,7 @@ if TYPE_CHECKING:
 
     from oda_data._types import Code, Dimension, TableName
 
-#: resolvekit modules: countries, and regions that carry DAC recipient codes.
+#: resolvekit modules for countries and for regions with DAC recipient codes.
 _MODULES = ["geo.countries", "geo.regions"]
 
 #: The resolvekit code system that holds each dimension's DAC code.
@@ -147,9 +145,8 @@ def resolve_selection(
         UnknownEntityError: A code or name matched nothing, or a group
             belongs to another dimension.
         AmbiguousEntityError: A name could mean more than one entity.
-        UnsupportedQueryError: A group holds an aggregate code, or EU
-            Institutions (918) with a provider that was an EU member in one of
-            ``years``, or two groups share a name.
+        UnsupportedQueryError: A group holds an aggregate code, or two groups
+            share a name.
     """
     _check_dimension(dimension)
     year_list = tuple(sorted(set(years)))
@@ -211,13 +208,15 @@ def resolve_group(
     that year. Any other group holds every member in every year. Nested
     groups contribute their members.
 
+    A group may hold EU Institutions (918) and EU members. Whether their
+    total counts money twice depends on the indicator, so
+    ``_combine.combine`` decides.
+
     Raises:
         UnknownEntityError: A member matched nothing, or the group belongs to
             another dimension.
         AmbiguousEntityError: A member's name could mean more than one entity.
-        UnsupportedQueryError: The group holds an aggregate code, or EU
-            Institutions (918) with a provider that was an EU member in one of
-            ``years``.
+        UnsupportedQueryError: The group holds an aggregate code.
     """
     _check_dimension(dimension)
     if dimension not in _GROUP_DIMENSIONS:
@@ -227,7 +226,7 @@ def resolve_group(
         year: frozenset(code for code in codes if group.is_member(code, year))
         for year in sorted(set(years))
     }
-    _check_group_codes(group, dimension, codes, members)
+    _check_aggregates(group, dimension, codes)
     return ResolvedGroup(name=group.name, dimension=dimension, members=members)
 
 
@@ -262,36 +261,14 @@ def _member_codes(
     return frozenset(codes)
 
 
-def _check_group_codes(
-    group: Group,
-    dimension: Dimension,
-    codes: frozenset[Code],
-    members: Mapping[int, frozenset[Code]],
+def _check_aggregates(
+    group: Group, dimension: Dimension, codes: frozenset[Code]
 ) -> None:
     aggregates = sorted(str(code) for code in codes if is_aggregate(dimension, code))
     if aggregates:
         raise UnsupportedQueryError(
             f"group {group.name!r} holds OECD aggregates {', '.join(aggregates)}, "
             "which already contain their members; pass an aggregate code on its own"
-        )
-    if dimension != "provider":
-        return
-    # A dated group may hold 918 and a member in different years only.
-    clashes = sorted(
-        {
-            code
-            for year, held in members.items()
-            if EU_INSTITUTIONS in held
-            for code in held & eu_members([year])
-        },
-        key=str,
-    )
-    if clashes:
-        raise UnsupportedQueryError(
-            f"group {group.name!r} holds EU Institutions (918) and providers "
-            f"{clashes}, which were EU members in a year of the call; members "
-            "report their EU contributions as their own multilateral ODA, so "
-            "their sum counts that money twice"
         )
 
 

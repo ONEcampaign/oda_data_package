@@ -120,9 +120,9 @@ DAC1_LINES = Binding(
         NotIn(
             "line",
             NON_MONEY_LINES,
-            reason="lines 2, 3, 4 and 11002 are percentages of GNI and "
-            "population, not money. ODA as a share of GNI is "
-            "oecd.dac1.oda_gni_ratio",
+            reason="lines 2, 3 and 11002 are percentages of GNI and line 4 is "
+            "population. ODA as a share of GNI is oecd.dac1.oda_gni_ratio, and "
+            "population is oecd.dac1.population",
         ),
     ),
     members_hold_eu_share=True,
@@ -131,7 +131,8 @@ DAC1_LINES = Binding(
 _DAC_COUNTRIES = "dac_countries"
 _NAMED_DIMENSIONS: tuple[Dimension, ...] = ("provider", "year", "flow")
 #: GNI is one flow (1140) on every basis, so it has no flow to split by. ODA
-#: over GNI has none either, since GNI does not share its numerator's flow.
+#: over GNI has none either, since GNI does not share its numerator's flow, and
+#: neither has population, also published under net flows alone.
 _GNI_DIMENSIONS: tuple[Dimension, ...] = ("provider", "year")
 
 
@@ -246,6 +247,20 @@ GNI = Indicator(
     default_providers=_DAC_COUNTRIES,
 )
 
+POPULATION = Indicator(
+    id="oecd.dac1.population",
+    name="Population",
+    description="The provider's population in millions (line 4), published "
+    "under net flows. It is a count of people, so it takes no unit=, and a "
+    "group's total is its members' sum.",
+    binding=DAC1,
+    kind=Sum(lines={"net_disbursement": 4}),
+    dimensions=_GNI_DIMENSIONS,
+    default_basis="net_disbursement",
+    default_providers=_DAC_COUNTRIES,
+    measure="people",
+)
+
 ODA_GNI_RATIO = Indicator(
     id="oecd.dac1.oda_gni_ratio",
     name="ODA as a share of GNI",
@@ -310,6 +325,7 @@ INDICATORS: tuple[Indicator, ...] = (
     DEVELOPMENT_AWARENESS,
     PRIVATE_SECTOR_INSTRUMENTS,
     GNI,
+    POPULATION,
     ODA_GNI_RATIO,
     LINES,
 )

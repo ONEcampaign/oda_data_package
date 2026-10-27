@@ -250,3 +250,22 @@ def test_current_eur_before_the_ecu_series_raises(dac1: OecdTables) -> None:
             providers=[302, FRANCE],
             unit=oda.current("EUR"),
         )
+
+
+def test_population_is_the_dac1_row_and_the_dac_total_sums_it(
+    dac1: OecdTables,
+) -> None:
+    """Expected: DAC1 line 4 under net flows, millions of people: France's
+    own row in each year, and provider 20001's row for the DAC countries'
+    total in every year from 1960, the last year included."""
+    published = _lines(dac1, line=4, flow=1140)
+    france = oda.get("oecd.dac1.population", providers=FRANCE)
+    dac = oda.get("oecd.dac1.population", providers=oda.total(oda.groups.dac_countries))
+
+    assert france["currency"].isna().all()
+    assert dict(zip(france["year"], france["value"], strict=True)) == pytest.approx(
+        {year: value for (code, year), value in published.items() if code == FRANCE}
+    )
+    assert dict(zip(dac["year"], dac["value"], strict=True)) == pytest.approx(
+        {year: value for (code, year), value in published.items() if code == DAC_TOTAL}
+    )

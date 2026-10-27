@@ -241,3 +241,76 @@ def test_multilateral_outflows_have_no_grant_equivalent(tables: OecdTables) -> N
     assert round(eu[1] / 1000, 1) == 40.0
     with pytest.raises(oda.UnsupportedQueryError, match="grant_equivalent"):
         oda.get("oecd.crs.multilateral_oda", years=2023, basis="grant_equivalent")
+
+
+def _by_provider(tables: OecdTables, where: str) -> dict[str, float]:
+    """2022 gross and net disbursements of the CRS rows ``where`` keeps, by
+    provider, as ``(gross, net)``."""
+    rows = (
+        tables.cursor(("crs",))
+        .sql(
+            "SELECT provider, sum(disbursement), "
+            "sum(coalesce(disbursement, 0) - coalesce(received, 0)) FROM crs "
+            f"WHERE year = 2022 AND {where} "
+            "AND (disbursement IS NOT NULL OR received IS NOT NULL) GROUP BY ALL"
+        )
+        .fetchall()
+    )
+    return {str(code): (gross, net) for code, gross, net in rows}
+
+
+@pytest.mark.parametrize(
+    ("basis", "column"), [("gross_disbursement", 0), ("net_disbursement", 1)]
+)
+def test_private_development_finance_is_category_30_of_private_donors(
+    tables: OecdTables, basis: str, column: int
+) -> None:
+    """Expected: 2022 category 30 rows of every provider, raw. The private
+    donors are exactly the providers whose rows the default reads; the few
+    official providers with category 30 rows answer when named."""
+    expected = _by_provider(tables, "category = 30")
+    private = {
+        str(code)
+        for code in resolve_group(
+            oda.groups.private_donors, "provider", years=(2022,)
+        ).members[2022]
+    }
+    default = oda.get(
+        "oecd.crs.private_development_finance",
+        years=2022,
+        by=["provider"],
+        basis=basis,
+    )
+    named = oda.get(
+        "oecd.crs.private_development_finance",
+        years=2022,
+        providers=sorted(int(code) for code in set(expected) - private),
+        by=["provider"],
+        basis=basis,
+    )
+    found = dict(zip(default["provider"], default["value"], strict=True))
+    found |= dict(zip(named["provider"], named["value"], strict=True))
+
+    assert set(default["provider"]) == set(expected) & private
+    assert len(named) > 0
+    assert found == pytest.approx(
+        {code: pair[column] for code, pair in expected.items()}, rel=1e-9
+    )
+
+
+@pytest.mark.parametrize(
+    ("basis", "column"), [("gross_disbursement", 0), ("net_disbursement", 1)]
+)
+def test_multilateral_oof_is_category_21_multilateral_outflows(
+    tables: OecdTables, basis: str, column: int
+) -> None:
+    """Expected: 2022 category 21, ``bi_multi`` 4 rows by provider, raw. Every
+    provider with such rows is a multilateral organisation."""
+    expected = _by_provider(tables, "category = 21 AND bi_multi = 4")
+    df = oda.get("oecd.crs.multilateral_oof", years=2022, by=["provider"], basis=basis)
+    multilateral = {str(code) for code in oda.groups.multilateral.members}
+
+    assert set(expected) <= multilateral
+    assert dict(zip(df["provider"], df["value"], strict=True)) == pytest.approx(
+        {code: pair[column] for code, pair in expected.items()}, rel=1e-9
+    )

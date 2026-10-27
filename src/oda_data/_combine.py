@@ -13,13 +13,17 @@ Arrow table in the result shape. It builds on the compiler's stages in
   same rows over each group's members in each year. Unless the call allows
   partial totals, a total is null in a year in which a member is missing by
   either of two rules. A member that reported to the table in an earlier year
-  has stopped, with no row in that year or any later one (``_gaps``). Or, in
+  has stopped, with no row in that year or any later one (``stopped_years``). Or, in
   the table's last year, a member that has rows for the indicator in the year
   before has none, as when a preliminary year holds only some members' detail
   lines (``_dropped``). A member that has not yet reported, or that skips a
   year and reports again later, counts as zero. A ratio applies the first
   rule to its numerator's and its denominator's own rows, which covers the
   second.
+- A ``Derived`` member's own row is null by the second rule, applied to each
+  part, unless the call allows partial totals: a member that reports total
+  ODA in the last year but not yet the refugee costs it reported the year
+  before has a core ODA row that reads as complete (``_nulled_members``).
 
 ``records`` returns stage 2 for ``Sum`` and ``Method`` indicators.
 
@@ -56,6 +60,7 @@ from oda_data._names import (
     aggregate_codes,
     eu_members,
     is_aggregate,
+    names,
 )
 
 if TYPE_CHECKING:
@@ -93,11 +98,18 @@ class Combined:
         partial: For a sum across providers that reads the table's last year,
             that year and the number of the summed providers that reported
             the year before and have not reported it; ``None`` otherwise.
+        nulled: For a ``Derived`` indicator, the table's last year and the
+            providers whose own row is null in it, since a part they reported
+            the year before is missing; ``None`` when no row is nulled.
+        notes: The notes of each ``Method`` part on its rows, such as the EU
+            members missing from 918's GNI.
     """
 
     table: pa.Table
     fallback_providers: frozenset[int]
     partial: tuple[int, int] | None = None
+    nulled: tuple[int, frozenset[Code]] | None = None
+    notes: tuple[str, ...] = ()
 
 
 def tables_for(indicator: Indicator, /) -> tuple[TableName, ...]:
@@ -142,8 +154,9 @@ def combine(
         UnsupportedQueryError: ``oda.total()`` without its dimension in
             ``by``; a total over a group holding an aggregate code; an
             aggregate code summed with other codes; EU Institutions (918)
-            summed with EU members it names, on a binding whose members' figures
-            hold their EU share; a code the indicator's row filters leave out;
+            summed with EU members it names, or a total over a group holding
+            both in one year, on a binding whose members' figures hold their EU
+            share; a code the indicator's row filters leave out;
             ``unit=`` on a ratio; a basis the indicator lacks.
         BasisRangeError: The call asks for years before the basis starts.
         MissingFactorError: A provider-year lacks a factor.
@@ -157,18 +170,19 @@ def combine(
     if isinstance(indicator.kind, Ratio):
         rows = _ratio_rows(cursor, indicator, call)
         result = _assemble(cursor, indicator, call, rows, ratio=True)
-        return Combined(result, frozenset())
+        return Combined(result, frozenset(), notes=_notes(cursor, indicator, call))
 
     stage1 = _stage1(cursor, indicator, call)
-    stage2, fallback = converted(cursor, stage1, call, factors)
+    stage2, fallback = _in_units(cursor, indicator, stage1, call, factors)
     rows = _materialize(cursor, stage2)
-    table = _assemble(cursor, indicator, call, rows, ratio=False)
+    nulled = _nulled_members(cursor, indicator, call, rows)
+    table = _assemble(cursor, indicator, call, rows, ratio=False, nulled=nulled)
     partial = _partial_sum(cursor, indicator, call, rows)
     if partial is not None and not call.allow_partial:
         warnings.warn(
             f"{indicator.id}: {partial_text(*partial)}", OdaDataWarning, stacklevel=2
         )
-    return Combined(table, fallback, partial)
+    return Combined(table, fallback, partial, nulled, _notes(cursor, indicator, call))
 
 
 def partial_text(year: int, count: int, /) -> str:
@@ -178,6 +192,25 @@ def partial_text(year: int, count: int, /) -> str:
         f"{year} is partial: {count} {providers} that reported {year - 1} "
         f"{'has' if count == 1 else 'have'} not reported {year}, so its sum "
         "covers only those that have; add 'provider' to by to see who reported"
+    )
+
+
+def nulled_text(year: int, codes: Iterable[Code], /, *, listed: int) -> str:
+    """The note on providers whose own row is null in a partial last year.
+
+    It names the first ``listed`` providers, in order of name, and counts the
+    rest.
+    """
+    known = names("provider")
+    labels = sorted(f"{known.get(code, code)} ({code})" for code in codes)
+    have = "has" if len(labels) == 1 else "have"
+    shown = ", ".join(labels[:listed])
+    if len(labels) > listed:
+        shown += f" and {len(labels) - listed} more"
+    return (
+        f"{year} rows are null for {shown}, which reported a part "
+        f"of the indicator in {year - 1} and {have} not reported it in {year}; "
+        "allow_partial=True returns the partial values"
     )
 
 
@@ -198,7 +231,7 @@ def records(
 
     Raises:
         UnsupportedQueryError: The indicator is a ``Ratio`` or ``Derived``, or
-            its rows lack one of ``columns``; and as ``combine``.
+            its rows lack one of ``columns``. Also as ``combine``.
     """
     if isinstance(indicator.kind, Ratio | Derived):
         raise UnsupportedQueryError(
@@ -214,8 +247,29 @@ def records(
     stage1 = _stage1(cursor, indicator, call, columns=columns, keep_all=True)
     if isinstance(indicator.kind, Method):
         _check_columns(indicator, columns, stage1.columns)
-    stage2, fallback = converted(cursor, stage1, call, factors)
+    stage2, fallback = _in_units(cursor, indicator, stage1, call, factors)
     return Combined(stage2.to_arrow_table(), fallback)
+
+
+def _in_units(
+    cursor: DuckDBPyConnection,
+    indicator: Indicator,
+    rows: DuckDBPyRelation,
+    call: ResolvedCall,
+    factors: Factors,
+) -> tuple[DuckDBPyRelation, frozenset[int]]:
+    """Stage 2: money converted to the call's units, and a count, such as
+    population, left as it is with null unit columns."""
+    if indicator.is_money:
+        return converted(cursor, rows, call, factors)
+    select = [ident(name) for name in rows.columns if name != "value"]
+    select += [
+        "CAST(NULL AS VARCHAR) AS currency",
+        "CAST(NULL AS VARCHAR) AS prices",
+        "CAST(NULL AS BIGINT) AS base_year",
+        "value",
+    ]
+    return rows.select(", ".join(select)), frozenset()
 
 
 # Checks ----------------------------------------------------------------------
@@ -325,31 +379,67 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
                 f"so they cannot be summed with them; add {dimension!r} to by"
             )
 
-    # Named providers only, since a default is no sum the caller chose. Only a table
-    # whose members' figures hold their EU contribution counts it twice.
+    _check_eu_share(indicator, call)
+
+    if indicator.is_money:
+        if not call.units:
+            raise ValueError(f"{indicator.id} needs at least one unit")
+    elif call.units:
+        why = (
+            "a ratio, computed in current USD so that each provider's deflator "
+            "leaves it unchanged"
+            if isinstance(indicator.kind, Ratio)
+            else f"a count of {indicator.measure}, not money, so it has no "
+            "currency or prices"
+        )
+        raise UnsupportedQueryError(f"{indicator.id} is {why}; it takes no unit=")
+
+
+def _check_eu_share(indicator: Indicator, call: ResolvedCall) -> None:
+    """Refuse a sum of EU Institutions (918) with an EU member, on an
+    indicator whose members' figures hold their EU contribution.
+
+    Such a sum counts that money twice. Other tables, and indicators that
+    attribute 918's flows to its funders, sum them freely.
+    """
+    if not any(binding.members_hold_eu_share for binding in _bindings(indicator)):
+        return
+    reason = (
+        "which were EU members in a year of the call; members report their EU "
+        "contributions as their own multilateral ODA, so their sum counts that "
+        "money twice"
+    )
+
+    # Named providers only, since a default is no sum the caller chose.
     providers = call.members.get("provider", frozenset())
-    if (
-        "provider" in call.rows
-        and "provider" not in call.by
-        and any(binding.members_hold_eu_share for binding in _bindings(indicator))
-    ):
+    if "provider" in call.rows and "provider" not in call.by:
         clashes = sorted(providers & eu_members(call.years), key=str)
         if EU_INSTITUTIONS in providers and clashes:
             raise UnsupportedQueryError(
                 f"the providers summed hold EU Institutions (918) and {clashes}, "
-                "which were EU members in a year of the call; members report "
-                "their EU contributions as their own multilateral ODA, so their "
-                "sum counts that money twice; add 'provider' to by"
+                f"{reason}; add 'provider' to by"
             )
 
-    if isinstance(indicator.kind, Ratio):
-        if call.units:
+    # A dated group may hold 918 and a member in different years only.
+    groups = {group.name: group for group in call.groups}
+    for name in call.totals:
+        group = groups[name]
+        if group.dimension != "provider":
+            continue
+        clashes = sorted(
+            {
+                code
+                for year, held in group.members.items()
+                if EU_INSTITUTIONS in held
+                for code in held & eu_members([year])
+            },
+            key=str,
+        )
+        if clashes:
             raise UnsupportedQueryError(
-                f"{indicator.id} is a ratio, computed in current USD so that each "
-                "provider's deflator leaves it unchanged; it takes no unit="
+                f"group {name!r} holds EU Institutions (918) and providers "
+                f"{clashes}, {reason}"
             )
-    elif not call.units:
-        raise ValueError(f"{indicator.id} needs at least one unit")
 
 
 def _warn_caveats(indicator: Indicator, call: ResolvedCall) -> None:
@@ -499,6 +589,27 @@ def _stage1(
     )
 
 
+def _notes(
+    cursor: DuckDBPyConnection, indicator: Indicator, call: ResolvedCall
+) -> tuple[str, ...]:
+    """The notes of each ``Method`` part, read with the call the part reads
+    its rows with."""
+    match indicator.kind:
+        case Method(notes=notes) if notes is not None:
+            return notes(cursor, _read_call(indicator, call))
+        case Ratio():
+            return tuple(
+                note
+                for part, part_call in _ratio_parts(indicator, call)
+                for note in _notes(cursor, part, part_call)
+            )
+        case Derived(plus=plus, minus=minus):
+            return tuple(
+                note for part in (*plus, *minus) for note in _notes(cursor, part, call)
+            )
+    return ()
+
+
 def _method_rows(
     cursor: DuckDBPyConnection,
     indicator: Indicator,
@@ -644,7 +755,10 @@ def _assemble(
     rows: DuckDBPyRelation,
     *,
     ratio: bool,
+    nulled: tuple[int, frozenset[Code]] | None = None,
 ) -> pa.Table:
+    """Member rows, then each total. ``nulled`` names a year and the providers
+    whose member rows are null in it."""
     value = (
         "100 * coalesce(sum(num), 0) / nullif(sum(den), 0)" if ratio else "sum(value)"
     )
@@ -655,8 +769,25 @@ def _assemble(
     for dimension, codes in call.rows.items():
         if dimension in rows.columns:
             members = members.filter(_in(dimension, codes))
-    summed = _aggregate(members, keys, value)
-    tables = [_shape(summed, indicator, call, flag=_member_flag(call))]
+    if nulled is None:
+        summed = _aggregate(members, keys, value)
+        tables = [_shape(summed, indicator, call, flag=_member_flag(call))]
+    else:
+        year, codes = nulled
+        partial = (
+            f"bool_or(year = {year} AND provider IN ({literals(sorted(codes))})) "
+            "AS partial"
+        )
+        summed = _aggregate(members, keys, value, partial)
+        tables = [
+            _shape(
+                summed,
+                indicator,
+                call,
+                flag=_member_flag(call),
+                value="CASE WHEN partial THEN NULL ELSE value END",
+            )
+        ]
 
     groups = {group.name: group for group in call.groups}
     for name in call.totals:
@@ -741,7 +872,7 @@ def _unreported(
     years: list[int],
 ) -> set[int]:
     """Years in which a member has stopped reporting to one of the
-    indicator's tables (see ``_gaps``).
+    indicator's tables (see ``stopped_years``).
 
     Any row counts as reporting. On CRS, that is any row for the provider and
     year.
@@ -749,7 +880,7 @@ def _unreported(
     codes = _codes(group, years)
     missing: set[int] = set()
     for last in _last_reports(cursor, indicator, codes):
-        missing |= _gaps(group, years, last)
+        missing |= stopped_years(group, years, last)
     return missing
 
 
@@ -782,7 +913,7 @@ def _ratio_gaps(
     years: list[int],
 ) -> set[int]:
     """Years in which a member has stopped reporting a numerator, or a
-    denominator (see ``_gaps``).
+    denominator (see ``stopped_years``).
 
     Each part's own rows set the last year, so this holds ``_dropped``'s
     rule as well. A member with rows for a part in the year before the
@@ -799,7 +930,7 @@ def _ratio_gaps(
             .aggregate("provider, max(CAST(year AS BIGINT))", "provider")
             .fetchall()
         )
-        missing |= _gaps(group, years, dict(last))
+        missing |= stopped_years(group, years, dict(last))
     return missing
 
 
@@ -834,9 +965,19 @@ def _dropped_codes(
     over the reporters reads as the full total. A provider with no rows in the
     year before, such as one that reports debt relief in some years only,
     counts as zero. Rows are the indicator's rows under the call's filters.
+
+    A ``Derived`` indicator checks each part, since a member that reports
+    total ODA but not yet in-donor refugee costs has rows for their
+    difference that read as complete.
     """
     if not codes:
         return set()
+    if isinstance(indicator.kind, Derived):
+        parts = (*indicator.kind.plus, *indicator.kind.minus)
+        dropped: set[Code] = set()
+        for part in parts:
+            dropped |= _dropped_codes(cursor, part, call, codes, last)
+        return dropped
     history = _stage1(cursor, indicator, replace(call, years=None))
     seen = set(
         history.filter(
@@ -851,6 +992,39 @@ def _dropped_codes(
     }
 
 
+def _nulled_members(
+    cursor: DuckDBPyConnection,
+    indicator: Indicator,
+    call: ResolvedCall,
+    rows: DuckDBPyRelation,
+) -> tuple[int, frozenset[Code]] | None:
+    """The table's last year and the providers whose own ``Derived`` row is
+    null in it: those with a part they reported the year before and not in
+    it (``_dropped_codes``).
+
+    A member row is one provider's when ``provider`` is in ``by`` or the call
+    reads one provider. A sum over several is ``_partial_sum``'s. A part the
+    provider never reports, or skips in an earlier year, counts as zero. A
+    provider with no row in the last year is left out, since it has no row to
+    null.
+    """
+    if not isinstance(indicator.kind, Derived) or call.allow_partial:
+        return None
+    providers: frozenset[Code] = call.rows.get(
+        "provider", call.members.get("provider", frozenset())
+    )
+    if "provider" not in call.by and len(providers) != 1:
+        return None
+    last = _last_year(cursor, indicator)
+    if last is None:
+        return None
+    # A provider with no row in the last year has no row to null.
+    shown = rows.filter(f"year = {last}").select("provider").distinct().fetchall()
+    codes = sorted({code for (code,) in shown} & providers, key=str)
+    dropped = _dropped_codes(cursor, indicator, call, codes, last)
+    return (last, frozenset(dropped)) if dropped else None
+
+
 def _partial_sum(
     cursor: DuckDBPyConnection,
     indicator: Indicator,
@@ -862,7 +1036,7 @@ def _partial_sum(
     providers; ``None`` when no such provider exists.
 
     A provider has not reported when it has no row in the table that year,
-    the rule ``_gaps`` applies to group totals, or no row for the indicator
+    the rule ``stopped_years`` applies to group totals, or no row for the indicator
     under the call's filters (``_dropped_codes``). Group totals are null in
     such a year instead, and a result split by provider shows who reported.
     """
@@ -901,7 +1075,9 @@ def _codes(group: ResolvedGroup, years: list[int]) -> list[Code]:
     return sorted(set().union(*(group.members[year] for year in years)), key=str)
 
 
-def _gaps(group: ResolvedGroup, years: list[int], last: dict[Code, int]) -> set[int]:
+def stopped_years(
+    group: ResolvedGroup, years: list[int], last: dict[Code, int]
+) -> set[int]:
     """Years in which a member has stopped reporting: it reported in an
     earlier year and has no row in that year or any later year of the table.
 
@@ -938,7 +1114,7 @@ def _aggregate_sql(dimension: Dimension) -> str:
 def _aggregate(
     rows: DuckDBPyRelation, keys: list[str], value: str, extra: str = ""
 ) -> DuckDBPyRelation:
-    """Sum ``rows`` by ``keys``; ``value`` names the summed value and
+    """Sum ``rows`` by ``keys``. ``value`` names the summed value and
     ``extra`` adds aliased aggregates."""
     listed = ", ".join(map(ident, keys))
     aggregates = f"{value} AS value" + (f", {extra}" if extra else "")

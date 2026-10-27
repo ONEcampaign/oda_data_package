@@ -12,9 +12,10 @@ instead, from ``_data/group_membership.json``, where the founding members start
 in 1960, the first year of DAC1.
 
 EU Institutions (918) sit outside every built-in provider group except
-``multilateral``, and no provider group holds both 918 and a provider that was
-an EU member in a year of the call, since members report their EU
-contributions as their own multilateral ODA. ``_resolve`` refuses such a group.
+``multilateral``. On DAC1 and Multisystem, members report their EU
+contributions as their own multilateral ODA, so ``_combine`` refuses a total
+over a group holding 918 and a provider that was an EU member in a year of the
+call (``Binding.members_hold_eu_share``).
 The dates, the United Kingdom's 1973-2020 included, are under ``eu_members``
 in ``_data/group_membership.json``.
 """
@@ -34,7 +35,8 @@ from oda_data._names import is_aggregate, load_json, names
 if TYPE_CHECKING:
     from oda_data._types import Code, Dimension, Entity
 
-#: The first and last year of a membership, both included; ``None`` while it lasts.
+#: The first and last year of a membership, both included. The last is ``None``
+#: while the membership lasts.
 type Spell = tuple[int, int | None]
 
 #: The broad sector of a purpose code the sector lists miss.

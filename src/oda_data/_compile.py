@@ -46,6 +46,7 @@ from oda_data._model import (
     AnyOf,
     Between,
     Flow,
+    HasTag,
     Headline,
     In,
     IsNull,
@@ -512,18 +513,24 @@ def _condition(item: Filter) -> str:
         item = AnyOf((outside, replace(item, when=None)))
     match item:
         case In(column=column, values=values):
-            return f"{_col(column)} IN ({literals(values)})" if values else "FALSE"
+            sql = f"{_col(column)} IN ({literals(values)})" if values else "FALSE"
         case NotIn(column=column, values=values) if values:
-            return f"{_col(column)} NOT IN ({literals(values)})"
+            sql = f"{_col(column)} NOT IN ({literals(values)})"
         case NotIn(column=column) | NotNull(column=column):
-            return f"{_col(column)} IS NOT NULL"
+            sql = f"{_col(column)} IS NOT NULL"
         case IsNull(column=column):
-            return f"{_col(column)} IS NULL"
+            sql = f"{_col(column)} IS NULL"
         case Between(column=column, low=low, high=high):
-            return f"{_col(column)} BETWEEN {int(low)} AND {int(high)}"
+            sql = f"{_col(column)} BETWEEN {int(low)} AND {int(high)}"
+        case HasTag(column=column, tags=tags):
+            listed = f"[{literals(tags)}]"
+            sql = f"list_has_any(string_split({_col(column)}, ';'), {listed})"
         case AnyOf(filters=filters):
             either = " OR ".join(f"({_condition(f)})" for f in filters)
-            return f"({either})" if filters else "FALSE"
+            sql = f"({either})" if filters else "FALSE"
+        case _:
+            raise TypeError(f"unknown row filter {item!r}")
+    return sql
 
 
 def ident(name: str) -> str:

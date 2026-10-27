@@ -32,10 +32,12 @@ from typing import TYPE_CHECKING, BinaryIO, Protocol, Self, get_args
 import duckdb
 import pyarrow as pa
 
+from oda_data import _compat
 from oda_data._combine import (
     caveats_for,
     check_left_out,
     combine,
+    nulled_text,
     partial_text,
     tables_for,
     walk,
@@ -178,13 +180,20 @@ def find_indicator(indicator_id: str, /) -> Indicator:
 
     Raises:
         TypeError: ``indicator_id`` is not a string.
-        UnknownIndicatorError: No indicator has that id.
+        UnknownIndicatorError: No indicator has that id. For an oda-data 2.x
+            code or slug, the message and ``suggestions`` give the 3.0 call.
     """
     if not isinstance(indicator_id, str):
         raise TypeError(f"an indicator id is a string, not {indicator_id!r}")
     found = INDICATORS.get(indicator_id)
     if found is not None:
         return found
+    legacy = _compat.find(indicator_id)
+    if legacy is not None:
+        raise UnknownIndicatorError(
+            _compat.message(legacy),
+            suggestions=(legacy.call_text,) if legacy.call else (),
+        )
     near = difflib.get_close_matches(indicator_id, list(INDICATORS), n=3, cutoff=0.6)
     hint = f"; did you mean {', '.join(near)}?" if near else ""
     raise UnknownIndicatorError(
@@ -264,8 +273,8 @@ def _request(
     )
 
 
-#: Extra advice for a table that lacks a dimension: the argument that gives
-#: the same split on that table. ``DimensionError`` prints it beside the
+#: Extra advice for a table that lacks a dimension, naming the argument that
+#: gives the same split on that table. ``DimensionError`` prints it beside the
 #: indicator that has the dimension.
 _DIMENSION_HINTS: Mapping[tuple[TableName, Dimension], str] = {
     ("dac1", "finance_type"): "DAC1 splits grants from other flows with flows=, "
@@ -445,7 +454,7 @@ def _plan(
         defaults["basis"] = basis
     units = request.units
     if units is None:
-        units = () if isinstance(indicator.kind, Ratio) else (_USD,)
+        units = (_USD,) if indicator.is_money else ()
         if units:
             defaults["unit"] = "current USD"
 
@@ -959,6 +968,8 @@ class Context:
             releases,
             combined.fallback_providers,
             partial=combined.partial,
+            nulled=combined.nulled,
+            notes=combined.notes,
         )
         return _Result(table, schema, record, text)
 
@@ -1050,7 +1061,8 @@ class Query:
 
 # Explain ----------------------------------------------------------------------
 
-_TABLE_LABELS: Mapping[str, str] = {
+#: Each table's name as the OECD writes it.
+TABLE_LABELS: Mapping[str, str] = {
     "dac1": "DAC1",
     "dac2a": "DAC2A",
     "crs": "CRS",
@@ -1096,16 +1108,21 @@ def explain(
     fallback: frozenset[int],
     *,
     partial: tuple[int, int] | None = None,
+    nulled: tuple[int, frozenset[Code]] | None = None,
+    notes: tuple[str, ...] = (),
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
     ``partial`` is ``Combined.partial``: the table's last year and how many
     summed providers that reported the year before have not reported it.
+    ``nulled`` is ``Combined.nulled``: the table's last year and the providers
+    whose own row is null in it because a part has a trailing gap.
+    ``notes`` is ``Combined.notes``.
     """
     table = indicator.binding.table
     years = _result_years(result, plan.call)
     lines = [
-        f"{indicator.name} ({_TABLE_LABELS[table]}), "
+        f"{indicator.name} ({TABLE_LABELS[table]}), "
         f"{_basis_text(indicator, plan.call.basis, years)}."
     ]
     for _, dimension in _FILTERS:
@@ -1127,9 +1144,12 @@ def explain(
     )
     if partial is not None:
         lines.append(_sentence(partial_text(*partial)))
+    if nulled is not None:
+        lines.append(_sentence(nulled_text(*nulled, listed=_LISTED)))
+    lines.extend(_sentence(note) for note in notes)
     lines.append(_unit_text(indicator, plan, fallback))
     downloads = "; ".join(
-        f"{_TABLE_LABELS[name]} downloaded {release.downloaded:%Y-%m-%d}"
+        f"{TABLE_LABELS[name]} downloaded {release.downloaded:%Y-%m-%d}"
         for name, release in releases.items()
     )
     lines.append(f"{downloads}. {result.num_rows:,} rows.")
@@ -1285,6 +1305,8 @@ def _codes_text(dimension: Dimension, codes: frozenset[Code], table: TableName) 
 def _unit_text(indicator: Indicator, plan: _Plan, fallback: frozenset[int]) -> str:
     if isinstance(indicator.kind, Ratio):
         return "Per cent, computed in current USD."
+    if not indicator.is_money:
+        return f"Millions of {indicator.measure}, a count that takes no unit=."
     clauses: dict[tuple[str, int | None], list[str]] = {}
     for unit in plan.call.units:
         clauses.setdefault((unit.prices, unit.base_year), []).append(unit.currency)
@@ -1387,13 +1409,19 @@ def get(
         allow_partial: Accept partial sums. Without it a group total is null
             in a year in which a member has stopped reporting, and a sum
             across providers warns when the table's last year is partial.
-            With it the group total sums the members that reported, and the
-            sum across providers does not warn; ``explain()`` still names the
-            partial year. A member that has not yet reported, or that skips a
-            year and reports again, counts as zero either way.
+            A derived indicator's row for one provider, such as core ODA, is
+            null in the table's last year when the provider reported a part
+            the year before and has not reported it yet, and so is EU
+            Institutions' (918) GNI when an EU member stopped reporting GNI.
+            With it the group total sums the members that reported, those
+            rows hold the parts reported, and the sum across providers does
+            not warn; ``explain()`` still names the partial year. A member
+            that has not yet reported, or that skips a year and reports
+            again, counts as zero either way.
 
     Raises:
-        UnknownIndicatorError: No indicator has that id.
+        UnknownIndicatorError: No indicator has that id. An oda-data 2.x
+            code, such as ``"DAC1.10.1010"``, gives its 3.0 call.
         UnknownEntityError: A filter value matched nothing, or the table
             holds a policy-marker score with no label.
         AmbiguousEntityError: A name could mean more than one entity.

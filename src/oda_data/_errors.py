@@ -126,8 +126,13 @@ class ReleaseMismatchError(OdaDataError):
     code = "release_mismatch"
 
 
-class RemovedIn3Error(OdaDataError, AttributeError):
-    """A 2.x name that 3.0 removed. The message gives the replacement."""
+class RemovedIn3Error(OdaDataError, ImportError):
+    """A 2.x name that 3.0 removed. The message gives the replacement.
+
+    It subclasses ``ImportError`` because ``from oda_data import ODAData``
+    turns an ``AttributeError`` into a bare "cannot import name", which hides
+    the replacement.
+    """
 
     code = "removed_in_3"
 

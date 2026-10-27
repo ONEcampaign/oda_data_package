@@ -12,7 +12,7 @@ import pytest
 import oda_data as oda
 from oda_data import _context, _discover
 from oda_data._model import Binding, Caveat, Indicator, Ratio, Sum, Value, basis_lines
-from oda_data._registry import dac1, dac2a
+from oda_data._registry import dac1, dac2a, multisystem
 
 CRS = Binding(
     table="crs",
@@ -98,6 +98,11 @@ def test_describe_gives_a_ratio_its_numerators_bases_and_per_cent_values() -> No
     assert ratio.bases == oda.describe("oecd.dac1.total_oda").bases
     assert "Values: per cent" in repr(ratio)
     assert isinstance(REGISTRY["oecd.dac1.oda_gni_ratio"].kind, Ratio)
+
+
+def test_describe_names_the_table_as_the_oecd_writes_it() -> None:
+    info = _discover._info(multisystem.CORE_CONTRIBUTIONS)
+    assert repr(info).splitlines()[0].endswith("(version 1, table Multisystem)")
 
 
 def test_describe_unknown_id_suggests_close_ids() -> None:
@@ -222,6 +227,15 @@ def test_search_basis_for_a_named_line_is_one_its_indicators_read() -> None:
         assert (match.group(1) if match else "net_disbursement") in bases, entry.use
         checked += 1
     assert checked > 10
+
+
+def test_search_leaves_out_lines_the_lines_indicators_refuse() -> None:
+    listed = {(e.table, e.key) for e in _discover._entries() if e.kind == "line"}
+    refused = {("dac1", str(code)) for code in dac1.NON_MONEY_LINES}
+    refused |= {("dac2a", str(code)) for code in dac2a.NON_MONEY_LINES}
+    assert len(refused) == 6
+    assert not listed & refused
+    assert ("dac1", "1") in listed  # GNI is money, read on net flows
 
 
 def test_search_without_a_match_returns_the_empty_schema() -> None:

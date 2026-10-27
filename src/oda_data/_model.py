@@ -109,7 +109,7 @@ def _c(name: str, source: str, type_: ColumnType = "BIGINT") -> Column:
     return Column(name, source, type_)
 
 
-#: CRS policy-marker columns. Each holds 0, 1, 2 or null (not screened);
+#: CRS policy-marker columns. Each holds 0, 1, 2 or null (not screened), and
 #: desertification also holds 3.
 CRS_MARKERS: tuple[str, ...] = (
     "gender",
@@ -189,6 +189,7 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
                 _c("modality", "aid_t", "VARCHAR"),
                 _c("sector", "purpose_code"),
                 _c("channel", "channel_code"),
+                _c("keywords", "keywords", "VARCHAR"),
                 _c("commitment", "usd_commitment", "DOUBLE"),
                 _c("disbursement", "usd_disbursement", "DOUBLE"),
                 _c("received", "usd_received", "DOUBLE"),
@@ -271,6 +272,16 @@ class Between:
 
 
 @dataclass(frozen=True, slots=True)
+class HasTag:
+    """Rows whose ``column``, a list of tags separated by semicolons, holds one
+    of ``tags`` exactly, such as the CRS keyword ``#COVID-19`` in
+    ``"#COVID-19;DIGITALISATION-1"``. A null list holds no tag."""
+
+    column: str
+    tags: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class AnyOf:
     """Rows that match at least one of ``filters``, such as mitigation or
     adaptation."""
@@ -279,8 +290,8 @@ class AnyOf:
 
 
 #: A closed set of row filters over logical columns. Filters in a tuple all
-#: apply (AND); ``AnyOf`` expresses OR.
-type Filter = In | NotIn | IsNull | NotNull | Between | AnyOf
+#: apply (AND). ``AnyOf`` expresses OR.
+type Filter = In | NotIn | IsNull | NotNull | Between | HasTag | AnyOf
 
 
 def filter_columns(filters: tuple[Filter, ...]) -> Iterator[str]:
@@ -305,7 +316,7 @@ class Value:
         column: The value column, such as ``disbursement``.
         minus: A value column subtracted from ``column``. Net disbursements
             are ``Value("disbursement", minus="received")``. Either column's
-            null reads as 0, so a repayment with no disbursement counts; a row
+            null reads as 0, so a repayment with no disbursement counts. A row
             with both null has no value on the basis and is left out.
         rows: Filters that apply under this basis only.
         from_year: The first year the basis covers. Earlier years raise
@@ -329,7 +340,7 @@ class Flow:
         parts: Flows that split ``code``, such as 1121 (grants) and 1122
             (non-grants) of gross disbursements 1120. A call that filters
             ``flow`` reads the parts it names in place of ``code``, each part
-            its own row; a flow outside ``parts`` raises.
+            its own row. A flow outside ``parts`` raises.
         only_lines: Lines the table publishes under this flow alone, such as
             the grant-equivalent lines 11010 and 12000. Every other flow of
             the binding reads no row of them.
@@ -498,6 +509,17 @@ class MethodFunction(Protocol):
         ...
 
 
+class MethodNotes(Protocol):
+    """A function that describes a ``Method``'s rows for ``explain()``."""
+
+    def __call__(
+        self, cursor: DuckDBPyConnection, call: ResolvedCall, /
+    ) -> tuple[str, ...]:
+        """Return notes on the rows the method gives for ``call``, such as
+        the members missing from a sum, one sentence each; empty for none."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class Method:
     """An indicator whose stage 1 rows come from a function.
@@ -505,16 +527,24 @@ class Method:
     Args:
         function: The function, which follows ``MethodFunction``.
         tables: The tables the function reads.
+        notes: A function that describes the rows for ``explain()``, called
+            with the cursor and call ``function`` takes, or ``None`` for none.
     """
 
     function: MethodFunction
     tables: tuple[TableName, ...]
+    notes: MethodNotes | None = None
 
 
 type Kind = Sum | Ratio | Derived | Method
 
 
 # Indicators ------------------------------------------------------------------
+
+#: What an indicator's summed values count, amounts of money or people. Money
+#: converts between units and adds up with other money. A count of people does
+#: neither.
+type Measure = Literal["money", "people"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -561,13 +591,19 @@ class Indicator:
             and explain() and provenance give its ``reason``.
         caveats: Notes on what the indicator counts; see ``Caveat``.
         version: Bumped when a published number changes.
+        measure: What the summed values count. ``"money"`` for amounts of
+            money; ``"people"`` for a count, such as population, which a call
+            cannot convert with ``unit=`` and no ``Ratio`` or ``Derived``
+            indicator may combine with money. A ``Ratio`` reads money and
+            gives a per cent.
 
     Raises:
         ValueError: If ``rows`` names a column outside the table vocabulary,
             a provider exclusion on the binding or the indicator has no
             reason, the default basis is not in the binding, a ``Sum`` names a
-            dimension the binding lacks, or ``Sum.lines`` names a basis the
-            binding lacks.
+            dimension the binding lacks, ``Sum.lines`` names a basis the
+            binding lacks, or a ``Ratio`` or ``Derived`` indicator, or one of
+            its parts, is not money.
     """
 
     id: str
@@ -581,9 +617,23 @@ class Indicator:
     rows: tuple[Filter, ...] = ()
     caveats: tuple[Caveat, ...] = ()
     version: int = 1
+    measure: Measure = "money"
 
     def __post_init__(self) -> None:
         binding = self.binding
+        match self.kind:
+            case Ratio(numerator=numerator, denominator=denominator):
+                parts = (self, numerator, denominator)
+            case Derived(plus=plus, minus=minus):
+                parts = (self, *plus, *minus)
+            case _:
+                parts = ()
+        counts = [part.id for part in parts if part.measure != "money"]
+        if counts:
+            raise ValueError(
+                f"{self.id}: {counts} are not money, so a ratio or a sum over "
+                "money cannot use them"
+            )
         unknown = sorted(
             set(filter_columns(self.rows)) - VOCABULARY[binding.table].names
         )
@@ -605,6 +655,15 @@ class Indicator:
             stray = sorted(set(self.kind.lines) - set(binding.bases))
             if stray:
                 raise ValueError(f"{self.id}: lines name unknown bases {stray}")
+
+    @property
+    def is_money(self) -> bool:
+        """Whether the values are amounts of money that ``unit=`` converts.
+
+        A ratio is a per cent computed in current USD, and a count, such as
+        population, is no amount of money; neither takes ``unit=``.
+        """
+        return self.measure == "money" and not isinstance(self.kind, Ratio)
 
     @property
     def provider_exclusions(self) -> tuple[NotIn, ...]:
