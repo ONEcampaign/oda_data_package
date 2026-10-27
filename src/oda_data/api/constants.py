@@ -13,7 +13,14 @@ MarkerScore = Literal[
 ]
 
 PolicyMarker = Literal[
-    "gender", "environment", "nutrition", "disability", "biodiversity"
+    "gender",
+    "environment",
+    "climate_adaptation",
+    "climate_mitigation",
+    "biodiversity",
+    "desertification",
+    "disability",
+    "nutrition",
 ]
 
 CURRENCIES: dict[str, str] = {

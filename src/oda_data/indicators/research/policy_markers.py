@@ -1,5 +1,6 @@
+from typing import get_args
+
 import pandas as pd
-from pyarrow import ArrowInvalid
 
 from oda_data.api.constants import (
     EXTENDED_PROVIDER_PURPOSE_GROUPER,
@@ -8,18 +9,35 @@ from oda_data.api.constants import (
     Measure,
     PolicyMarker,
 )
-from oda_data.api.sources import translate_cols_and_filters_to_raw
 from oda_data.clean_data.common import convert_units
 from oda_data.clean_data.schema import ODASchema
 
+# CRS marker values kept by each score. Desertification also reports 3, a principal
+# objective that supports an action programme to combat desertification. The
+# not_screened and total_allocable scores have no values: not_screened keeps blank
+# markers and total_allocable keeps every row.
+_MARKER_SCORE_VALUES: dict[str, list[int] | None] = {
+    "significant": [1],
+    "principal": [2, 3],
+    "not_targeted": [0],
+    "total_targeted": [1, 2, 3],
+    "not_screened": None,
+    "total_allocable": None,
+}
 
-def _marker_score_map(marker: PolicyMarker | str) -> list[int] | None:
-    return {
-        "significant": [1],
-        "principal": [2],
-        "not_targeted": [0],
-        "total_targeted": [1, 2],
-    }.get(marker)
+
+def _marker_score_map(marker_score: MarkerScore | str) -> list[int] | None:
+    """Return the CRS marker values a score keeps, or None if it filters no values.
+
+    Raises:
+        ValueError: If the score is not a MarkerScore.
+    """
+    if marker_score not in _MARKER_SCORE_VALUES:
+        raise ValueError(
+            f"Unknown marker_score {marker_score!r}; "
+            f"expected one of {list(_MARKER_SCORE_VALUES)}"
+        )
+    return _MARKER_SCORE_VALUES[marker_score]
 
 
 def _marker_modality_filter() -> list[tuple[str, str, list]]:
@@ -63,18 +81,29 @@ def bilateral_policy_marker(
         providers (list | int | None, optional): Providers to filter the data. Defaults to None.
         recipients (list | int | None, optional): Recipients to filter the data. Defaults to None.
         measure (Measure | str, optional): Measure type. Defaults to "gross_disbursement".
-        marker (PolicyMarker): Policy marker. Options are: "gender", "environment", "nutrition",
-           "disability", "biodiversity"
-        marker_score (MarkerScore): Policy marker score.
-          Options are: "significant", "principal", "not_targeted", "not_screened", "total_targeted", "total_allocable".
-        oda_only (bool, optional): Whether to include only ODA-related data. Defaults to False.
+        marker (PolicyMarker): Policy marker. Options are: "gender", "environment",
+           "climate_adaptation", "climate_mitigation", "biodiversity", "desertification",
+           "disability", "nutrition".
+        marker_score (MarkerScore): Policy marker score. "principal", "significant",
+          "not_targeted" and "not_screened" (a blank marker) split allocable aid with no
+          overlap. "total_targeted" is principal plus significant, and "total_allocable"
+          is all allocable aid, screened or not.
+        oda_only (bool, optional): Whether to include only ODA flows. Defaults to True.
         currency (str, optional): Target currency. Defaults to "USD".
         base_year (int | None, optional): Base year for conversion. Defaults to None.
 
     Returns:
         pd.DataFrame: Dataframe with spending by purpose.
+
+    Raises:
+        ValueError: If the marker or the score is not one of the options above.
     """
     from oda_data.api.sources import CRSData
+
+    if marker not in get_args(PolicyMarker):
+        raise ValueError(
+            f"Unknown marker {marker!r}; expected one of {list(get_args(PolicyMarker))}"
+        )
 
     # Get the relevant measure
     measure = MEASURES["CRS"][measure]["column"]
@@ -108,25 +137,14 @@ def bilateral_policy_marker(
     crs = CRSData(providers=providers, years=years, recipients=recipients)
 
     # Read the data and group by provider and purpose
+    data = crs.read(
+        columns=[*grouper, measure, marker],
+        additional_filters=filters,
+        using_bulk_download=True,
+    )
 
-    cols = [*grouper, measure]
-
-    try:
-        data = crs.read(
-            columns=cols,
-            additional_filters=filters,
-            using_bulk_download=True,
-        )
-    except ArrowInvalid:
-        c, f = translate_cols_and_filters_to_raw(cols, filters)
-        data = crs.read(
-            columns=c,
-            additional_filters=f,
-            using_bulk_download=True,
-        )
-
-    # if marker is not_screened, we need to filter out the screened data
-    if marker == "not_screened":
+    # Keep only unscreened activities (blank marker)
+    if marker_score == "not_screened":
         data = data.loc[lambda d: d[marker].isna()]
 
     data = (
