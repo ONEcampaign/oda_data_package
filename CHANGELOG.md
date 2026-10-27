@@ -5,6 +5,25 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-10-27
+
+### Changed
+
+- **oda_data leaves logging configuration to the application.** Importing it adds no handlers and sets no levels. Each module logs under the `oda_data` logger, and records propagate to the root logger. An application that doesn't configure logging sees only oda_data's warnings and errors, where it used to see INFO messages on stderr. Closes #172.
+
+To turn oda_data's INFO messages back on:
+
+```python
+import logging
+
+logging.basicConfig()  # or the application's own setup
+logging.getLogger("oda_data").setLevel(logging.INFO)
+```
+
+### Deprecated
+
+- **The `oda_data.logger` module and its `setup_logger` function** are deprecated and will be removed in 3.0. Importing the module emits a `DeprecationWarning`. Its `logger` is the unconfigured `oda_data` package logger, and `setup_logger` still attaches an INFO handler and stops propagation for the logger it names. Configure `logging.getLogger("oda_data")` instead.
+
 ## [2.8.2] - 2026-10-16
 
 ### Fixed

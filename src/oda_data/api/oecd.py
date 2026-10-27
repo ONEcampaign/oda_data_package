@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -22,8 +23,9 @@ from oda_data.indicators.crs import crs_functions
 from oda_data.indicators.crs.common import group_data_based_on_indicator
 from oda_data.indicators.dac1 import dac1_functions
 from oda_data.indicators.dac2a import dac2a_functions
-from oda_data.logger import logger
 from oda_data.tools.groupings import provider_groupings, recipient_groupings
+
+logger = logging.getLogger(__name__)
 
 source_to_module = {
     "DAC1": dac1_functions,

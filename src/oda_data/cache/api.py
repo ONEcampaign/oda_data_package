@@ -6,6 +6,7 @@ http/raw caches into a single Scope-keyed view.
 
 import contextlib
 import json
+import logging
 import time
 import warnings
 from pathlib import Path
@@ -13,10 +14,11 @@ from typing import TYPE_CHECKING, TypeVar
 
 from oda_data.cache.config import oda_data_cache_root
 from oda_data.cache.types import CacheRecord, ReleaseInfo, Scope, _validate_scope
-from oda_data.logger import logger
 
 if TYPE_CHECKING:
     from oda_data.api.sources import Source
+
+logger = logging.getLogger(__name__)
 
 # Scopes that belong to oda_data's own disk layout.
 _ODA_DATA_SCOPES: tuple[str, ...] = ("bulk", "query")

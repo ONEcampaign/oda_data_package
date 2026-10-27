@@ -4,6 +4,7 @@ Priority: set_cache_root() override > ODA_DATA_CACHE_DIR env var >
 platformdirs default (user_cache_dir("oda-data") / __version__).
 """
 
+import logging
 import os
 import warnings
 from importlib.metadata import PackageNotFoundError
@@ -12,7 +13,7 @@ from pathlib import Path
 
 import platformdirs
 
-from oda_data.logger import logger
+logger = logging.getLogger(__name__)
 
 try:
     _PACKAGE_VERSION = _pkg_version("oda_data")

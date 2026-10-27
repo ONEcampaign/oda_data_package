@@ -1010,7 +1010,7 @@ wheels = [
 
 [[package]]
 name = "oda-data"
-version = "2.8.2"
+version = "2.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "cachetools" },

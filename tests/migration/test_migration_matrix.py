@@ -270,24 +270,15 @@ def test_disk_full_logs_warning(tmp_path: Path, caplog) -> None:
 
     disk_full = OSError(errno.ENOSPC, "No space left on device")
 
-    # The "oda_data" logger has propagate=False, so caplog's root handler doesn't
-    # see records on its descendant loggers. Attach caplog.handler directly.
-    _od_logger = logging.getLogger("oda_data")
-    _od_logger.addHandler(caplog.handler)
-    try:
-        with (
-            caplog.at_level(logging.WARNING),
-            patch("oda_data.cache._migrate.shutil.move", side_effect=disk_full),
-        ):
-            result = _migrate_tree(
-                src, dst, force=False, is_cross_volume=lambda *_: False
-            )
+    with (
+        caplog.at_level(logging.WARNING),
+        patch("oda_data.cache._migrate.shutil.move", side_effect=disk_full),
+    ):
+        result = _migrate_tree(src, dst, force=False, is_cross_volume=lambda *_: False)
 
-        assert result.status == "skipped_disk_full"
-        assert result.files_moved == 0
-        assert any("Disk full" in r.message for r in caplog.records)
-    finally:
-        _od_logger.removeHandler(caplog.handler)
+    assert result.status == "skipped_disk_full"
+    assert result.files_moved == 0
+    assert any("Disk full" in r.message for r in caplog.records)
 
     # Both trees should still be present (old has data, new may be empty dir).
     src_files = list(src.rglob("*.parquet"))
@@ -382,21 +373,15 @@ def test_auto_migrate_once_swallows_oserror(
     monkeypatch.setattr(cfg, "_AUTO_MIGRATED", False)
     monkeypatch.setattr("oda_data.cache._migrate.migrate", _raises_oserror)
 
-    # The "oda_data" logger has propagate=False; attach caplog.handler directly.
-    _od_logger = logging.getLogger("oda_data")
-    _od_logger.addHandler(caplog.handler)
-    try:
-        with caplog.at_level(logging.WARNING):
-            cfg._auto_migrate_once()  # must not raise
+    with caplog.at_level(logging.WARNING):
+        cfg._auto_migrate_once()  # must not raise
 
-        warning_messages = [
-            r.message for r in caplog.records if r.levelno == logging.WARNING
-        ]
-        assert any("auto-migration failed" in m for m in warning_messages), (
-            f"Expected a WARNING containing 'auto-migration failed'; got: {warning_messages}"
-        )
-    finally:
-        _od_logger.removeHandler(caplog.handler)
+    warning_messages = [
+        r.message for r in caplog.records if r.levelno == logging.WARNING
+    ]
+    assert any("auto-migration failed" in m for m in warning_messages), (
+        f"Expected a WARNING containing 'auto-migration failed'; got: {warning_messages}"
+    )
 
 
 def test_auto_migrate_once_propagates_runtimeerror(

@@ -12,6 +12,7 @@ Design follows pydeflate patterns for robustness and thread safety.
 import contextlib
 import hashlib
 import json
+import logging
 import os
 import socket
 import threading
@@ -27,8 +28,9 @@ import pandas as pd
 from cachetools import TTLCache
 from filelock import FileLock
 
-from oda_data.logger import logger
 from oda_data.tools.names.create_mapping import snake_to_pascal
+
+logger = logging.getLogger(__name__)
 
 # ISO format for timestamps
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
