@@ -4,7 +4,7 @@ This guide will help you install the ODA Data Package and get your first ODA dat
 
 ## Installation
 
-The package requires Python 3.11 or higher. Install it using pip:
+The package requires Python 3.12 or higher. Install it using pip:
 
 ```bash
 pip install oda-data --upgrade
@@ -142,3 +142,14 @@ print(f"Available currencies: {currencies}")
 \- **GBP**: British Pounds
 \- **CAD**: Canadian Dollars
 \- **LCU**: Local Currency Units (donor's own currency)
+
+## Logging
+
+oda_data logs under the `oda_data` logger and leaves logging configuration to your application. Unless you configure logging, Python shows only warnings and errors. To see its INFO messages, set the level on its logger:
+
+```python
+import logging
+
+logging.basicConfig()  # or the application's own setup
+logging.getLogger("oda_data").setLevel(logging.INFO)
+```

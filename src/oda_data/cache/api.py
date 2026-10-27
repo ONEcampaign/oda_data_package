@@ -6,17 +6,19 @@ http/raw caches into a single Scope-keyed view.
 
 import contextlib
 import json
+import logging
 import time
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from oda_data.cache.config import oda_data_cache_root
 from oda_data.cache.types import CacheRecord, ReleaseInfo, Scope, _validate_scope
-from oda_data.logger import logger
 
 if TYPE_CHECKING:
     from oda_data.api.sources import Source
+
+logger = logging.getLogger(__name__)
 
 # Scopes that belong to oda_data's own disk layout.
 _ODA_DATA_SCOPES: tuple[str, ...] = ("bulk", "query")
@@ -484,12 +486,9 @@ def release_info(dataset: "type[Source] | str") -> ReleaseInfo | None:
     )
 
 
-_T = TypeVar("_T")
-
-
-def _all_source_subclasses(base: type[_T]) -> list[type[_T]]:
+def _all_source_subclasses[T](base: type[T]) -> list[type[T]]:
     """Recursively collect all concrete subclasses of *base*."""
-    result: list[type[_T]] = []
+    result: list[type[T]] = []
     for sub in base.__subclasses__():
         result.append(sub)
         result.extend(_all_source_subclasses(sub))

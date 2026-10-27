@@ -1,4 +1,5 @@
 import json
+import logging
 import pathlib
 from functools import partial
 from pathlib import Path
@@ -12,7 +13,8 @@ from oda_data.clean_data.dtypes import set_default_types
 from oda_data.clean_data.schema import CRS_MAPPING, ODASchema
 from oda_data.clean_data.validation import validate_currency
 from oda_data.config import ODAPaths
-from oda_data.logger import logger
+
+logger = logging.getLogger(__name__)
 
 
 def clean_column_name(column_name: str) -> str:

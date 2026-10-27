@@ -1,3 +1,4 @@
+import logging
 import string
 import warnings
 from typing import Literal
@@ -6,7 +7,8 @@ import pandas as pd
 
 from oda_data.clean_data.schema import ODASchema
 from oda_data.config import ODAPaths
-from oda_data.logger import logger
+
+logger = logging.getLogger(__name__)
 
 CROSSWALK_FILE = "multilateral_channel_crosswalk.csv"
 

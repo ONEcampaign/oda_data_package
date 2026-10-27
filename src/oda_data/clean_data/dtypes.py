@@ -1,9 +1,11 @@
+import logging
 from collections import defaultdict
 
 import pandas as pd
 
 from oda_data.clean_data.schema import ODASchema
-from oda_data.logger import logger
+
+logger = logging.getLogger(__name__)
 
 FALLBACK_STRING_DTYPE = "string[pyarrow]"
 

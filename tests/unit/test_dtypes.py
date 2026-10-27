@@ -61,24 +61,13 @@ class TestSetDefaultTypesFlowCode:
         assert result[ODASchema.FLOW_CODE].isna().sum() == 1
 
     def test_fallback_is_logged(self, caplog):
-        """The fallback is explicit and logged, not silent.
-
-        The `oda_data` logger disables propagation to the root logger (see
-        oda_data.logger.setup_logger), so caplog's handler is attached to it
-        directly rather than relying on `caplog.at_level`.
-        """
+        """The fallback is explicit and logged, not silent."""
         import logging
-
-        from oda_data.logger import logger as oda_logger
 
         df = pd.DataFrame({ODASchema.FLOW_CODE: ["E01", "E02"]})
 
-        oda_logger.addHandler(caplog.handler)
-        caplog.set_level(logging.WARNING, logger="oda_data")
-        try:
+        with caplog.at_level(logging.WARNING):
             set_default_types(df)
-        finally:
-            oda_logger.removeHandler(caplog.handler)
 
         messages = [record.message for record in caplog.records]
         assert any(

@@ -1,3 +1,4 @@
+import logging
 import threading
 from abc import abstractmethod
 from collections.abc import Callable
@@ -27,7 +28,6 @@ from oda_data.clean_data.validation import (
     validate_years_providers_recipients,
 )
 from oda_data.config import ODAPaths
-from oda_data.logger import logger
 from oda_data.tools.cache import (
     BulkCacheEntry,
     BulkCacheManager,
@@ -39,6 +39,8 @@ from oda_data.tools.cache import (
     generate_param_hash,
     generate_projection_hash,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:

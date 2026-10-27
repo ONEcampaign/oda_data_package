@@ -504,13 +504,8 @@ class TestReleaseIdProbes:
             "oda_reader.download.download_tools.get_bulk_file_url_with_version",
             side_effect=ConnectionError("boom"),
         )
-        _od_logger = logging.getLogger("oda_data")
-        _od_logger.addHandler(caplog.handler)
-        try:
-            with caplog.at_level(logging.WARNING):
-                assert get_crs_release_id() is None
-        finally:
-            _od_logger.removeHandler(caplog.handler)
+        with caplog.at_level(logging.WARNING):
+            assert get_crs_release_id() is None
 
         warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert len(warnings) == 1
@@ -529,13 +524,8 @@ class TestReleaseIdProbes:
             "oda_reader.download.download_tools.get_bulk_file_url_with_version",
             side_effect=ConnectionError("boom"),
         )
-        _od_logger = logging.getLogger("oda_data")
-        _od_logger.addHandler(caplog.handler)
-        try:
-            with caplog.at_level(logging.WARNING):
-                assert get_multisystem_release_id() is None
-        finally:
-            _od_logger.removeHandler(caplog.handler)
+        with caplog.at_level(logging.WARNING):
+            assert get_multisystem_release_id() is None
 
         warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert len(warnings) == 1

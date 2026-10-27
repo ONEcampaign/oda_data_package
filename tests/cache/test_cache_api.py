@@ -234,11 +234,6 @@ def test_size_warns_above_5gb(
     """cache.size() logs one WARNING when total cache exceeds 5 GB."""
     import oda_data.cache.api as _api
 
-    # The "oda_data" logger has propagate=False, so caplog's root handler doesn't
-    # see records. Attach caplog.handler directly to it for the test.
-    _od_logger = logging.getLogger("oda_data")
-    _od_logger.addHandler(caplog.handler)
-
     # Reset and restore the module-level gate so other tests in the same process
     # are not affected by the flag being True after this test runs.
     original = _api._WARNED_STALE_5GB
@@ -272,7 +267,6 @@ def test_size_warns_above_5gb(
         assert len(second_warnings) == 0, "Should not warn twice in the same process"
     finally:
         _api._WARNED_STALE_5GB = original
-        _od_logger.removeHandler(caplog.handler)
 
 
 def test_size_rejects_unknown_scope_via_path(tmp_cache_root: Path) -> None:

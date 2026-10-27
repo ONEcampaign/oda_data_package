@@ -25,8 +25,6 @@ from oda_data.clean_data.channels import (
 from oda_data.clean_data.schema import ODASchema
 from oda_data.config import ODAPaths
 
-_OD_LOGGER = logging.getLogger("oda_data")
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -281,16 +279,10 @@ class TestAddMultilateralChannelCodes:
         assert len(result) == 3
 
     def test_logs_excluded_count_and_value_at_info(self, crs_rows, crosswalk, caplog):
-        # The "oda_data" logger has propagate=False (see oda_data/logger.py),
-        # so caplog's root handler never sees its records; attach directly.
-        _OD_LOGGER.addHandler(caplog.handler)
-        try:
-            with caplog.at_level(logging.INFO):
-                add_multilateral_channel_codes(
-                    crs_rows, on_unmapped="unallocated", crosswalk=crosswalk
-                )
-        finally:
-            _OD_LOGGER.removeHandler(caplog.handler)
+        with caplog.at_level(logging.INFO):
+            add_multilateral_channel_codes(
+                crs_rows, on_unmapped="unallocated", crosswalk=crosswalk
+            )
 
         assert "Dropped 1 excluded" in caplog.text
         assert "30.00" in caplog.text
