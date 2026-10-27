@@ -2,9 +2,10 @@
 Tests for policy marker filtering logic.
 
 This module tests the business logic for filtering bilateral policy marker data:
-- Marker score mapping (significant, principal, not_targeted, total_targeted)
+- Marker score mapping, including desertification's principal value 3
 - Modality filtering (specific list of 11 modalities)
 - Special "not_screened" handling
+- Rejection of unknown markers and scores
 """
 
 from unittest.mock import patch
@@ -35,10 +36,10 @@ class TestMarkerScoreMap:
         assert result == [1]
 
     def test_marker_score_map_principal(self):
-        """Test that 'principal' maps to [2]."""
+        """Test that 'principal' maps to [2, 3], since desertification also uses 3."""
         result = _marker_score_map("principal")
 
-        assert result == [2]
+        assert result == [2, 3]
 
     def test_marker_score_map_not_targeted(self):
         """Test that 'not_targeted' maps to [0]."""
@@ -47,16 +48,10 @@ class TestMarkerScoreMap:
         assert result == [0]
 
     def test_marker_score_map_total_targeted(self):
-        """Test that 'total_targeted' maps to [1, 2]."""
+        """Test that 'total_targeted' maps to [1, 2, 3]."""
         result = _marker_score_map("total_targeted")
 
-        assert result == [1, 2]
-
-    def test_marker_score_map_unknown_marker_returns_none(self):
-        """Test that unknown marker returns None."""
-        result = _marker_score_map("unknown_marker")
-
-        assert result is None
+        assert result == [1, 2, 3]
 
 
 # ============================================================================
@@ -114,7 +109,7 @@ _MEASURE = MEASURES["CRS"]["gross_disbursement"]["column"]
 
 @pytest.fixture
 def crs_with_markers():
-    """CRS rows with one blank, one 0, one 1 and one 2 score per marker."""
+    """CRS rows with a blank, a 0, a 1 and a principal score per marker."""
     base = {
         col: ["A02"] * 4 if col == ODASchema.FLOW_MODALITY else [1] * 4
         for col in _GROUPER
@@ -125,6 +120,7 @@ def crs_with_markers():
             ODASchema.FLOW_CODE: [11] * 4,
             "gender": [pd.NA, 0, 1, 2],
             "environment": [2, 1, pd.NA, 0],
+            "desertification": [pd.NA, 0, 1, 3],
             _MEASURE: [100.0, 200.0, 300.0, 400.0],
         }
     )
@@ -163,20 +159,16 @@ def _run(frame: pd.DataFrame, **kwargs) -> pd.DataFrame:
 class TestBilateralPolicyMarkerFiltering:
     """Integration tests for bilateral_policy_marker filtering logic."""
 
-    def test_oda_only_filter_adds_correct_flow_codes(self):
-        """Test that ODA-only filter adds correct flow codes [11, 13, 19, 60]."""
-        # We can't easily test the full function without mocking CRSData
-        # But we can verify the logic by checking what filters would be created
+    @pytest.mark.parametrize(("oda_only", "expected"), [(True, 600.0), (False, 1000.0)])
+    def test_oda_only_drops_non_oda_flows(self, crs_with_markers, oda_only, expected):
+        """Test that oda_only keeps flow codes 11, 13, 19 and 60 and drops OOF (14)."""
+        frame = crs_with_markers.assign(**{ODASchema.FLOW_CODE: [11, 13, 60, 14]})
 
-        # The function should add this filter when oda_only=True:
-        # (ODASchema.FLOW_CODE, "in", [11, 13, 19, 60])
+        result = _run(
+            frame, marker="gender", marker_score="total_allocable", oda_only=oda_only
+        )
 
-        # This is implicitly tested by the function implementation
-        # Let's verify the expected values exist
-        expected_oda_flow_codes = [11, 13, 19, 60]
-
-        # Since we can't run the full function without mocking, we document the expectation
-        assert set(expected_oda_flow_codes) == {11, 13, 19, 60}
+        assert result["value"].sum() == expected
 
     def test_not_screened_keeps_only_blank_marker_rows(self, crs_with_markers):
         """Test that 'not_screened' returns only rows whose marker is blank."""
@@ -184,7 +176,7 @@ class TestBilateralPolicyMarkerFiltering:
 
         assert result["value"].sum() == 100.0
 
-    @pytest.mark.parametrize("marker", ["gender", "environment"])
+    @pytest.mark.parametrize("marker", ["gender", "environment", "desertification"])
     def test_scores_sum_to_total_allocable(self, crs_with_markers, marker):
         """Test that the four exclusive scores add up to total_allocable (#170)."""
         parts = sum(
@@ -194,3 +186,14 @@ class TestBilateralPolicyMarkerFiltering:
         total = _run(crs_with_markers, marker=marker, marker_score="total_allocable")
 
         assert parts == total["value"].sum()
+
+    @pytest.mark.parametrize(
+        ("marker", "marker_score"),
+        [("gender", "principle"), ("gender", "Principal"), ("gendr", "principal")],
+    )
+    def test_unknown_marker_or_score_raises(
+        self, crs_with_markers, marker, marker_score
+    ):
+        """Test that a misspelt marker or score raises instead of returning all aid."""
+        with pytest.raises(ValueError):
+            _run(crs_with_markers, marker=marker, marker_score=marker_score)

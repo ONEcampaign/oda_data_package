@@ -120,7 +120,7 @@ from oda_data import bilateral_policy_marker
 data = bilateral_policy_marker(
     years=[2022],
     marker="gender",
-    marker_score="principal"  # Score = 2
+    marker_score="principal"  # Score = 2, or 3 for desertification
 )
 ```
 
@@ -148,7 +148,7 @@ from oda_data import bilateral_policy_marker
 data = bilateral_policy_marker(
     years=[2022],
     marker="gender",
-    marker_score="total_targeted"  # Score = 1 or 2
+    marker_score="total_targeted"  # Principal + significant
 )
 ```
 
@@ -168,7 +168,7 @@ data = bilateral_policy_marker(
 
 ### Not Screened
 
-Projects that weren't evaluated for the marker:
+Projects that weren't evaluated for the marker, which have a blank marker:
 
 ```python title="Projects Not Screened for Gender"
 from oda_data import bilateral_policy_marker
@@ -182,9 +182,9 @@ data = bilateral_policy_marker(
 
 ### Total Allocable
 
-All projects that could be screened (everything except not_screened):
+All allocable aid, screened or not. Principal, significant, not_targeted and not_screened add up to it:
 
-```python title="All Screenable ODA"
+```python title="All Allocable ODA"
 from oda_data import bilateral_policy_marker
 
 data = bilateral_policy_marker(
@@ -239,7 +239,7 @@ from oda_data import bilateral_policy_marker
 total_data = bilateral_policy_marker(
     years=[2022],
     marker="gender",
-    marker_score="total_allocable"  # All screenable aid
+    marker_score="total_allocable"  # All allocable aid, screened or not
 )
 total_oda = total_data["value"].sum()
 
@@ -262,6 +262,8 @@ print(f"Gender-targeted ODA in 2022: {share:.1f}% of total allocable bilateral O
 ```
 Gender-targeted ODA in 2022: 42.3% of total allocable bilateral ODA
 ```
+
+The OECD reports these shares against screened aid. To match it, subtract the `not_screened` total from the `total_allocable` total before dividing.
 
 ### Use Case: Track Climate Finance Trends
 

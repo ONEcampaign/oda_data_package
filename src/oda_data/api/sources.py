@@ -18,7 +18,6 @@ from oda_data.clean_data.common import (
     convert_dot_stat_to_data_explorer_codes,
 )
 from oda_data.clean_data.schema import (
-    CORE_CRS_MAPPING,
     AidDataSchema,
     ODASchema,
 )
@@ -40,20 +39,6 @@ from oda_data.tools.cache import (
     generate_param_hash,
     generate_projection_hash,
 )
-
-
-def translate_cols_and_filters_to_raw(
-    columns: list | None, filters: list[tuple] | None
-) -> tuple[list | None, list[tuple] | None]:
-    crs_mapping = {v: k for k, v in CORE_CRS_MAPPING.items()}
-    cols = [crs_mapping.get(col, col) for col in columns] if columns else columns
-    filters = (
-        [(crs_mapping.get(col, col), op, val) for col, op, val in filters]
-        if filters
-        else None
-    )
-
-    return cols, filters
 
 
 def _filters_to_query(filters: list[tuple[str, str, list]]) -> str:
