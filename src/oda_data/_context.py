@@ -1066,6 +1066,7 @@ class Context:
             combined.fallback_providers,
             notes=combined.notes,
             coverage=coverage,
+            unreported=combined.unreported_totals,
         )
         return _Result(table, schema, record, text)
 
@@ -1202,14 +1203,17 @@ def explain(
     *,
     notes: tuple[str, ...] = (),
     coverage: Mapping[TableName, frozenset[int]] | None = None,
+    unreported: frozenset[tuple[str, int]] = frozenset(),
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
     ``notes`` is ``Combined.notes``, the sentences on the result's incomplete
     cells and the notes of its ``Method`` parts. ``coverage`` gives, when the
     call names years, the years each table that holds the indicator's rows
-    holds: the binding table of each of its leaves. An empty result names its
-    basis without years.
+    holds: the binding table of each of its leaves. ``unreported`` is
+    ``Combined.unreported_totals``, the provider totals and years that hold
+    a part a member has not yet reported. An empty result names its basis
+    without years.
     """
     table = indicator.binding.table
     coverage = coverage or {}
@@ -1222,7 +1226,7 @@ def explain(
     for _, dimension in _FILTERS:
         selection = plan.selections.get(dimension)
         if selection is not None:
-            phrase = _selection_text(selection, plan.call, result, table)
+            phrase = _selection_text(selection, plan.call, result, table, unreported)
         elif dimension in plan.default_text:
             phrase = plan.default_text[dimension]
         else:
@@ -1413,7 +1417,11 @@ def _basis_text(
 
 
 def _selection_text(
-    selection: Selection, call: ResolvedCall, result: pa.Table, table: TableName
+    selection: Selection,
+    call: ResolvedCall,
+    result: pa.Table,
+    table: TableName,
+    unreported: frozenset[tuple[str, int]],
 ) -> str:
     parts = []
     in_groups: set[Code] = set()
@@ -1430,7 +1438,7 @@ def _selection_text(
             f"{counted}, plus their total" if group.shown else f"the total of {counted}"
         )
         coverage = (
-            _coverage(group.name, group.members, call, result)
+            _coverage(group.name, group.members, call, result, unreported)
             if selection.dimension == "provider"
             else None
         )
@@ -1448,9 +1456,16 @@ def _coverage(
     members: Mapping[int, frozenset[Code]],
     call: ResolvedCall,
     result: pa.Table,
+    unreported: frozenset[tuple[str, int]],
 ) -> str | None:
     """What a provider total over a group covers, or ``None`` when the result
-    has no row of it."""
+    has no row of it.
+
+    A year in which the total is null is one in which a member had stopped
+    reporting, or, where ``unreported`` holds the total and year, the
+    table's last year, in which a member has not yet reported a part it
+    reported the year before.
+    """
     codes = result["provider"].to_pylist()
     if name not in codes:
         return None
@@ -1470,10 +1485,35 @@ def _coverage(
         return (
             f"which covers all {len(_member_union(members))} in every year it returns"
         )
-    if years is None:
+    waiting = sorted(year for total, year in unreported if total == name)
+    return _empty_text(
+        None if years is None else sorted({years[i] for i in empty}), waiting
+    )
+
+
+def _empty_text(found: list[int] | None, waiting: list[int]) -> str:
+    """Why a provider total is null in the years ``found``, or in its one row
+    when the result has no year: a member had stopped reporting, or, in the
+    years of ``waiting``, has not yet reported a part it reported the year
+    before, in the words of ``last_year_warning``."""
+
+    def unreported(year: int) -> str:
+        return f"that reported a part in {year - 1} has not yet reported it in {year}"
+
+    if found is None:
+        if waiting:
+            return f"which is empty, because a member {unreported(waiting[0])}"
         return "which is empty, because a member has stopped reporting"
-    found = sorted({years[i] for i in empty})
-    return f"which is empty in {_span(found)}, when a member had stopped reporting"
+    stopped = [year for year in found if year not in waiting]
+    clauses = []
+    if stopped:
+        clauses.append(f"in {_span(stopped)}, when a member had stopped reporting")
+    clauses += [
+        f"in {year}, when a member {unreported(year)}"
+        for year in found
+        if year in waiting
+    ]
+    return "which is empty " + ", and ".join(clauses)
 
 
 def _codes_text(dimension: Dimension, codes: frozenset[Code], table: TableName) -> str:
@@ -1589,21 +1629,25 @@ def get(
         basis: The basis, or ``None`` for the indicator's default.
         unit: A unit or units. ``None`` is current USD. A ratio takes none.
         allow_partial: Accept partial values. Without it a group total is
-            null in a year in which a member has stopped reporting, and a sum
-            across providers warns when providers that reported the year
-            before have not reported the table's last year. A row for one
-            provider is null where a derived indicator, such as core ODA,
-            misses a part in the table's last year that the provider
-            reported the year before. A row is null, alone or summed with
-            other providers, where it holds EU Institutions' (918) GNI after
-            an EU member stopped reporting GNI, or 918's attributed ODA in
-            DAC1's last year before its funders report line 2102. A
-            ratio's group total is null when a member's numerator or
-            denominator is. With it the group total sums the members that
-            reported, those rows hold the parts reported, and the sum across
-            providers does not warn. ``explain()`` names the
-            incomplete values either way. A member that has not yet reported, or that
-            skips a year and reports again, counts as zero either way.
+            null in a year in which a member has stopped reporting, or has
+            not yet reported a part of the table's last year that it
+            reported the year before, and a sum across providers warns when
+            providers that reported the year before have not reported the
+            table's last year. A row for one provider is null where a
+            derived indicator, such as core ODA, misses a part in the
+            table's last year that the provider reported the year before. A
+            row is null, alone or summed with other providers, where it
+            holds EU Institutions' (918) GNI after an EU member stopped
+            reporting GNI, or 918's attributed ODA in DAC1's last year
+            before its funders report line 2102. A ratio's group total is
+            null when a member's numerator or denominator is. With it the
+            group total sums the members that reported, and in the table's
+            last year it warns and names the members it sums or those it
+            lacks, whichever list is shorter. Those rows hold the parts
+            reported, and the sum across providers does not warn.
+            ``explain()`` names the incomplete values either way. A member
+            that has not yet reported, or that skips a year and reports
+            again, counts as zero either way.
 
     Raises:
         UnknownIndicatorError: No indicator has that id. An oda-data 2.x

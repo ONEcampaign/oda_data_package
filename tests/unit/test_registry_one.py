@@ -9,6 +9,7 @@ GNI, and CRS keywords that hold the COVID-19 tag inside another tag.
 provider for any other unit.
 """
 
+import re
 import warnings
 from collections.abc import Iterator, Sequence
 from datetime import datetime
@@ -359,12 +360,14 @@ def test_a_member_that_drops_a_subtracted_line_nulls_the_last_year_total(
     refugee costs it reported in 2018, so its core ODA reads too high."""
     duo = Group("duo", [FRANCE, GERMANY])
     totals = core.get("one.dac1.core_oda", years=[2018, 2019], providers=total(duo))
-    partial = core.get(
-        "one.dac1.core_oda",
-        years=[2018, 2019],
-        providers=total(duo),
-        allow_partial=True,
-    )
+    short = "Line 1820, flow 1160 is short in the duo total, which lacks Germany (5)."
+    with pytest.warns(OdaDataWarning, match=re.escape(short)):
+        partial = core.get(
+            "one.dac1.core_oda",
+            years=[2018, 2019],
+            providers=total(duo),
+            allow_partial=True,
+        )
 
     assert _values(totals, "year")[(2018,)] == 102.0 + 200.0
     assert pd.isna(_values(totals, "year")[(2019,)])

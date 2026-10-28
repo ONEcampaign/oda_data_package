@@ -33,7 +33,9 @@ Arrow table in the result shape. It builds on the compiler's stages in
   a part the indicator subtracts that a provider has not yet reported. A
   provider the call shows on its own that has not yet reported a part of the
   table's last year warns too, when the call asks for that year, whether its
-  row for the part is null or it has none.
+  row for the part is null or it has none. When the call allows partial
+  values, a provider total that sums such a part for some of its members
+  warns, and names the members it sums or those it lacks.
   ``_completeness.outcomes`` decides each cell's effect. A ratio pairs each
   member's numerator with its denominator, and a member with no row on one
   side leaves its pair out of a total.
@@ -74,7 +76,9 @@ from oda_data._completeness import (
     normalised,
     not_yet_reported,
     outcomes,
+    reporters,
     reporting_gaps,
+    reporting_parts,
     table_last_year,
     unheld,
 )
@@ -112,6 +116,7 @@ if TYPE_CHECKING:
 
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
+    from oda_data._completeness import Gaps, Reported
     from oda_data._model import (
         Binding,
         Caveat,
@@ -155,12 +160,16 @@ class Combined:
         notes: Sentences for ``explain()`` on the incomplete cells, then the
             notes of each ``Method`` part, such as the EU members counted as
             zero in 918's GNI.
+        unreported_totals: Each provider total, by name, and year whose rows
+            hold a cell of a member that has not yet reported a part of the
+            table's last year.
     """
 
     table: pa.Table
     fallback_providers: frozenset[int]
     incomplete: tuple[Incomplete, ...] = ()
     notes: tuple[str, ...] = ()
+    unreported_totals: frozenset[tuple[str, int]] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +199,10 @@ class _Held:
             members in the table's last year that they have not yet
             reported and that no row of the total holds, since none of its
             members has a row for them.
+        short: For each provider total, the parts of the table's last year
+            that its members have not yet reported and that a row of the
+            total holds, with the members the row sums (``Effect.SHORT_TOTAL``).
+            The rows are null unless the call allows partial values.
     """
 
     own: frozenset[Incomplete] = frozenset()
@@ -200,6 +213,7 @@ class _Held:
     absent: frozenset[Incomplete] = frozenset()
     unsummed: frozenset[Incomplete] = frozenset()
     untotalled: tuple[tuple[str, frozenset[Incomplete]], ...] = ()
+    short: tuple[LastYearPart, ...] = ()
 
 
 def tables_for(indicator: Indicator, /) -> tuple[TableName, ...]:
@@ -289,7 +303,7 @@ def combine(
         reads=reads,
         last=last,
         subtracted=gaps.subtracted & cells,
-        fixed=gaps.fixed,
+        gaps=gaps,
     )
     parts = _last_year_parts(held, call, warned=True)
     for year in sorted({part.year for part in parts}):
@@ -301,6 +315,7 @@ def combine(
         fallback,
         tuple(sorted(incomplete, key=cell_order)),
         (*_incomplete_text(held, call), *read.notes),
+        frozenset((part.total, part.year) for part in held.short if part.total),
     )
 
 
@@ -489,6 +504,9 @@ class Effect(StrEnum):
     NULL = "null"
     #: A sum across providers keeps its value without the providers.
     SHORT = "short"
+    #: A provider total keeps the value of the members that have reported,
+    #: when the call allows partial values.
+    SHORT_TOTAL = "short_total"
     #: A sum across providers has no row for it.
     UNSUMMED = "unsummed"
     #: A provider total has no row for it.
@@ -499,13 +517,15 @@ class Effect(StrEnum):
 class LastYearPart:
     """A part of the table's last year that providers have not yet reported,
     such as ``"line 1820"`` or ``None`` for the whole year, its providers,
-    what it does to the result, and the provider total it does it to."""
+    what it does to the result, the provider total it does it to, and for
+    ``Effect.SHORT_TOTAL`` the members whose rows the total sums."""
 
     year: int
     part: str | None
     effect: Effect
     codes: frozenset[Code]
     total: str | None = None
+    summed: frozenset[Code] = frozenset()
 
 
 def _last_year_parts(
@@ -514,8 +534,9 @@ def _last_year_parts(
     """The parts of the table's last year that providers have not yet
     reported, in order of year and part, as ``explain()`` names them, or
     as the warning lists them when ``warned``: unless the call allows
-    partial values, a part that leaves a row null or a sum short; whatever
-    it allows, a part that leaves the result without a row."""
+    partial values, a part that leaves a row null or a sum short; when it
+    does, a part a provider total sums without; whatever it allows, a part
+    that leaves the result without a row."""
     sources: list[tuple[Iterable[Incomplete], Effect, str | None]] = [
         (held.absent, Effect.MISSING, None)
     ]
@@ -530,6 +551,8 @@ def _last_year_parts(
         for cells, effect, total in sources
         for year, part, codes in _by_part(cells)
     ]
+    if call.allow_partial:
+        found += held.short
     order = list(Effect)
     return sorted(
         found,
@@ -548,11 +571,48 @@ def _part_sentence(found: LastYearPart) -> str:
             )
         case Effect.SHORT:
             return partial_text(year, len(codes), part=part)
+        case Effect.SHORT_TOTAL:
+            return short_total_text(found)
         case Effect.UNSUMMED:
             return unsummed_text(year, len(codes), part=part, where="the sum")
         case Effect.UNTOTALLED:
             where = f"the {found.total} total"
             return unsummed_text(year, len(codes), part=part, where=where)
+
+
+def short_total_text(found: LastYearPart, /, *, listed: int = LISTED) -> str:
+    """The note on a provider total that sums a part of the table's last year
+    without the members that reported it the year before and have not
+    reported it yet (``Effect.SHORT_TOTAL``). It names whichever list is
+    shorter, the members it sums or those it lacks, the first ``listed`` of
+    them, and counts the rest."""
+    year, part = found.year, found.part
+    what = f"the {found.total} total" + ("" if part is None else f" of {part}")
+    count = len(found.codes)
+    have = "has" if count == 1 else "have"
+    if part is None:
+        before, now = f"{year - 1}", f"{year}"
+    else:
+        before, now = f"it in {year - 1}", f"it in {year}"
+    verb, members = _short_members(found, listed=listed)
+    text = f"{year} is partial: {what} {verb} {members}"
+    if verb == "lacks":
+        return f"{text}, which reported {before} and {have} not reported {now}"
+    lacking = "member" if count == 1 else "members"
+    return (
+        f"{text}, since {count} {lacking} that reported {before} {have} not "
+        f"reported {now}"
+    )
+
+
+def _short_members(found: LastYearPart, *, listed: int) -> tuple[str, str]:
+    """``("sums only", members)`` or ``("lacks", members)`` for a short
+    provider total, whichever names fewer members: those whose rows it sums
+    or those that have not yet reported the part. A tie names those it
+    lacks."""
+    if 0 < len(found.summed) < len(found.codes):
+        return "sums only", _providers_text(found.summed, listed=listed)
+    return "lacks", _providers_text(found.codes, listed=listed)
 
 
 def unsummed_text(
@@ -623,6 +683,9 @@ def _effect_text(found: LastYearPart, *, listed: int) -> str:
             return f"null for {_providers_text(found.codes, listed=listed)}"
         case Effect.SHORT:
             return f"left out of the sum for {counted}"
+        case Effect.SHORT_TOTAL:
+            verb, members = _short_members(found, listed=listed)
+            return f"short in the {found.total} total, which {verb} {members}"
         case Effect.UNSUMMED:
             return f"missing from the sum for {counted}"
         case Effect.UNTOTALLED:
@@ -1094,15 +1157,17 @@ def _assemble(
     reads: list[int],
     last: int | None,
     subtracted: frozenset[Incomplete],
-    fixed: Mapping[Dimension, Code],
+    gaps: Gaps,
 ) -> tuple[pa.Table, _Held]:
     """Member rows, then each total, and the incomplete cells behind each.
 
     ``years`` are the years ``rows`` hold, ``reads`` those and the table's
     last year ``last`` when the call asks for it, ``last`` the year of which
-    a sum across providers warns, and ``subtracted`` the cells of parts the
-    indicator subtracts. ``_completeness.outcomes`` decides what each cell
-    does; this applies it.
+    a sum across providers warns, ``subtracted`` the cells of parts the
+    indicator subtracts, and ``gaps`` what ``reporting_gaps`` read, for the
+    parts of a provider's gap (``unheld``, ``reporting_parts``) and the
+    members a total sums (``reporters``). ``_completeness.outcomes`` decides
+    what each cell does; this applies it.
     """
     always = [name for name in SPLIT_COLUMNS if name in rows.columns]
     keys = list(dict.fromkeys([*call.by, *always]))
@@ -1173,9 +1238,10 @@ def _assemble(
     groups = {group.key: group for group in call.groups}
     in_totals: set[Incomplete] = set()
     untotalled = []
+    short: list[LastYearPart] = []
     for key in call.totals:
         group = groups[key]
-        table, inside, missing = _total(
+        table, inside, missing, parts = _total(
             cursor,
             indicator,
             call,
@@ -1187,10 +1253,11 @@ def _assemble(
             nulling,
             waiting=waiting,
             split=split,
-            fixed=fixed,
+            gaps=gaps,
         )
         tables.append(table)
         in_totals |= inside
+        short += parts
         if missing:
             untotalled.append((group.name, missing))
     return pa.concat_tables(tables), replace(
@@ -1201,11 +1268,13 @@ def _assemble(
             members,
             summing,
             split=split,
-            fixed=fixed,
+            fixed=gaps.fixed,
             named=call.members,
+            dropped=gaps.dropped,
             providers=False,
         ),
         untotalled=tuple(untotalled),
+        short=tuple(short),
     )
 
 
@@ -1262,12 +1331,14 @@ def _total(
     *,
     waiting: set[Incomplete],
     split: tuple[Dimension, ...],
-    fixed: Mapping[Dimension, Code],
-) -> tuple[pa.Table, frozenset[Incomplete], frozenset[Incomplete]]:
+    gaps: Gaps,
+) -> tuple[pa.Table, frozenset[Incomplete], frozenset[Incomplete], list[LastYearPart]]:
     """One group's total rows, summed over its members in each year, the
     incomplete cells they hold, and for a provider total the cells of
-    ``waiting``, those not yet reported, of its members that no total row
-    holds at the grain of the ``split`` dimensions (``unheld``).
+    ``waiting``, those not yet reported, of its members at the grain of the
+    ``split`` dimensions (``reporting_parts``): those no total row holds,
+    and the parts of those its rows hold, with the members that reported
+    each (``_short_parts``).
 
     A provider total row holds the cells of the members it sums in its year
     whose keys match the row's, whether or not the member has rows, and is
@@ -1294,18 +1365,21 @@ def _total(
             cursor, inside.select(", ".join(unmarked)), members, providers=False
         )
         found = held(cursor, inside, members, providers=False)
-        missing = unheld(
-            cursor,
+        parts = reporting_parts(
             inside,
             [c for c in waiting if c.provider in group.members.get(c.year, ())],
             split=split,
-            fixed=fixed,
+            fixed=gaps.fixed,
             named=call.members,
-            providers=False,
+            dropped=gaps.dropped,
         )
+        totalled = held(cursor, inside, parts, providers=False)
+        missing = parts - totalled
+        short = _short_parts(totalled, gaps.reported, group)
     else:
         found = held(cursor, inside, nulling)
         missing = frozenset()
+        short = []
     summed = _aggregate(
         inside,
         [k for k in keys if k != dimension],
@@ -1320,7 +1394,37 @@ def _total(
         labels={dimension: group.name},
         value=_unless_partial(call),
     )
-    return table, found, missing
+    return table, found, missing, short
+
+
+def _short_parts(
+    cells: Iterable[Incomplete],
+    reported: Iterable[Reported],
+    group: ResolvedGroup,
+) -> list[LastYearPart]:
+    """Each part of ``cells``, cells of a provider total's members not yet
+    reported that the total's rows hold, with the members that lack it and
+    the members of ``group`` that reported it in the cell's year
+    (``reporters``)."""
+    reported = list(reported)
+    parts: dict[tuple[int, str | None], tuple[set[Code], set[Code]]] = {}
+    for cell in cells:
+        lacking, summed = parts.setdefault(
+            (cell.year, _part_text(cell)), (set(), set())
+        )
+        lacking.add(cell.provider)
+        summed |= reporters(reported, cell) & group.members.get(cell.year, set())
+    return [
+        LastYearPart(
+            year,
+            part,
+            Effect.SHORT_TOTAL,
+            frozenset(lacking),
+            group.name,
+            frozenset(summed - lacking),
+        )
+        for (year, part), (lacking, summed) in parts.items()
+    ]
 
 
 def _years(rows: DuckDBPyRelation) -> list[int]:

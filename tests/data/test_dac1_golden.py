@@ -8,11 +8,12 @@ constant-price rows. A revision by the OECD moves both sides at once.
 
 import math
 from collections.abc import Iterator
+from contextlib import nullcontext
 
 import pytest
 
 import oda_data as oda
-from oda_data._errors import MissingFactorError, OfflineCacheMissError
+from oda_data._errors import MissingFactorError, OdaDataWarning, OfflineCacheMissError
 from oda_data._resolve import resolve_group
 from oda_data._tables import OecdTables
 
@@ -258,6 +259,11 @@ def test_a_provider_that_has_not_yet_reported_a_line_warns_and_explains(
     assert text in q.explain().splitlines()
 
 
+#: The warning on a provider total that sums a part of the last year for
+#: some members alone.
+_SHORT_TOTAL = r"is short in the dac_countries total, which (sums only|lacks) "
+
+
 @pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
 def test_a_line_named_beside_another_gives_what_it_gives_alone(
     dac1: OecdTables, allow_partial: bool
@@ -270,15 +276,19 @@ def test_a_line_named_beside_another_gives_what_it_gives_alone(
     [(last,)] = dac1.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
 
     def by_line(lines: int | list[int]) -> dict[str, float]:
-        df = oda.get(
-            "oecd.dac1.lines",
-            years=last,
-            basis="grant_equivalent",
-            lines=lines,
-            providers=oda.total(oda.groups.dac_countries),
-            by=["provider", "year"],
-            allow_partial=allow_partial,
-        )
+        short = allow_partial and lines != 11010
+        with (
+            pytest.warns(OdaDataWarning, match=_SHORT_TOTAL) if short else nullcontext()
+        ):
+            df = oda.get(
+                "oecd.dac1.lines",
+                years=last,
+                basis="grant_equivalent",
+                lines=lines,
+                providers=oda.total(oda.groups.dac_countries),
+                by=["provider", "year"],
+                allow_partial=allow_partial,
+            )
         return dict(zip(df["line"], df["value"], strict=True))
 
     bundled = by_line([11010, 1820])
@@ -306,15 +316,20 @@ def test_a_flow_part_total_over_a_preliminary_year_is_null(
     members = resolve_group(dac, "provider", years=(last,)).members[last]
 
     def total(flows: int | list[int], *, allow_partial: bool) -> dict[str, float]:
-        df = oda.get(
-            "oecd.dac1.total_oda",
-            years=last,
-            basis="gross_disbursement",
-            flows=flows,
-            providers=oda.total(dac),
-            by=["provider", "year"],
-            allow_partial=allow_partial,
-        )
+        with (
+            pytest.warns(OdaDataWarning, match=_SHORT_TOTAL)
+            if allow_partial
+            else nullcontext()
+        ):
+            df = oda.get(
+                "oecd.dac1.total_oda",
+                years=last,
+                basis="gross_disbursement",
+                flows=flows,
+                providers=oda.total(dac),
+                by=["provider", "year"],
+                allow_partial=allow_partial,
+            )
         return dict(zip(df["flow"], df["value"], strict=True))
 
     reported = _lines(dac1, line=1010, flow=flow)

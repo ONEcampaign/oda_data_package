@@ -89,6 +89,12 @@ if TYPE_CHECKING:
     from oda_data._types import Code, Dimension, TableName
 
 
+#: A key a provider reported to a leaf's table in a year: the provider, the
+#: year, and the codes of the binding's ``reporting`` dimensions, as
+#: ``_dropped`` reads them.
+type Reported = tuple[Code, int, tuple[tuple[Dimension, Code], ...]]
+
+
 @dataclass(frozen=True, slots=True)
 class Gaps:
     """The cells ``reporting_gaps`` finds.
@@ -101,11 +107,21 @@ class Gaps:
             ``Sum`` leaf fixes in the table's last year, as the line and flow
             of in-donor refugee costs, where they agree. A cell of
             ``_dropped`` carries these keys.
+        dropped: The cells of ``_dropped`` alone, before ``normalised`` drops
+            those a cell for the whole provider-year covers. For a provider
+            with no row in the table's last year they are the keys it
+            reported the year before, which ``unheld`` reads.
+        reported: The keys each provider reported in the table's last year,
+            as ``_dropped`` reads them, or with no codes on a binding without
+            ``reporting`` (``_whole_years``), read for a call with a provider
+            total that allows partial values, which ``reporters`` reads.
     """
 
     cells: frozenset[Incomplete] = frozenset()
     subtracted: frozenset[Incomplete] = frozenset()
     fixed: Mapping[Dimension, Code] = field(default_factory=dict)
+    dropped: frozenset[Incomplete] = frozenset()
+    reported: frozenset[Reported] = frozenset()
 
 
 def reporting_gaps(
@@ -144,14 +160,24 @@ def reporting_gaps(
         checked = sorted({*years, last - 1})
     cells: set[Incomplete] = set()
     subtracted_cells: set[Incomplete] = set()
+    dropped_cells: set[Incomplete] = set()
+    reported: set[Reported] = set()
     for binding, codes in tables.values():
         if sums:
             cells |= _stopped(cursor, binding, codes, checked)
+    # Only a provider total that allows partial values names who reported.
+    named = call.allow_partial and any(key[0] == "provider" for key in call.totals)
     for leaf, leaf_call, subtracted, codes in reads:
-        dropped = _dropped(cursor, leaf, leaf_call, codes, years, releases)
-        cells |= dropped
+        if not leaf.binding.reporting:
+            if named:
+                reported |= _whole_years(cursor, leaf.binding, codes, years, releases)
+            continue
+        dropped, now = _dropped(cursor, leaf, leaf_call, codes, years, releases)
+        dropped_cells |= dropped
+        reported |= now
         if subtracted:
             subtracted_cells |= dropped
+    cells |= dropped_cells
     if sums and isinstance(indicator.kind, Ratio):
         for side, side_call in ratio_parts(indicator, call):
             codes = _counted(cursor, side, side_call)
@@ -163,6 +189,8 @@ def reporting_gaps(
         frozenset(cells),
         frozenset(subtracted_cells),
         _agreed_fixed(reads, last) if last is not None else {},
+        frozenset(dropped_cells),
+        frozenset(reported),
     )
 
 
@@ -308,10 +336,11 @@ def _dropped(
     codes: Iterable[Code],
     years: list[int],
     releases: Releases,
-) -> set[Incomplete]:
+) -> tuple[set[Incomplete], set[Reported]]:
     """The cells of providers with rows for the leaf in the year before its
     table's last year at a key of the binding's ``reporting`` dimensions, and
-    none at that key in the last year, when ``years`` holds the last year.
+    none at that key in the last year, when ``years`` holds the last year,
+    and the keys each provider has rows at in the last year.
 
     The last year of DAC1 is preliminary. Every member reports total ODA, but
     only a few report detail lines such as in-donor refugee costs, so a total
@@ -329,11 +358,9 @@ def _dropped(
     which a ``Method``'s rows allow.
     """
     binding = leaf.binding
-    if not binding.reporting:
-        return set()
     last = last_year(cursor, leaf, releases=releases)
     if last is None or last not in years:
-        return set()
+        return set(), set()
     grain: tuple[Dimension, ...] = ()
     fixed: dict[Dimension, Code] = {}
     presence = replace(call, years=(last - 1, last))
@@ -364,7 +391,7 @@ def _dropped(
     except BasisRangeError:
         # The basis starts in the last year, so no provider has its rows the
         # year before.
-        return set()
+        return set(), set()
     codes = sorted(codes, key=str)
     select = ["provider", "CAST(year AS BIGINT) AS year", *map(ident, grain)]
     seen = (
@@ -375,12 +402,39 @@ def _dropped(
     )
     before = {(key[0], *key[2:]) for key in seen if key[1] == last - 1}
     now = {(key[0], *key[2:]) for key in seen if key[1] == last}
-    cells = set()
-    for key in before - now:
+
+    def keyed(key: tuple) -> tuple[tuple[Dimension, Code], ...]:
         codes_at = fixed | dict(zip(grain, key[1:], strict=True))
-        keys = tuple((d, codes_at[d]) for d in binding.reporting if d in codes_at)
-        cells.add(Incomplete(key[0], last, frozenset({key[0]}), keys=keys))
-    return cells
+        return tuple((d, codes_at[d]) for d in binding.reporting if d in codes_at)
+
+    cells = {
+        Incomplete(key[0], last, frozenset({key[0]}), keys=keyed(key))
+        for key in before - now
+    }
+    return cells, {(key[0], last, keyed(key)) for key in now}
+
+
+def _whole_years(
+    cursor: DuckDBPyConnection,
+    binding: Binding,
+    codes: Iterable[Code],
+    years: list[int],
+    releases: Releases,
+) -> set[Reported]:
+    """The providers of ``codes`` with any row in the binding's table in its
+    last year, when ``years`` holds it, as keys without codes: a binding
+    without ``reporting``, as the CRS, has a provider report a year whole."""
+    last = table_last_year(cursor, binding, releases=releases)
+    if last is None or last not in years:
+        return set()
+    provider = ident(binding.dimensions["provider"])
+    year = ident(binding.dimensions["year"])
+    found = cursor.sql(
+        f"SELECT DISTINCT {provider} FROM {ident(binding.table)} "
+        f"WHERE CAST({year} AS BIGINT) = {last} "
+        f"AND {provider} IN ({literals(sorted(codes, key=str))})"
+    ).fetchall()
+    return {(code, last, ()) for (code,) in found}
 
 
 def _reported_rows(
@@ -487,20 +541,47 @@ def unheld(
     split: Iterable[Dimension],
     fixed: Mapping[Dimension, Code],
     named: Mapping[Dimension, frozenset[Code]],
+    dropped: Iterable[Incomplete],
     providers: bool = True,
 ) -> frozenset[Incomplete]:
     """The cells of ``cells`` that no row of ``rows`` holds, as ``held``
-    decides, at the grain of the ``split`` dimensions, a binding's
-    ``reporting``.
+    decides, at the grain of the ``split`` dimensions (``reporting_parts``),
+    with their keys in the order of ``split``."""
+    parts = reporting_parts(
+        rows, cells, split=split, fixed=fixed, named=named, dropped=dropped
+    )
+    return parts - held(cursor, rows, parts, providers=providers)
+
+
+def reporting_parts(
+    rows: DuckDBPyRelation,
+    cells: Iterable[Incomplete],
+    *,
+    split: Iterable[Dimension],
+    fixed: Mapping[Dimension, Code],
+    named: Mapping[Dimension, frozenset[Code]],
+    dropped: Iterable[Incomplete],
+) -> frozenset[Incomplete]:
+    """``cells``, cells a provider has not yet reported in the table's last
+    year, at the grain of the ``split`` dimensions, a binding's
+    ``reporting``, each with its keys in the order of ``split``.
 
     A cell without a key on a split dimension that ``rows`` carry stands for
     one cell at each of the dimension's codes, those the call names
-    (``named``) or else those ``rows`` hold, so a provider that reported nothing in a year can be held by a row of one line and not by
-    any row of another. On a split dimension ``rows`` do not carry, the cell
-    takes the code the call's basis fixes (``Gaps.fixed``), as ``_dropped``
-    keys its cells. Each of those cells that no row holds is returned with
-    its keys in the order of ``split``. A cell keeps its keys where ``rows``
-    hold no code of a dimension it lacks.
+    (``named``) or else those ``rows`` hold, so a provider that reported
+    nothing in a year can be held by a row of one line and not by any row of
+    another. On a split dimension ``rows`` do not carry, the cell takes the
+    code the call's basis fixes (``Gaps.fixed``), as ``_dropped`` keys its
+    cells. A cell keeps its keys where ``rows`` hold no code of a dimension
+    it lacks.
+
+    A cell for the whole provider-year stands only for the codes at which
+    its provider reported the year before: the cells ``_dropped`` found for
+    its provider and year (``dropped``, as ``Gaps.dropped``), read at the
+    grain the gap is reported at, those of them at the codes above where
+    ``rows`` hold any, and none where it has none. A provider with rows the
+    year before only under other lines is not missing a line it never
+    reported.
     """
     order = {d: i for i, d in enumerate(split)}
     codes = {
@@ -508,32 +589,65 @@ def unheld(
         for d in order
         if d in rows.columns
     }
-    parts: dict[Incomplete, list[Incomplete]] = {}
+    before: dict[tuple[Code, int], list[Incomplete]] = {}
+    for cell in dropped:
+        before.setdefault((cell.provider, cell.year), []).append(cell)
+    every: set[Incomplete] = set()
     for cell in cells:
-        keyed = dict(cell.keys)
-        free = [d for d in codes if d not in keyed]
-        if not all(codes[d] for d in free):
-            parts[cell] = [cell]
-            continue
-        known = [
-            (d, code)
-            for d, code in fixed.items()
-            if d in order and d not in keyed and d not in codes
-        ]
-        parts[cell] = [
-            replace(
-                cell,
-                keys=tuple(
-                    sorted(
-                        (*cell.keys, *known, *zip(free, combination, strict=True)),
-                        key=lambda key: order.get(key[0], -1),
-                    )
-                ),
-            )
-            for combination in product(*(codes[d] for d in free))
-        ]
-    every = {part for group in parts.values() for part in group}
-    return frozenset(every - held(cursor, rows, every, providers=providers))
+        if order and not cell.keys:
+            for part in before.get((cell.provider, cell.year), []):
+                if all(code in codes[d] for d, code in part.keys if codes.get(d)):
+                    every |= _split(part, codes, fixed, order)
+        else:
+            every |= _split(cell, codes, fixed, order)
+    return frozenset(every)
+
+
+def _split(
+    cell: Incomplete,
+    codes: Mapping[Dimension, list[Code]],
+    fixed: Mapping[Dimension, Code],
+    order: Mapping[Dimension, int],
+) -> set[Incomplete]:
+    """``cell`` at each code of the ``codes`` dimensions it has no key on,
+    and at the ``fixed`` code of each ``order`` dimension outside ``codes``,
+    as ``reporting_parts`` reads it, or ``cell`` alone where a dimension has
+    no code."""
+    keyed = dict(cell.keys)
+    free = [d for d in codes if d not in keyed]
+    if not all(codes[d] for d in free):
+        return {cell}
+    known = [
+        (d, code)
+        for d, code in fixed.items()
+        if d in order and d not in keyed and d not in codes
+    ]
+    return {
+        replace(
+            cell,
+            keys=tuple(
+                sorted(
+                    (*cell.keys, *known, *zip(free, combination, strict=True)),
+                    key=lambda key: order.get(key[0], -1),
+                )
+            ),
+        )
+        for combination in product(*(codes[d] for d in free))
+    }
+
+
+def reporters(reported: Iterable[Reported], cell: Incomplete) -> frozenset[Code]:
+    """The providers of ``reported`` (``Gaps.reported``) with rows in the
+    cell's year at each of its keys: the members a provider total sums at
+    the part a cell names, whichever columns the total's rows carry. A key
+    read at provider grain, as a ``Method``'s, holds a cell without keys
+    alone."""
+    keys = set(cell.keys)
+    return frozenset(
+        provider
+        for provider, year, codes in reported
+        if year == cell.year and keys <= set(codes)
+    )
 
 
 def _codes_in(rows: DuckDBPyRelation, dimension: Dimension) -> list[Code]:

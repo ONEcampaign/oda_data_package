@@ -520,7 +520,10 @@ def test_a_member_that_did_not_report_empties_the_total(ctx: Context) -> None:
     df = q.to_pandas()
 
     assert df["value"].isna().tolist() == [False, True]  # 55 is absent in 2018
-    assert "which is empty in 2018" in q.explain()
+    assert (
+        "The total of 2 pair, which is empty in 2018, when a member that reported "
+        "a part in 2017 has not yet reported it in 2018."
+    ) in q.explain().splitlines()
 
 
 @pytest.mark.parametrize(

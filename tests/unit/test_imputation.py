@@ -10,7 +10,9 @@ proxy. ``FakeFactors`` gives factor 1 for current USD and a different factor
 per provider for any other unit.
 """
 
+import re
 from collections.abc import Iterator
+from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 
@@ -22,6 +24,7 @@ import pytest
 from oda_data._context import Context
 from oda_data._errors import (
     ImputationConservationError,
+    OdaDataWarning,
     UnmappedChannelError,
     UnsupportedQueryError,
 )
@@ -630,7 +633,14 @@ def test_a_member_missing_from_the_last_year_nulls_the_total(
         multisystem.append(
             core(GERMANY, NDF_CHANNEL, 2022, 100.0, flow_type="Commitments")
         )
-    with context(_MIXED_CRS, multisystem) as ctx:
+    short = "All of 2022 is short in the pair total, which lacks Germany (5)."
+    warns = allow_partial and not commitment
+    with (
+        context(_MIXED_CRS, multisystem) as ctx,
+        pytest.warns(OdaDataWarning, match=re.escape(short))
+        if warns
+        else nullcontext(),
+    ):
         df = ctx.get(
             INDICATOR,
             years=2022,

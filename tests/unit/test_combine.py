@@ -5,7 +5,9 @@ Each table stands in for a view and carries the logical column names from
 per provider for other units.
 """
 
+import re
 from collections.abc import Iterator
+from contextlib import nullcontext
 from dataclasses import replace
 
 import duckdb
@@ -362,8 +364,13 @@ def test_a_member_that_drops_a_line_in_the_last_year_nulls_the_total(
     _preliminary_2019(con)
     g = group("pair", members, years=(2019,))
     resolved = with_total(g, shown=set(), years=(2019,), allow_partial=allow_partial)
+    short = "Line 1820 is short in the pair total, which lacks Belgium (2)."
+    warns = allow_partial and expected is not None
 
-    result = combine(con, IDRC, resolved, FakeFactors(), releases=UNCACHED).table
+    with (
+        pytest.warns(OdaDataWarning, match=re.escape(short)) if warns else nullcontext()
+    ):
+        result = combine(con, IDRC, resolved, FakeFactors(), releases=UNCACHED).table
 
     assert totals(result, "year") == {(2019,): expected}
 
@@ -871,7 +878,8 @@ def test_partial_ratio_sums_only_paired_members(
     g = group("trio", {1, 2, 3})
     resolved = with_total(g, shown=set(), units=(), allow_partial=True, years=(2018,))
 
-    result = combine(con, ODA_GNI, resolved, FakeFactors(), releases=UNCACHED).table
+    with pytest.warns(OdaDataWarning, match="short in the trio total, which lacks"):
+        result = combine(con, ODA_GNI, resolved, FakeFactors(), releases=UNCACHED).table
 
     assert totals(result, "year") == {(2018,): pytest.approx(100 * 33.0 / 3300.0)}
 
@@ -900,8 +908,15 @@ def test_ratio_total_pairs_members_that_have_reported(
     resolved = with_total(
         g, shown=set(), units=(), years=(year,), allow_partial=allow_partial
     )
+    # Provider 12 lacks ODA alone, so the total lacks its line 11010 alone.
+    short = "Line 11010 is short in the pair total, which lacks United Kingdom (12)."
 
-    result = combine(con, ODA_GNI, resolved, FakeFactors(), releases=UNCACHED).table
+    with (
+        pytest.warns(OdaDataWarning, match=re.escape(short))
+        if allow_partial
+        else nullcontext()
+    ):
+        result = combine(con, ODA_GNI, resolved, FakeFactors(), releases=UNCACHED).table
 
     assert totals(result, "year") == {(year,): pytest.approx(expected)}
 
