@@ -1005,8 +1005,7 @@ class Context:
         # The tables the call read, and DAC1 when a unit took its factors.
         releases: dict[str, Release] = {t: self._tables.release(t) for t in tables}
         held = Releases(self._store, {t: releases[t].token for t in tables})
-        held_years = frozenset[int]()
-        held_tables = tuple(dict.fromkeys(b.table for b in bindings(indicator)))
+        coverage: dict[TableName, frozenset[int]] = {}
         try:
             plan = _plan(cursor, request, tables, held)
             if "broad_sector" in plan.call.by:
@@ -1015,7 +1014,7 @@ class Context:
             if request.columns is None:
                 combined = combine(cursor, indicator, plan.call, factors, releases=held)
                 if plan.call.years is not None:
-                    held_years = _held_years(cursor, held_tables, held)
+                    coverage = _coverage_by_table(cursor, indicator, held)
             else:
                 combined = combined_records(
                     cursor,
@@ -1066,8 +1065,7 @@ class Context:
             releases,
             combined.fallback_providers,
             notes=combined.notes,
-            held_years=held_years,
-            held_tables=held_tables,
+            coverage=coverage,
         )
         return _Result(table, schema, record, text)
 
@@ -1203,23 +1201,23 @@ def explain(
     fallback: frozenset[int],
     *,
     notes: tuple[str, ...] = (),
-    held_years: frozenset[int] = frozenset(),
-    held_tables: tuple[TableName, ...] = (),
+    coverage: Mapping[TableName, frozenset[int]] | None = None,
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
     ``notes`` is ``Combined.notes``, the sentences on the result's incomplete
-    cells and the notes of its ``Method`` parts. ``held_tables`` are the
-    tables that hold the indicator's rows, those of its leaves, and
-    ``held_years`` the years every one of them holds, when the call names
-    years. An empty result names its basis without years.
+    cells and the notes of its ``Method`` parts. ``coverage`` gives, when the
+    call names years, the years each table that holds the indicator's rows
+    holds: the binding table of each of its leaves. An empty result names its
+    basis without years.
     """
     table = indicator.binding.table
-    years = _result_years(result, plan.call, held_years) if result.num_rows else None
+    coverage = coverage or {}
+    years = _result_years(result, plan.call, coverage) if result.num_rows else None
     lines = [
         f"{indicator.name} ({TABLE_LABELS[table]}), "
         f"{_basis_text(indicator, plan.call.basis, years)}.",
-        *_missing_text(result, plan.call, held_years, held_tables),
+        *_missing_text(result, plan.call, coverage),
     ]
     for _, dimension in _FILTERS:
         selection = plan.selections.get(dimension)
@@ -1303,60 +1301,91 @@ def _sentence(text: str) -> str:
 
 
 def _result_years(
-    result: pa.Table, call: ResolvedCall, held: frozenset[int]
+    result: pa.Table, call: ResolvedCall, coverage: Mapping[TableName, frozenset[int]]
 ) -> tuple[int, ...] | None:
     """The years of the result's rows, or without a year column the years
-    the call asks for that the tables hold, ``held``."""
+    the call asks for that one of the tables in ``coverage`` holds, each of
+    which adds to the result."""
     if "year" in result.column_names:
         found = {year for year in result["year"].to_pylist() if year is not None}
         return tuple(sorted(found))
     if call.years is None:
         return None
+    held = frozenset[int]().union(*coverage.values())
     return tuple(year for year in call.years if year in held)
 
 
-def _held_years(
-    cursor: DuckDBPyConnection, tables: tuple[TableName, ...], releases: Releases
-) -> frozenset[int]:
-    """The years every one of ``tables`` holds."""
-    held = [
-        frozenset(_distinct(cursor, (table,), "year", releases)) for table in tables
-    ]
-    return frozenset.intersection(*held) if held else frozenset()
+def _coverage_by_table(
+    cursor: DuckDBPyConnection, indicator: Indicator, releases: Releases
+) -> dict[TableName, frozenset[int]]:
+    """The years each table that holds the indicator's rows holds: the binding
+    table of each of its leaves, in order."""
+    tables = dict.fromkeys(binding.table for binding in bindings(indicator))
+    return {
+        table: frozenset(_distinct(cursor, (table,), "year", releases))
+        for table in tables
+    }
 
 
 def _missing_text(
-    result: pa.Table,
-    call: ResolvedCall,
-    held: frozenset[int],
-    tables: tuple[TableName, ...],
+    result: pa.Table, call: ResolvedCall, coverage: Mapping[TableName, frozenset[int]]
 ) -> list[str]:
-    """The sentence on an empty result, or on the years the call asks for
-    that the result has no row for, naming those that ``tables``, which hold
-    the indicator's rows, do not hold. ``held`` are the years every one of
-    them holds."""
+    """The sentence on an empty result, on the years the call asks for that
+    the result has no row for, and on the tables in ``coverage`` that do not
+    hold a year the call asks for.
+
+    A year no table holds is named as such. Where the tables cover different
+    years, each table's years are named, with the requested years one of
+    them lacks and another holds, which the result counts from the others.
+    """
     requested = list(call.years or ())
+    held = frozenset[int]().union(*coverage.values())
     outside = sorted(year for year in requested if held and year not in held)
+    lacking = {
+        table: sorted(year for year in requested if year in held and year not in years)
+        for table, years in coverage.items()
+    }
+    lacking = {table: years for table, years in lacking.items() if years}
     named = False
     if not result.num_rows:
         lead: str | None = "The result is empty"
     elif "year" in result.column_names:
         missing = sorted(set(requested) - set(result["year"].to_pylist()))
-        if not missing:
-            return []
-        lead, named = f"The result has no rows for {_span(missing)}", missing == outside
+        lead = f"The result has no rows for {_span(missing)}" if missing else None
+        named = bool(missing) and missing == outside
     else:
         lead = None
-    if not outside:
+    if not outside and not lacking:
         return [] if lead is None else [f"{lead}."]
-    if len(tables) == 1:
-        text = f"{TABLE_LABELS[tables[0]]} covers {min(held)}-{max(held)}"
-        hold = "does"
+    if len(set(coverage.values())) == 1:
+        [table, *rest] = coverage
+        label, cover, hold = (
+            (TABLE_LABELS[table], "covers", "does")
+            if not rest
+            else ("the tables", "cover", "do")
+        )
+        text = f"{label} {cover} {_range(held)}"
+        if not named:
+            text += f" and {hold} not hold {_span(outside)}"
     else:
-        text, hold = f"the tables cover {min(held)}-{max(held)}", "do"
-    if not named:
-        text += f" and {hold} not hold {_span(outside)}"
+        text = "; ".join(
+            f"{TABLE_LABELS[table]} covers {_range(years)}"
+            for table, years in coverage.items()
+        )
+        if outside and not named:
+            text += f"; no table holds {_span(outside)}"
+        if lacking:
+            text += ", so " + " and ".join(
+                f"{TABLE_LABELS[table]} has no rows for {_span(years)}"
+                for table, years in lacking.items()
+            )
     return [f"{text[0].upper()}{text[1:]}." if lead is None else f"{lead}: {text}."]
+
+
+def _range(years: Iterable[int]) -> str:
+    """The first and last of ``years``, or the one year."""
+    first, last = min(years), max(years)
+    return str(first) if first == last else f"{first}-{last}"
 
 
 def _basis_text(

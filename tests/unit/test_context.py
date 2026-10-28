@@ -35,6 +35,7 @@ from oda_data._groups import Group, total
 from oda_data._model import (
     Binding,
     Caveat,
+    Derived,
     FactorTable,
     Flow,
     Headline,
@@ -869,6 +870,95 @@ def test_explain_names_the_years_the_tables_do_not_hold(
     q = ctx.query("oecd.dac1.total_oda", years=years, providers=providers, **kwargs)
 
     assert q.explain().splitlines()[:3] == lines
+
+
+class TwoTables(FakeTables):
+    """CRS rows for 2020 and 2021, Multisystem rows for 2021 alone."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.connection.execute("DELETE FROM crs")
+        self.connection.executemany(
+            "INSERT INTO crs VALUES (?, 248, ?, 10, 1, 12220, 110, ?, 'Clinic')",
+            [(4, 2020, 3.0), (4, 2021, 4.0)],
+        )
+        self.connection.execute(
+            "CREATE TABLE multisystem (provider BIGINT, year BIGINT, value DOUBLE)"
+        )
+        self.connection.execute("INSERT INTO multisystem VALUES (4, 2021, 5.0)")
+
+    def release(self, table: str) -> Release:
+        return CRS_RELEASE if table == "multisystem" else super().release(table)
+
+
+MULTISYSTEM = Indicator(
+    id="test.multisystem.core",
+    name="Core contributions",
+    description="Core contributions.",
+    binding=Binding(
+        table="multisystem",
+        dimensions={"provider": "provider", "year": "year"},
+        bases={"gross_disbursement": Value("value")},
+    ),
+    kind=Sum(),
+    dimensions=("provider", "year"),
+    default_basis="gross_disbursement",
+    default_providers=None,
+)
+BOTH = dataclasses.replace(
+    MULTISYSTEM,
+    id="test.both.bilateral_plus_core",
+    name="Bilateral and core",
+    description="Bilateral ODA plus core contributions.",
+    kind=Derived(plus=(BILATERAL, MULTISYSTEM)),
+)
+
+
+@pytest.mark.parametrize(
+    ("indicator", "years", "expected"),
+    [
+        (
+            BOTH,
+            [2020, 2021],
+            [
+                "Bilateral and core (Multisystem), gross disbursements 2020-2021.",
+                "CRS covers 2020-2021; Multisystem covers 2021, so Multisystem has "
+                "no rows for 2020.",
+            ],
+        ),
+        (
+            BOTH,
+            [2020, 2021, 2030],
+            [
+                "Bilateral and core (Multisystem), gross disbursements 2020-2021.",
+                "CRS covers 2020-2021; Multisystem covers 2021; no table holds 2030, "
+                "so Multisystem has no rows for 2020.",
+            ],
+        ),
+        (
+            BILATERAL,
+            [2020, 2021],
+            ["Bilateral ODA (CRS), gross disbursements 2020-2021.", "France."],
+        ),
+    ],
+    ids=["composite", "composite-and-a-year-no-table-holds", "one-table"],
+)
+def test_explain_names_each_tables_years_for_a_result_without_a_year_column(
+    monkeypatch: pytest.MonkeyPatch,
+    indicator: Indicator,
+    years: list[int],
+    expected: list[str],
+) -> None:
+    """A result summed over the years counts each year any table holds."""
+    monkeypatch.setitem(_context.INDICATORS, BOTH.id, BOTH)
+    tables = TwoTables()
+    with Context._from_parts(tables, FakeFactors()) as ctx:
+        q = ctx.query(indicator.id, years=years, providers=4, by=["provider"])
+        value = q.to_pandas()["value"].tolist()
+        assert q.explain().splitlines()[:2] == expected
+    # CRS's 2020 and 2021 rows, and Multisystem's 2021 row for the composite.
+    assert value == ([3.0 + 4.0 + 5.0] if indicator is BOTH else [3.0 + 4.0])
+    tables.connection.close()
 
 
 @pytest.mark.parametrize(
