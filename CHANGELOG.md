@@ -5,7 +5,7 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - Unreleased
+## [3.0.0] - 2026-10-28
 
 oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oecd.dac1.total_oda", years=..., providers=..., unit=...)`, returns one table with fixed columns, and `oda.search()` gives the 3.0 call for any 2.x indicator code. [Migrating from 2.x](docs/docs/migration.md) maps every 2.x code and lists the numbers that change.
 
