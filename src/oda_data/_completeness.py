@@ -45,8 +45,9 @@ the leaf calls through ``_rows``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
+from itertools import product
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -79,7 +80,7 @@ from oda_data._rows import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable, Iterator, Mapping
 
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
@@ -96,10 +97,15 @@ class Gaps:
         cells: Every cell of the call's leaves.
         subtracted: The cells of leaves the indicator subtracts, such as core
             ODA's in-donor refugee costs. A value that lacks one overstates.
+        fixed: The code of each reporting dimension that the basis of every
+            ``Sum`` leaf fixes in the table's last year, as the line and flow
+            of in-donor refugee costs, where they agree. A cell of
+            ``_dropped`` carries these keys.
     """
 
     cells: frozenset[Incomplete] = frozenset()
     subtracted: frozenset[Incomplete] = frozenset()
+    fixed: Mapping[Dimension, Code] = field(default_factory=dict)
 
 
 def reporting_gaps(
@@ -153,7 +159,34 @@ def reporting_gaps(
                 cells |= _side_stopped(
                     cursor, side, side_call, codes, checked, releases
                 )
-    return Gaps(frozenset(cells), frozenset(subtracted_cells))
+    return Gaps(
+        frozenset(cells),
+        frozenset(subtracted_cells),
+        _agreed_fixed(reads, last) if last is not None else {},
+    )
+
+
+def _agreed_fixed(
+    reads: list[tuple[Indicator, ResolvedCall, bool, frozenset[Code]]], last: int
+) -> dict[Dimension, Code]:
+    """The codes of the reporting dimensions that every ``Sum`` leaf's basis
+    fixes in ``last``, as ``_dropped`` keys its cells, where they agree."""
+    found: list[dict[Dimension, Code]] = []
+    for leaf, leaf_call, _, _ in reads:
+        if not isinstance(leaf.kind, Sum):
+            return {}
+        members = read_call(leaf, leaf_call).members
+        found.append(
+            {
+                d: code
+                for d, code in _fixed_codes(leaf, leaf_call, last).items()
+                if d in leaf.binding.reporting and d not in members
+            }
+        )
+    if not found:
+        return {}
+    first, *rest = found
+    return {d: code for d, code in first.items() if all(f.get(d) == code for f in rest)}
 
 
 def _counted(
@@ -444,6 +477,69 @@ def held(
     table, on = found
     matched = table.join(rows.set_alias("r"), on, how="semi").select("g.cell")
     return frozenset(listed[index] for (index,) in matched.fetchall())
+
+
+def unheld(
+    cursor: DuckDBPyConnection,
+    rows: DuckDBPyRelation,
+    cells: Iterable[Incomplete],
+    *,
+    split: Iterable[Dimension],
+    fixed: Mapping[Dimension, Code],
+    named: Mapping[Dimension, frozenset[Code]],
+    providers: bool = True,
+) -> frozenset[Incomplete]:
+    """The cells of ``cells`` that no row of ``rows`` holds, as ``held``
+    decides, at the grain of the ``split`` dimensions, a binding's
+    ``reporting``.
+
+    A cell without a key on a split dimension that ``rows`` carry stands for
+    one cell at each of the dimension's codes, those the call names
+    (``named``) or else those ``rows`` hold, so a provider that reported nothing in a year can be held by a row of one line and not by
+    any row of another. On a split dimension ``rows`` do not carry, the cell
+    takes the code the call's basis fixes (``Gaps.fixed``), as ``_dropped``
+    keys its cells. Each of those cells that no row holds is returned with
+    its keys in the order of ``split``. A cell keeps its keys where ``rows``
+    hold no code of a dimension it lacks.
+    """
+    order = {d: i for i, d in enumerate(split)}
+    codes = {
+        d: sorted(named[d] if d in named else _codes_in(rows, d), key=str)
+        for d in order
+        if d in rows.columns
+    }
+    parts: dict[Incomplete, list[Incomplete]] = {}
+    for cell in cells:
+        keyed = dict(cell.keys)
+        free = [d for d in codes if d not in keyed]
+        if not all(codes[d] for d in free):
+            parts[cell] = [cell]
+            continue
+        known = [
+            (d, code)
+            for d, code in fixed.items()
+            if d in order and d not in keyed and d not in codes
+        ]
+        parts[cell] = [
+            replace(
+                cell,
+                keys=tuple(
+                    sorted(
+                        (*cell.keys, *known, *zip(free, combination, strict=True)),
+                        key=lambda key: order.get(key[0], -1),
+                    )
+                ),
+            )
+            for combination in product(*(codes[d] for d in free))
+        ]
+    every = {part for group in parts.values() for part in group}
+    return frozenset(every - held(cursor, rows, every, providers=providers))
+
+
+def _codes_in(rows: DuckDBPyRelation, dimension: Dimension) -> list[Code]:
+    """The codes of ``dimension`` that ``rows`` hold."""
+    found = rows.select(ident(dimension)).distinct().fetchall()
+    return [code for (code,) in found if code is not None]
 
 
 def _cells_table(

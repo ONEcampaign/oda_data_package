@@ -76,6 +76,7 @@ from oda_data._completeness import (
     outcomes,
     reporting_gaps,
     table_last_year,
+    unheld,
 )
 from oda_data._errors import OdaDataWarning, UnsupportedQueryError
 from oda_data._model import (
@@ -288,6 +289,7 @@ def combine(
         reads=reads,
         last=last,
         subtracted=gaps.subtracted & cells,
+        fixed=gaps.fixed,
     )
     parts = _last_year_parts(held, call, warned=True)
     for year in sorted({part.year for part in parts}):
@@ -1092,6 +1094,7 @@ def _assemble(
     reads: list[int],
     last: int | None,
     subtracted: frozenset[Incomplete],
+    fixed: Mapping[Dimension, Code],
 ) -> tuple[pa.Table, _Held]:
     """Member rows, then each total, and the incomplete cells behind each.
 
@@ -1166,28 +1169,42 @@ def _assemble(
         for cell in waiting
         if decided[cell] in {Outcome.WARN_SUM, Outcome.NULL_SUM}
     }
+    split = tuple(dict.fromkeys(d for b in bindings(indicator) for d in b.reporting))
     groups = {group.key: group for group in call.groups}
     in_totals: set[Incomplete] = set()
     untotalled = []
     for key in call.totals:
         group = groups[key]
-        table, inside = _total(
-            cursor, indicator, call, rows, group, keys, value, cells, nulling
+        table, inside, missing = _total(
+            cursor,
+            indicator,
+            call,
+            rows,
+            group,
+            keys,
+            value,
+            cells,
+            nulling,
+            waiting=waiting,
+            split=split,
+            fixed=fixed,
         )
         tables.append(table)
         in_totals |= inside
-        if group.dimension == "provider":
-            members_cells = {
-                cell
-                for cell in waiting
-                if cell.provider in group.members.get(cell.year, ())
-            }
-            if members_cells - inside:
-                untotalled.append((group.name, frozenset(members_cells - inside)))
+        if missing:
+            untotalled.append((group.name, missing))
     return pa.concat_tables(tables), replace(
         found,
         totals=frozenset(in_totals),
-        unsummed=frozenset(summing - held(cursor, members, summing, providers=False)),
+        unsummed=unheld(
+            cursor,
+            members,
+            summing,
+            split=split,
+            fixed=fixed,
+            named=call.members,
+            providers=False,
+        ),
         untotalled=tuple(untotalled),
     )
 
@@ -1242,9 +1259,15 @@ def _total(
     value: str,
     cells: frozenset[Incomplete],
     nulling: frozenset[Incomplete],
-) -> tuple[pa.Table, frozenset[Incomplete]]:
-    """One group's total rows, summed over its members in each year, and the
-    incomplete cells they hold.
+    *,
+    waiting: set[Incomplete],
+    split: tuple[Dimension, ...],
+    fixed: Mapping[Dimension, Code],
+) -> tuple[pa.Table, frozenset[Incomplete], frozenset[Incomplete]]:
+    """One group's total rows, summed over its members in each year, the
+    incomplete cells they hold, and for a provider total the cells of
+    ``waiting``, those not yet reported, of its members that no total row
+    holds at the grain of the ``split`` dimensions (``unheld``).
 
     A provider total row holds the cells of the members it sums in its year
     whose keys match the row's, whether or not the member has rows, and is
@@ -1271,8 +1294,18 @@ def _total(
             cursor, inside.select(", ".join(unmarked)), members, providers=False
         )
         found = held(cursor, inside, members, providers=False)
+        missing = unheld(
+            cursor,
+            inside,
+            [c for c in waiting if c.provider in group.members.get(c.year, ())],
+            split=split,
+            fixed=fixed,
+            named=call.members,
+            providers=False,
+        )
     else:
         found = held(cursor, inside, nulling)
+        missing = frozenset()
     summed = _aggregate(
         inside,
         [k for k in keys if k != dimension],
@@ -1287,7 +1320,7 @@ def _total(
         labels={dimension: group.name},
         value=_unless_partial(call),
     )
-    return table, found
+    return table, found, missing
 
 
 def _years(rows: DuckDBPyRelation) -> list[int]:

@@ -634,17 +634,12 @@ def test_a_sum_none_of_whose_providers_reported_the_last_year_warns(
 
     where = "the pair total" if total else "the sum"
     assert [str(w.message) for w in caught] == [
-        f"{indicator.id}: {PARTIAL}All of 2025 is missing from {where} for 1 "
-        f"provider. Line 1820, flow 1160 is missing from {where} for 1 provider. "
-        "Show the providers on their own rows to see who reported."
+        f"{indicator.id}: {PARTIAL}Line 1820, flow 1160 is missing from {where} "
+        "for 2 providers. Show the providers on their own rows to see who reported."
     ]
     assert found.notes == (
-        unsummed_text(2025, 1, where=where),
-        unsummed_text(2025, 1, part="line 1820, flow 1160", where=where),
-    )
-    assert found.notes[1] == (
-        "2025 is partial: 1 provider that reported line 1820, flow 1160 in 2024 "
-        f"has not reported it in 2025, so {where} has no 2025 row of it"
+        "2025 is partial: 2 providers that reported line 1820, flow 1160 in 2024 "
+        f"have not reported it in 2025, so {where} has no 2025 row of it",
     )
     assert found.table.column("value").to_pylist() == [13.0]
 
@@ -673,10 +668,84 @@ def test_a_shown_provider_beside_a_total_gets_one_warning_that_counts_it(
         combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
 
     assert [str(w.message) for w in caught] == [
-        f"{indicator.id}: {PARTIAL}All of 2025 is missing from the pair total for 1 "
-        "provider. Line 1820, flow 1160 is missing for France (4), and missing "
-        "from the pair total for 1 provider. Show the providers on their own rows "
-        "to see who reported."
+        f"{indicator.id}: {PARTIAL}Line 1820, flow 1160 is missing for France (4), "
+        "and missing from the pair total for 2 providers. Show the providers on "
+        "their own rows to see who reported."
+    ]
+
+
+def _pair_total(
+    providers: frozenset[int], lines: tuple[int, ...], basis: str
+) -> ResolvedCall:
+    """A 2024-2025 call on ``lines`` for the total of ``providers`` alone."""
+    group = ResolvedGroup("pair", "provider", {2024: providers, 2025: providers})
+    return ResolvedCall(
+        basis=basis,
+        units=(USD,),
+        by=("provider", "year"),
+        years=(2024, 2025),
+        members={"provider": providers, "line": frozenset(lines)},
+        groups=(group,),
+        totals=(group.key,),
+        rows={"provider": frozenset()},
+    )
+
+
+@pytest.mark.parametrize("lines", [(206, 106), (106,)], ids=["bundled", "alone"])
+def test_a_total_counts_a_whole_year_gap_at_each_line_it_has_no_row_for(
+    lines: tuple[int, ...],
+) -> None:
+    """Austria and France reported lines 206 and 106 in 2024 and only line
+    206 in 2025, and Germany nothing of 2025. The total's 2025 row of line
+    206 holds Germany's gap, and no row of line 106 exists, so the warning
+    counts all three on line 106, whether or not the call also reads 206."""
+    connection = duckdb.connect()
+    connection.execute(
+        "CREATE TABLE dac2a (provider BIGINT, recipient BIGINT, year BIGINT,"
+        " line BIGINT, amount_type VARCHAR, value DOUBLE)"
+    )
+    rows = [
+        *DAC2A_ROWS,
+        (AUSTRIA, KENYA, 2024, 106, 1.0),
+        (FRANCE, KENYA, 2024, 106, 2.0),
+        (GERMANY, KENYA, 2024, 106, 3.0),
+    ]
+    connection.executemany("INSERT INTO dac2a VALUES (?, ?, ?, ?, 'A', ?)", rows)
+    call = _pair_total(frozenset({AUSTRIA, FRANCE, GERMANY}), lines, "net_disbursement")
+
+    with pytest.warns(OdaDataWarning) as caught:
+        found = combine(connection, dac2a.LINES, call, FakeFactors(), releases=UNCACHED)
+    connection.close()
+
+    assert [str(w.message) for w in caught] == [
+        f"{dac2a.LINES.id}: {PARTIAL}Line 106 is missing from the pair total for 3 "
+        "providers. Show the providers on their own rows to see who reported."
+    ]
+    assert unsummed_text(2025, 3, part="line 106", where="the pair total") in (
+        found.notes
+    )
+
+
+@pytest.mark.parametrize(
+    ("indicator", "part"),
+    [(LINES, "line 1820"), (dac1.LINES, "line 1820, flow 1160")],
+    ids=["lines", "lines-and-flows"],
+)
+def test_a_total_counts_a_whole_year_gap_at_each_dac1_part(
+    con: duckdb.DuckDBPyConnection, indicator: Indicator, part: str
+) -> None:
+    """Austria reported nothing of 2025 and France not yet line 1820. The
+    total's 2025 row of line 11010 holds Austria's gap, and no row of line
+    1820 exists, so the warning counts both on line 1820."""
+    call = _pair_total(frozenset({AUSTRIA, FRANCE}), (11010, 1820), "grant_equivalent")
+
+    with pytest.warns(OdaDataWarning) as caught:
+        combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    assert [str(w.message) for w in caught] == [
+        f"{indicator.id}: {PARTIAL}{part[0].upper()}{part[1:]} is missing from the "
+        "pair total for 2 providers. Show the providers on their own rows to see "
+        "who reported."
     ]
 
 
@@ -695,7 +764,7 @@ def test_a_sum_short_of_one_part_and_without_another_warns_once(
 
     assert [str(w.message) for w in caught] == [
         f"{LINES.id}: {PARTIAL}All of 2025 is left out of the sum for 1 provider. "
-        "Line 1820 is missing from the sum for 1 provider. Show the providers on "
+        "Line 1820 is missing from the sum for 2 providers. Show the providers on "
         "their own rows to see who reported."
     ]
 
