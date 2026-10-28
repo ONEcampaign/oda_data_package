@@ -76,7 +76,7 @@ Multilateral ODA (CRS), gross disbursements 2023.
 International Development Association.
 Recipients: every recipient in the table, regional and unallocated rows included (the default).
 Constant 2023 EUR using DAC deflators from the DAC1 release. International Development Association took the DAC total's deflators.
-CRS downloaded 2026-10-27; DAC1 downloaded 2026-10-27. 1 rows.
+CRS downloaded 2026-10-28; DAC1 downloaded 2026-10-28. 1 rows.
 ```
 
 ```python

@@ -6,8 +6,8 @@ Build a call with `oda.query()` to read its provenance, write it to Parquet with
 
 ```text
 3.0.0 {'oecd.crs.bilateral_oda': 1}
-crs 0x8DF2533665E7CB7 v20261006 2026-10-27
-dac1 0x8DF2539D20A32DF None 2026-10-27
+crs 0x8DF2533665E7CB7 v20261006 2026-10-28
+dac1 0x8DF2539D20A32DF None 2026-10-28
 {'recipients': 'all', 'basis': 'gross_disbursement'}
 ```
 

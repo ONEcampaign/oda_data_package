@@ -7,6 +7,7 @@ Italy (6) splits its gross disbursements into grants (flow 1121) in 2024 and
 not yet in 2025.
 """
 
+import re
 import warnings
 from collections.abc import Iterator
 
@@ -14,7 +15,14 @@ import duckdb
 import pyarrow as pa
 import pytest
 
-from oda_data._combine import absent_text, combine
+from oda_data._combine import (
+    Effect,
+    LastYearPart,
+    combine,
+    last_year_warning,
+    unreported_text,
+    unsummed_text,
+)
 from oda_data._completeness import Outcome, holding, outcomes
 from oda_data._errors import OdaDataWarning
 from oda_data._model import (
@@ -34,6 +42,11 @@ from oda_data._store import UNCACHED
 from oda_data._units import current
 
 USD = current("USD")
+#: The opening of every warning on a part of 2025 not yet reported.
+PARTIAL = (
+    "2025 is partial: providers that reported a part in 2024 have not reported it "
+    "in 2025. "
+)
 AUSTRIA, FRANCE, GERMANY, ITALY = 1, 4, 5, 6
 KENYA, EGYPT = 248, 142
 
@@ -289,12 +302,18 @@ def test_a_sum_across_providers_warns_of_the_line_not_yet_reported(
 ) -> None:
     call = lines_call((11010, 1820), by=("year",), total=False)
 
-    with pytest.warns(
-        OdaDataWarning,
-        match="2025 is partial: 1 provider that reported line 1820 in 2024 has "
-        "not reported it in 2025",
-    ):
+    with pytest.warns(OdaDataWarning) as caught:
         found = combine(con, LINES, call, FakeFactors(), releases=UNCACHED)
+
+    assert [str(w.message) for w in caught] == [
+        f"{LINES.id}: {PARTIAL}Line 1820 is left out of the sum for 1 provider. "
+        "Show the providers on their own rows to see who reported."
+    ]
+    assert (
+        "2025 is partial: 1 provider that reported line 1820 in 2024 has not "
+        "reported it in 2025, so its sum covers only those that have; add "
+        "'provider' to by to see who reported"
+    ) in found.notes
 
     assert by_line(found.table) == {("11010", None): 320.0, ("1820", None): 22.0}
 
@@ -523,8 +542,9 @@ def test_a_sum_across_providers_warns_of_a_flow_part_not_yet_reported(
 
     with pytest.warns(
         OdaDataWarning,
-        match="2025 is partial: 1 provider that reported line 1010, flow 1121 in "
-        "2024 has not reported it in 2025",
+        match=re.escape(
+            f"{PARTIAL}Line 1010, flow 1121 is left out of the sum for 1 provider."
+        ),
     ):
         found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
 
@@ -535,14 +555,185 @@ def test_explain_names_a_part_a_shown_provider_has_no_row_for(
     con: duckdb.DuckDBPyConnection,
 ) -> None:
     """Italy shows on its own row and has no 2025 grants row, so no row holds
-    its cell and explain() names it."""
+    its cell, and the result warns of it and explain() names it."""
     call = grants_call(dac1.TOTAL_ODA, total=False)
 
-    found = combine(con, dac1.TOTAL_ODA, call, FakeFactors(), releases=UNCACHED)
+    with pytest.warns(OdaDataWarning, match="2025 is partial") as caught:
+        found = combine(con, dac1.TOTAL_ODA, call, FakeFactors(), releases=UNCACHED)
 
     assert found.table.column("provider").to_pylist() == ["5"]
     assert found.incomplete == ()
-    assert absent_text(2025, [ITALY], part="line 1010, flow 1121") in found.notes
+    part = "line 1010, flow 1121"
+    assert [str(w.message) for w in caught] == [
+        f"oecd.dac1.total_oda: {PARTIAL}Line 1010, flow 1121 is missing for Italy (6)."
+    ]
+    assert unreported_text(2025, [ITALY], part=part, nulled=False) in found.notes
+
+
+def refugee_call(providers: frozenset[int], years: tuple[int, ...]) -> ResolvedCall:
+    """A call on in-donor refugee costs by provider and year."""
+    return ResolvedCall(
+        basis="grant_equivalent",
+        units=(USD,),
+        by=("provider", "year"),
+        years=years,
+        members={"provider": providers},
+    )
+
+
+@pytest.mark.parametrize(
+    ("years", "expected"),
+    [((2024, 2025), [("4", 2024, 10.0)]), ((2025,), [])],
+    ids=["a-short-result", "an-empty-result"],
+)
+def test_a_shown_provider_with_no_row_for_a_part_of_the_last_year_warns(
+    con: duckdb.DuckDBPyConnection, years: tuple[int, ...], expected: list
+) -> None:
+    """France reported refugee costs in 2024 and not yet in 2025, so the
+    result has no 2025 row, and warns of it whether or not a row survives."""
+    call = refugee_call(frozenset({FRANCE}), years)
+    indicator = dac1.IN_DONOR_REFUGEE_COSTS
+
+    with pytest.warns(OdaDataWarning) as caught:
+        found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    part = "line 1820, flow 1160"
+    assert [str(w.message) for w in caught] == [
+        f"{indicator.id}: {PARTIAL}Line 1820, flow 1160 is missing for France (4)."
+    ]
+    text = unreported_text(2025, [FRANCE], part=part, nulled=False)
+    assert text.startswith("2025 is partial: France (4) reported line 1820")
+    assert text in found.notes
+    assert found.incomplete == ()
+    columns = found.table.select(["provider", "year", "value"]).to_pydict().values()
+    assert list(zip(*columns, strict=True)) == expected
+
+
+@pytest.mark.parametrize("total", [False, True], ids=["by-year", "provider-total"])
+def test_a_sum_none_of_whose_providers_reported_the_last_year_warns(
+    con: duckdb.DuckDBPyConnection, total: bool
+) -> None:
+    """France has not yet reported 2025 refugee costs and Austria nothing of
+    2025, so a sum over the two has no 2025 row, and warns of it."""
+    pair = frozenset({AUSTRIA, FRANCE})
+    group = ResolvedGroup("pair", "provider", {2024: pair, 2025: pair})
+    call = ResolvedCall(
+        basis="grant_equivalent",
+        units=(USD,),
+        by=("provider", "year") if total else ("year",),
+        years=(2024, 2025),
+        members={"provider": pair},
+        groups=(group,) if total else (),
+        totals=(group.key,) if total else (),
+        rows={"provider": frozenset()} if total else {},
+    )
+    indicator = dac1.IN_DONOR_REFUGEE_COSTS
+
+    with pytest.warns(OdaDataWarning) as caught:
+        found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    where = "the pair total" if total else "the sum"
+    assert [str(w.message) for w in caught] == [
+        f"{indicator.id}: {PARTIAL}All of 2025 is missing from {where} for 1 "
+        f"provider. Line 1820, flow 1160 is missing from {where} for 1 provider. "
+        "Show the providers on their own rows to see who reported."
+    ]
+    assert found.notes == (
+        unsummed_text(2025, 1, where=where),
+        unsummed_text(2025, 1, part="line 1820, flow 1160", where=where),
+    )
+    assert found.notes[1] == (
+        "2025 is partial: 1 provider that reported line 1820, flow 1160 in 2024 "
+        f"has not reported it in 2025, so {where} has no 2025 row of it"
+    )
+    assert found.table.column("value").to_pylist() == [13.0]
+
+
+def test_a_shown_provider_beside_a_total_gets_one_warning_that_counts_it(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    """France shows on its own row and sits in the pair total. Neither it nor
+    Austria has reported 2025, so the warning names France and counts it in
+    the total."""
+    pair = frozenset({AUSTRIA, FRANCE})
+    group = ResolvedGroup("pair", "provider", {2024: pair, 2025: pair})
+    call = ResolvedCall(
+        basis="grant_equivalent",
+        units=(USD,),
+        by=("provider", "year"),
+        years=(2024, 2025),
+        members={"provider": pair},
+        groups=(group,),
+        totals=(group.key,),
+        rows={"provider": frozenset({FRANCE})},
+    )
+    indicator = dac1.IN_DONOR_REFUGEE_COSTS
+
+    with pytest.warns(OdaDataWarning) as caught:
+        combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    assert [str(w.message) for w in caught] == [
+        f"{indicator.id}: {PARTIAL}All of 2025 is missing from the pair total for 1 "
+        "provider. Line 1820, flow 1160 is missing for France (4), and missing "
+        "from the pair total for 1 provider. Show the providers on their own rows "
+        "to see who reported."
+    ]
+
+
+def test_a_sum_short_of_one_part_and_without_another_warns_once(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    """Austria has not reported 2025, so the 2025 sum of line 11010 covers
+    France alone, and neither has reported line 1820, so the sum has no 2025
+    row of it."""
+    call = lines_call(
+        (11010, 1820), providers=frozenset({AUSTRIA, FRANCE}), by=("year",), total=False
+    )
+
+    with pytest.warns(OdaDataWarning) as caught:
+        combine(con, LINES, call, FakeFactors(), releases=UNCACHED)
+
+    assert [str(w.message) for w in caught] == [
+        f"{LINES.id}: {PARTIAL}All of 2025 is left out of the sum for 1 provider. "
+        "Line 1820 is missing from the sum for 1 provider. Show the providers on "
+        "their own rows to see who reported."
+    ]
+
+
+def test_the_warning_names_five_parts_and_counts_the_rest() -> None:
+    parts = [
+        LastYearPart(
+            2025,
+            f"line {line}",
+            Effect.NULL if line == 1 else Effect.MISSING,
+            frozenset({FRANCE}),
+        )
+        for line in range(1, 8)
+    ]
+
+    text = last_year_warning(2025, parts)
+
+    assert text.endswith(
+        "Line 4 is missing for France (4). Line 5 is missing for France (4). "
+        "2 more parts are partial too. allow_partial=True returns the partial "
+        "values of the null rows."
+    )
+    assert text.count("France") == 5
+
+
+def test_a_result_whose_shown_providers_all_reported_does_not_warn(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    call = refugee_call(frozenset({GERMANY}), (2024, 2025))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", OdaDataWarning)
+        found = combine(
+            con, dac1.IN_DONOR_REFUGEE_COSTS, call, FakeFactors(), releases=UNCACHED
+        )
+
+    assert found.notes == ()
+    assert found.table.column("value").to_pylist() == [20.0, 22.0]
 
 
 def core_call(
@@ -592,7 +783,9 @@ def test_a_sum_without_the_provider_that_lacks_a_subtracted_part_keeps_its_value
     from the sum, which warns that it covers only Germany."""
     call = core_call(frozenset({AUSTRIA, GERMANY}))
 
-    with pytest.warns(OdaDataWarning, match="2025 is partial: 1 provider"):
+    with pytest.warns(
+        OdaDataWarning, match="All of 2025 is left out of the sum for 1 provider"
+    ):
         found = combine(con, one.CORE_ODA, call, FakeFactors(), releases=UNCACHED)
 
     assert found.table.column("value").to_pylist() == [210.0 - 22.0]
@@ -608,7 +801,8 @@ _METHOD = Incomplete(918, _LAST, frozenset({FRANCE}), inputs="line 2102")
 @pytest.mark.parametrize(
     ("cell", "own", "ratio", "subtracted", "outcome"),
     [
-        (_WAITING, {_LAST}, False, False, Outcome.NULL_ROW),
+        (_WAITING, {_LAST}, False, False, Outcome.WARN_ROW),
+        (_STOPPED, {_LAST}, False, False, Outcome.NULL_ROW),
         (_WAITING, set(), False, False, Outcome.WARN_SUM),
         (_WAITING, set(), False, True, Outcome.NULL_SUM),
         (_WAITING, set(), True, False, Outcome.WARN_SUM),
@@ -617,7 +811,8 @@ _METHOD = Incomplete(918, _LAST, frozenset({FRANCE}), inputs="line 2102")
         (_STOPPED, set(), True, False, Outcome.NULL_SUM),
     ],
     ids=[
-        "own-row",
+        "shown-own-row",
+        "own-row-stopped-before",
         "not-yet-reported",
         "subtracted",
         "ratio-not-yet-reported",

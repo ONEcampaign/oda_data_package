@@ -148,7 +148,11 @@ def test_eu_institutions_gni_keeps_cyprus_gap_years(
     and 2017 sum the other members; 2025 is null and named in explain()."""
     context = _context(contexts, {"dac1": DAC1_RELEASE})
     try:
-        cyprus = context.get("oecd.dac1.gni", years=range(2015, 2026), providers=30)
+        with pytest.warns(
+            oda.OdaDataWarning,
+            match=r"2025 is partial: .* is missing for Cyprus \(30\)\.$",
+        ):
+            cyprus = context.get("oecd.dac1.gni", years=range(2015, 2026), providers=30)
         query = context.query("one.dac1.gni", years=range(2015, 2026), providers=918)
     except (OfflineCacheMissError, ReleaseMismatchError) as error:
         pytest.skip(f"DAC1 {DAC1_RELEASE} is not the cached release: {error}")

@@ -58,6 +58,7 @@ CORE_ODA = Indicator(
     dimensions=_DAC1_DIMENSIONS,
     default_basis="headline",
     default_providers="dac_countries",
+    search_terms=("core aid",),
 )
 
 NON_CORE_ODA = Indicator(
@@ -133,6 +134,7 @@ TOTAL_ODA_EU_ATTRIBUTED = Indicator(
     dimensions=_GNI_DIMENSIONS,
     default_basis="headline",
     default_providers=None,
+    search_terms=("EU attributed", "EU Institutions attributed"),
 )
 
 _GNI_BINDING = replace(dac1.DAC1, bases={"net_disbursement": Flow(1140)})
@@ -183,6 +185,7 @@ ODA_GNI_RATIO = Indicator(
     dimensions=_GNI_DIMENSIONS,
     default_basis="headline",
     default_providers="dac_countries",
+    search_terms=("ODA/GNI",),
 )
 
 ODA_GNI_RATIO_FIXED_EU27 = Indicator(
@@ -198,6 +201,7 @@ ODA_GNI_RATIO_FIXED_EU27 = Indicator(
     dimensions=_GNI_DIMENSIONS,
     default_basis="headline",
     default_providers="dac_countries",
+    search_terms=("ODA/GNI",),
 )
 
 #: The CRS keyword the OECD asks providers to give COVID-19 activities.

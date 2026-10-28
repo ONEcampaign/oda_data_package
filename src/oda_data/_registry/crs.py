@@ -240,6 +240,14 @@ _MARKER_TOPICS: Mapping[str, str] = {
 }
 
 
+#: The search terms of the markers people ask about most by another name.
+_MARKER_SEARCH_TERMS: Mapping[str, tuple[str, ...]] = {
+    "gender": ("gender", "gender equality", "women"),
+    "climate_mitigation": ("climate mitigation", "climate finance"),
+    "climate_adaptation": ("climate adaptation", "climate finance"),
+}
+
+
 def _marker(column: str) -> Indicator:
     """The indicator of one policy marker, whose ``score`` dimension reads
     ``column``."""
@@ -262,6 +270,7 @@ def _marker(column: str) -> Indicator:
         default_basis="gross_disbursement",
         default_providers=None,
         rows=(BILATERAL_FLOWS, SCREENED_MODALITIES),
+        search_terms=_MARKER_SEARCH_TERMS.get(column, ()),
     )
 
 

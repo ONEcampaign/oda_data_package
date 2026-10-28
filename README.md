@@ -60,7 +60,7 @@ oda-data is the wrong tool for a pipeline that needs the raw OECD tables. Read t
 ## Documentation
 
 - [Tutorial](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/tutorial.md): chart ten years of G7 aid
-- [How-to guides](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/how-to/units.md): units, groups, sectors, imputed multilateral sectors, records, provenance, offline use
+- [How-to guides](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/how-to/find-an-indicator.md): finding the indicator for a question, units, groups, sectors, imputed multilateral sectors, records, provenance, offline use
 - [Indicators](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/reference/indicators.md) and the [public API](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/reference/api.md)
 - [Counting rules](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/explanation/counting-rules.md): which rows count, and why
 - [Migrating from 2.x](https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/migration.md): the 3.0 call for any 2.x code, and the numbers that change

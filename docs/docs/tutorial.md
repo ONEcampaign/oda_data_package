@@ -51,13 +51,13 @@ Now widen the call. `providers=` takes codes, names, three-letter codes, and gro
 The output should start like this:
 
 ```text
-   provider_name  year             basis     value
-0         France  2015  net_disbursement   9039.30
-1         France  2016  net_disbursement   9621.67
-2         France  2017  net_disbursement  11330.86
-3         France  2018  grant_equivalent  12136.17
-4         France  2019  grant_equivalent  12211.36
-5         France  2020  grant_equivalent  14124.70
+  provider_name  year             basis     value
+0        France  2015  net_disbursement   9039.30
+1        France  2016  net_disbursement   9621.67
+2        France  2017  net_disbursement  11330.86
+3        France  2018  grant_equivalent  12136.17
+4        France  2019  grant_equivalent  12211.36
+5        France  2020  grant_equivalent  14124.70
 ```
 
 ```python
@@ -137,9 +137,9 @@ A chart in a report needs a note on its source. Build the same call with `oda.qu
 
 ```text
 Total ODA (DAC1), headline basis: net flows 2015-2017, grant equivalent 2018-2024.
-7 G7 countries, plus their total, which covers all 7 in every year.
+7 G7 countries, plus their total, which covers all 7 in every year it returns.
 Constant 2024 USD using DAC deflators from the same DAC1 release.
-DAC1 downloaded 2026-10-27. 80 rows.
+DAC1 downloaded 2026-10-28. 80 rows.
 ```
 
 ```python
@@ -165,5 +165,6 @@ The note names the basis for each span of years, the providers, the unit, and th
 ## What's next
 
 - [Counting rules](explanation/counting-rules.md) explains why the basis changes in 2018 and why oda-data never adds one DAC1 line to another.
+- [How to find the indicator for a question](how-to/find-an-indicator.md) maps donor effort, real terms, recipients, markers, and attributed multilateral aid to indicators.
 - [How to use constant prices and other currencies](how-to/units.md) covers euros, several units in one call, and the deflators behind them.
 - [Indicators](reference/indicators.md) lists every indicator, from bilateral ODA by sector to imputed multilateral sectors.

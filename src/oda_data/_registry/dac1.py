@@ -157,7 +157,14 @@ def _same_line(line: int, *, grant_equivalent: int | None = None) -> Sum:
     )
 
 
-def _named(id_: str, name: str, description: str, kind: Sum) -> Indicator:
+def _named(
+    id_: str,
+    name: str,
+    description: str,
+    kind: Sum,
+    *,
+    search_terms: tuple[str, ...] = (),
+) -> Indicator:
     return Indicator(
         id=id_,
         name=name,
@@ -167,6 +174,7 @@ def _named(id_: str, name: str, description: str, kind: Sum) -> Indicator:
         dimensions=_NAMED_DIMENSIONS,
         default_basis="headline",
         default_providers=_DAC_COUNTRIES,
+        search_terms=search_terms,
     )
 
 
@@ -176,6 +184,7 @@ TOTAL_ODA = _named(
     "Official development assistance from each provider. Read from line 1010 "
     "on cash bases and line 11010 on grant equivalents.",
     _same_line(1010, grant_equivalent=11010),
+    search_terms=("aid", "foreign aid", "total aid"),
 )
 
 BILATERAL_ODA = _named(
@@ -202,6 +211,7 @@ IN_DONOR_REFUGEE_COSTS = _named(
     "Spending on refugees and asylum seekers in the provider's own country "
     "during their first year (line 1820).",
     _same_line(1820),
+    search_terms=("refugees", "asylum seekers"),
 )
 
 IN_DONOR_STUDENT_COSTS = _named(
@@ -280,6 +290,7 @@ ODA_GNI_RATIO = Indicator(
     dimensions=_GNI_DIMENSIONS,
     default_basis="headline",
     default_providers=_DAC_COUNTRIES,
+    search_terms=("aid effort", "0.7", "ODA/GNI"),
 )
 
 #: The named indicators that read one line each. ``oecd.dac1.lines`` carries

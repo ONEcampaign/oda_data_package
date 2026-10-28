@@ -28,8 +28,9 @@ that line 106 leaves out has no cell on a call for that line.
 
 ``normalised`` drops a keyed cell that a cell for the whole provider-year
 covers. ``outcomes`` is the policy: a pure function that gives each cell its
-``Outcome`` (null its provider's row, null every sum that holds it, warn in a
-sum, or change no row), from the call's shape and the table's last year.
+``Outcome`` (null its provider's row, and warn when the call shows a provider
+that has not yet reported it; null every sum that holds it; warn in a sum; or
+change no row), from the call's shape and the table's last year.
 ``holding`` and ``held`` say which rows hold which cells, one rule for member
 rows, totals and sums across providers: a row holds a cell when its provider
 and year match, and each key whose dimension the row carries matches. The
@@ -494,6 +495,11 @@ class Outcome(StrEnum):
 
     #: The cell's provider has its own rows in the year, which are null.
     NULL_ROW = "null_row"
+    #: As ``NULL_ROW``, for a provider the call shows that reported the cell
+    #: the year before the table's last year and has not reported it in the
+    #: last year: its rows that hold the cell are null, and the result warns
+    #: of it whether or not the provider has a row for it.
+    WARN_ROW = "warn_row"
     #: Every row that holds the cell is null, a sum across providers
     #: included, since the cell can overstate it: a ``Method``'s cell, a
     #: ratio side that stopped, or a subtracted part not yet reported.
@@ -519,12 +525,15 @@ def outcomes(
     """What each of a call's normalised ``cells`` does to its rows.
 
     ``own`` are the years in which member rows show each provider on its own,
-    ``years`` the years the rows hold, ``last`` the table's last year, ``ratio``
-    whether the indicator is a ``Ratio``, and ``subtracted`` the cells of parts
-    the indicator subtracts.
+    ``years`` the years the call reads (those the rows hold, and the table's
+    last year when the call asks for it), ``last`` the table's last year,
+    ``ratio`` whether the indicator is a ``Ratio``, and ``subtracted`` the
+    cells of parts the indicator subtracts.
 
     A provider's own gap in the last year after it reported the year before
-    leaves a sum across providers short by the provider's value, so the sum
+    nulls its own row and, when the call shows the provider, warns, whether
+    the provider has a null row for it or none. In a sum across providers
+    the same gap leaves the sum short by the provider's value, so the sum
     warns. A gap that can overstate the sum nulls it: a ``Method``'s cell
     on the members or funders it sums, a subtracted part not yet reported,
     and on a ratio a side that stopped, which pairs a numerator with too
@@ -535,7 +544,8 @@ def outcomes(
     for cell in cells:
         waiting = not_yet_reported(cell, cells, last)
         if cell.year in own:
-            found[cell] = Outcome.NULL_ROW
+            shows = waiting and (shown is None or cell.provider in shown)
+            found[cell] = Outcome.WARN_ROW if shows else Outcome.NULL_ROW
         elif (
             not is_own_gap(cell)
             or (ratio and not waiting)
@@ -553,8 +563,7 @@ def last_shown(
     call: ResolvedCall, years: list[int], last: int | None
 ) -> frozenset[Code] | None:
     """The providers the call shows in the table's last year, or ``None``
-    for any, when the rows hold that year. A cell of the last year that is
-    not yet reported needs the rows to hold it."""
+    for any, when ``years`` hold that year, and none otherwise."""
     if last is None or last not in years:
         return frozenset()
     shown = shown_codes(call, "provider", [last])

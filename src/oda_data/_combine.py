@@ -30,7 +30,10 @@ Arrow table in the result shape. It builds on the compiler's stages in
   is missing from the table's last year, and warns of it, since the sum then
   covers only the providers that have reported. It is null, and does not
   warn, where it holds a cell that can overstate it: a ``Method``'s cell, or
-  a part the indicator subtracts that a provider has not yet reported.
+  a part the indicator subtracts that a provider has not yet reported. A
+  provider the call shows on its own that has not yet reported a part of the
+  table's last year warns too, when the call asks for that year, whether its
+  row for the part is null or it has none.
   ``_completeness.outcomes`` decides each cell's effect. A ratio pairs each
   member's numerator with its denominator, and a member with no row on one
   side leaves its pair out of a total.
@@ -45,6 +48,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, replace
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -66,7 +70,6 @@ from oda_data._completeness import (
     held,
     holding,
     is_own_gap,
-    last_shown,
     last_year,
     normalised,
     not_yet_reported,
@@ -174,15 +177,28 @@ class _Held:
         overstated: Cells of a subtracted part that a sum across providers
             outside ``by`` holds, which make it null unless the call allows
             partial values.
-        absent: Cells a provider shown on its own row has not yet reported,
-            which no row holds since the provider has no row for them.
+        waiting: The cells of ``own`` that a provider the call shows has not
+            yet reported (``Outcome.WARN_ROW``), of which the result warns.
+        absent: Cells a provider the call shows has not yet reported, which no
+            row holds since the provider has no row for them.
+        unsummed: Cells of the table's last year that a sum across providers
+            outside ``by`` holds, which a provider has not yet reported, and
+            that no row holds since none of the providers it sums has a row
+            for them.
+        untotalled: For each provider total, its name and the cells of its
+            members in the table's last year that they have not yet
+            reported and that no row of the total holds, since none of its
+            members has a row for them.
     """
 
     own: frozenset[Incomplete] = frozenset()
     totals: frozenset[Incomplete] = frozenset()
     summed: frozenset[Incomplete] = frozenset()
     overstated: frozenset[Incomplete] = frozenset()
+    waiting: frozenset[Incomplete] = frozenset()
     absent: frozenset[Incomplete] = frozenset()
+    unsummed: frozenset[Incomplete] = frozenset()
+    untotalled: tuple[tuple[str, frozenset[Incomplete]], ...] = ()
 
 
 def tables_for(indicator: Indicator, /) -> tuple[TableName, ...]:
@@ -209,9 +225,10 @@ def combine(
     """Compute an indicator for a resolved call.
 
     Emits each scoped caveat of the indicator, and of its parts, that
-    concerns a basis and year the call reads, as an ``OdaDataWarning``, and,
-    unless the call allows partial values, one for a sum across providers
-    some of which have not reported the table's last year.
+    concerns a basis and year the call reads, as an ``OdaDataWarning``.
+    When the call asks for the table's last year and providers have not yet
+    reported a part of it that they reported the year before, it emits one
+    warning for the year, listing each part (``last_year_warning``).
 
     Args:
         cursor: A cursor holding a view for each of ``tables_for(indicator)``,
@@ -258,7 +275,8 @@ def combine(
 
     years = _years(rows)
     last = last_year(cursor, indicator, releases=releases)
-    gaps = reporting_gaps(cursor, indicator, call, years, last, releases=releases)
+    reads = _read_years(call, years, last)
+    gaps = reporting_gaps(cursor, indicator, call, reads, last, releases=releases)
     cells = normalised(read.incomplete | gaps.cells)
     table, held = _assemble(
         cursor,
@@ -267,19 +285,32 @@ def combine(
         rows,
         cells,
         years=years,
+        reads=reads,
         last=last,
         subtracted=gaps.subtracted & cells,
     )
-    if held.summed and not call.allow_partial:
-        for text in _summed_text(held.summed, last):
-            warnings.warn(f"{indicator.id}: {text}", OdaDataWarning, stacklevel=2)
+    parts = _last_year_parts(held, call, warned=True)
+    for year in sorted({part.year for part in parts}):
+        text = last_year_warning(year, [part for part in parts if part.year == year])
+        warnings.warn(f"{indicator.id}: {text}", OdaDataWarning, stacklevel=2)
     incomplete = held.own | held.totals | held.summed | held.overstated
     return Combined(
         table,
         fallback,
         tuple(sorted(incomplete, key=cell_order)),
-        (*_incomplete_text(held, call, last), *read.notes),
+        (*_incomplete_text(held, call), *read.notes),
     )
+
+
+def _read_years(call: ResolvedCall, years: list[int], last: int | None) -> list[int]:
+    """The years the rows hold, and the table's last year when the call asks
+    for it, so a provider the call shows that has not yet reported a part of
+    that year has a cell even where no row survives."""
+    if last is None or last in years:
+        return years
+    if call.years is not None and last not in call.years:
+        return years
+    return sorted({*years, last})
 
 
 def partial_text(year: int, count: int, /, *, part: str | None = None) -> str:
@@ -319,6 +350,42 @@ def nulled_text(
         f"{rows} are null for {_providers_text(codes, listed=listed)}, which "
         f"reported {part or 'a part of the indicator'} in {year - 1} and {have} "
         f"not reported it in {year}; allow_partial=True returns the partial values"
+    )
+
+
+def unreported_text(
+    year: int,
+    codes: Iterable[Code],
+    /,
+    *,
+    part: str | None = None,
+    nulled: bool,
+    listed: int = LISTED,
+) -> str:
+    """The warning on providers the call shows that reported ``part`` of the
+    indicator, such as ``"line 1820"``, the year before the table's last year
+    and have not reported it in the last year: their rows for it are null
+    when ``nulled``, and the result has none otherwise."""
+    one = len(set(codes)) == 1
+    have = "has" if one else "have"
+    providers = _providers_text(codes, listed=listed)
+    if part is None:
+        what = f"{providers} reported {year - 1} and {have} not reported {year}"
+    else:
+        what = (
+            f"{providers} reported {part} in {year - 1} and {have} not reported "
+            f"it in {year}"
+        )
+    if nulled:
+        rows = f"{year} rows" if part is None else f"{year} rows that hold it"
+        return (
+            f"{year} is partial: {what}, so {'its' if one else 'their'} {rows} are "
+            "null; allow_partial=True returns the partial values"
+        )
+    rows = f"{year} rows" if part is None else f"{year} rows of {part}"
+    return (
+        f"{year} is partial: {what}, so the result has no {rows} for "
+        f"{'it' if one else 'them'}"
     )
 
 
@@ -384,29 +451,6 @@ def overstated_text(
     return f"{year} sums across providers overstate: {text}a sum holds them without it"
 
 
-def absent_text(
-    year: int,
-    codes: Iterable[Code],
-    /,
-    *,
-    part: str | None = None,
-    listed: int = LISTED,
-) -> str:
-    """The note on providers the result shows that have no row for ``part``
-    of the table's last year, which they reported the year before."""
-    have = "has" if len(set(codes)) == 1 else "have"
-    providers = _providers_text(codes, listed=listed)
-    if part is None:
-        return (
-            f"{year} has no row for {providers}, which reported {year - 1} and "
-            f"{have} not reported {year}"
-        )
-    return (
-        f"{year} has no row of {part} for {providers}, which reported it in "
-        f"{year - 1} and {have} not reported it in {year}"
-    )
-
-
 def _by_part(cells: Iterable[Incomplete]) -> list[tuple[int, str | None, set[Code]]]:
     """Each year and part of ``cells``, with its providers, in order."""
     found: dict[tuple[int, str], tuple[str | None, set[Code]]] = {}
@@ -416,35 +460,171 @@ def _by_part(cells: Iterable[Incomplete]) -> list[tuple[int, str | None, set[Cod
     return [(year, part, codes) for (year, _), (part, codes) in sorted(found.items())]
 
 
-def _incomplete_text(held: _Held, call: ResolvedCall, last: int | None) -> list[str]:
+def _incomplete_text(held: _Held, call: ResolvedCall) -> list[str]:
     """The sentences ``explain()`` writes on a result's incomplete cells."""
-    lines = _summed_text(held.summed, last)
+    lines = [_part_sentence(part) for part in _last_year_parts(held, call)]
     lines += [
         overstated_text(year, codes, part=part, nulled=not call.allow_partial)
         for year, part, codes in _by_part(held.overstated)
     ]
     if not call.allow_partial:
-        own = [cell for cell in held.own if is_own_gap(cell)]
+        own = [cell for cell in held.own - held.waiting if is_own_gap(cell)]
         lines += [
             nulled_text(year, codes, part=part) for year, part, codes in _by_part(own)
         ]
-    lines += [
-        absent_text(year, codes, part=part)
-        for year, part, codes in _by_part(held.absent)
-    ]
     nulled = frozenset() if call.allow_partial else held.own | held.totals
     lines += _reported_text(held.own | held.totals, nulled=nulled)
     return lines
 
 
-def _summed_text(summed: frozenset[Incomplete], last: int | None) -> list[str]:
-    """The sentence on a sum across providers some of which have not reported
-    the table's last year."""
-    if last is None:
-        return []
-    return [
-        partial_text(last, len(codes), part=part) for _, part, codes in _by_part(summed)
+class Effect(StrEnum):
+    """What a part of the table's last year that providers have not yet
+    reported does to a result."""
+
+    #: Providers the call shows have no row for it.
+    MISSING = "missing"
+    #: Providers the call shows have null rows for it.
+    NULL = "null"
+    #: A sum across providers keeps its value without the providers.
+    SHORT = "short"
+    #: A sum across providers has no row for it.
+    UNSUMMED = "unsummed"
+    #: A provider total has no row for it.
+    UNTOTALLED = "untotalled"
+
+
+@dataclass(frozen=True, slots=True)
+class LastYearPart:
+    """A part of the table's last year that providers have not yet reported,
+    such as ``"line 1820"`` or ``None`` for the whole year, its providers,
+    what it does to the result, and the provider total it does it to."""
+
+    year: int
+    part: str | None
+    effect: Effect
+    codes: frozenset[Code]
+    total: str | None = None
+
+
+def _last_year_parts(
+    held: _Held, call: ResolvedCall, *, warned: bool = False
+) -> list[LastYearPart]:
+    """The parts of the table's last year that providers have not yet
+    reported, in order of year and part, as ``explain()`` names them, or
+    as the warning lists them when ``warned``: unless the call allows
+    partial values, a part that leaves a row null or a sum short; whatever
+    it allows, a part that leaves the result without a row."""
+    sources: list[tuple[Iterable[Incomplete], Effect, str | None]] = [
+        (held.absent, Effect.MISSING, None)
     ]
+    if not call.allow_partial:
+        sources.append((held.waiting, Effect.NULL, None))
+    if not (warned and call.allow_partial):
+        sources.append((held.summed, Effect.SHORT, None))
+    sources.append((held.unsummed, Effect.UNSUMMED, None))
+    sources += [(cells, Effect.UNTOTALLED, name) for name, cells in held.untotalled]
+    found = [
+        LastYearPart(year, part, effect, frozenset(codes), total)
+        for cells, effect, total in sources
+        for year, part, codes in _by_part(cells)
+    ]
+    order = list(Effect)
+    return sorted(
+        found,
+        key=lambda p: (p.year, p.part or "", order.index(p.effect), p.total or ""),
+    )
+
+
+def _part_sentence(found: LastYearPart) -> str:
+    """The ``explain()`` sentence on one part of the table's last year that
+    providers have not yet reported."""
+    year, part, codes = found.year, found.part, found.codes
+    match found.effect:
+        case Effect.MISSING | Effect.NULL:
+            return unreported_text(
+                year, codes, part=part, nulled=found.effect is Effect.NULL
+            )
+        case Effect.SHORT:
+            return partial_text(year, len(codes), part=part)
+        case Effect.UNSUMMED:
+            return unsummed_text(year, len(codes), part=part, where="the sum")
+        case Effect.UNTOTALLED:
+            where = f"the {found.total} total"
+            return unsummed_text(year, len(codes), part=part, where=where)
+
+
+def unsummed_text(
+    year: int, count: int, /, *, part: str | None = None, where: str
+) -> str:
+    """The note on a sum or total, ``where``, that has no row of ``part`` of
+    the table's last year, since none of the ``count`` providers it sums
+    that reported it the year before has reported it yet."""
+    providers = "provider" if count == 1 else "providers"
+    have = "has" if count == 1 else "have"
+    if part is None:
+        what = f"reported {year - 1} {have} not reported {year}"
+        rows = f"no {year} row"
+    else:
+        what = f"reported {part} in {year - 1} {have} not reported it in {year}"
+        rows = f"no {year} row of it"
+    return f"{year} is partial: {count} {providers} that {what}, so {where} has {rows}"
+
+
+def last_year_warning(
+    year: int, parts: list[LastYearPart], /, *, listed: int = LISTED
+) -> str:
+    """The one warning on the parts of the table's last year ``year`` that
+    providers reported the year before and have not reported yet.
+
+    It names each part once, with what it does to the result: missing or
+    null rows of providers the call shows, named, and sums and provider
+    totals that are short or have no row, with their providers counted. It
+    names the first ``listed`` parts and the first ``listed`` providers of
+    each, and counts the rest.
+    """
+    grouped: dict[str, list[LastYearPart]] = {}
+    for found in parts:
+        grouped.setdefault(found.part or f"all of {year}", []).append(found)
+    sentences = []
+    for label, found in list(grouped.items())[:listed]:
+        effects = [_effect_text(item, listed=listed) for item in found]
+        listing = (
+            effects[0]
+            if len(effects) == 1
+            else f"{', '.join(effects[:-1])}, and {effects[-1]}"
+        )
+        sentences.append(f"{label[0].upper()}{label[1:]} is {listing}.")
+    if len(grouped) > listed:
+        sentences.append(f"{len(grouped) - listed} more parts are partial too.")
+    effects = {found.effect for found in parts}
+    if Effect.NULL in effects:
+        sentences.append(
+            "allow_partial=True returns the partial values of the null rows."
+        )
+    if effects & {Effect.SHORT, Effect.UNSUMMED, Effect.UNTOTALLED}:
+        sentences.append("Show the providers on their own rows to see who reported.")
+    return (
+        f"{year} is partial: providers that reported a part in {year - 1} have not "
+        f"reported it in {year}. {' '.join(sentences)}"
+    )
+
+
+def _effect_text(found: LastYearPart, *, listed: int) -> str:
+    """What one part does to the result, with its providers named or
+    counted."""
+    count = len(found.codes)
+    counted = f"{count} {'provider' if count == 1 else 'providers'}"
+    match found.effect:
+        case Effect.MISSING:
+            return f"missing for {_providers_text(found.codes, listed=listed)}"
+        case Effect.NULL:
+            return f"null for {_providers_text(found.codes, listed=listed)}"
+        case Effect.SHORT:
+            return f"left out of the sum for {counted}"
+        case Effect.UNSUMMED:
+            return f"missing from the sum for {counted}"
+        case Effect.UNTOTALLED:
+            return f"missing from the {found.total} total for {counted}"
 
 
 def _reported_text(
@@ -909,15 +1089,17 @@ def _assemble(
     cells: frozenset[Incomplete],
     *,
     years: list[int],
+    reads: list[int],
     last: int | None,
     subtracted: frozenset[Incomplete],
 ) -> tuple[pa.Table, _Held]:
     """Member rows, then each total, and the incomplete cells behind each.
 
-    ``years`` are the years ``rows`` hold, ``last`` the table's last year, of
-    which a sum across providers warns, and ``subtracted`` the cells of
-    parts the indicator subtracts. ``_completeness.outcomes`` decides what
-    each cell does; this applies it.
+    ``years`` are the years ``rows`` hold, ``reads`` those and the table's
+    last year ``last`` when the call asks for it, ``last`` the year of which
+    a sum across providers warns, and ``subtracted`` the cells of parts the
+    indicator subtracts. ``_completeness.outcomes`` decides what each cell
+    does; this applies it.
     """
     always = [name for name in SPLIT_COLUMNS if name in rows.columns]
     keys = list(dict.fromkeys([*call.by, *always]))
@@ -935,8 +1117,8 @@ def _assemble(
     decided = outcomes(
         cells,
         call,
-        own=own,
-        years=years,
+        own=own_years(call, reads),
+        years=reads,
         last=last,
         ratio=ratio,
         subtracted=subtracted,
@@ -944,7 +1126,7 @@ def _assemble(
     nulling = frozenset(
         cell
         for cell, outcome in decided.items()
-        if outcome in {Outcome.NULL_ROW, Outcome.NULL_SUM}
+        if outcome in {Outcome.NULL_ROW, Outcome.WARN_ROW, Outcome.NULL_SUM}
     )
     overstating = frozenset(
         cell
@@ -966,29 +1148,48 @@ def _assemble(
         )
     ]
     own_held = held(cursor, members, nulling - overstating)
-    shown = last_shown(call, years, last)
+    unreported = {cell for cell in nulling if decided[cell] is Outcome.WARN_ROW}
     found = _Held(
         own=own_held,
         summed=held(cursor, _kept(members, keys, call), warned, providers=False),
         overstated=held(cursor, members, overstating),
-        absent=frozenset(
-            cell
-            for cell in nulling - own_held
-            if decided[cell] is Outcome.NULL_ROW
-            and not_yet_reported(cell, cells, last)
-            and (shown is None or cell.provider in shown)
-        ),
+        waiting=own_held & unreported,
+        absent=frozenset(unreported - own_held),
     )
 
+    # A not-yet-reported cell that a sum across providers, or a provider
+    # total, holds and that no row of it holds: none of the providers it
+    # sums has a row for the part.
+    waiting = {cell for cell in cells if not_yet_reported(cell, cells, last)}
+    summing = {
+        cell
+        for cell in waiting
+        if decided[cell] in {Outcome.WARN_SUM, Outcome.NULL_SUM}
+    }
     groups = {group.key: group for group in call.groups}
     in_totals: set[Incomplete] = set()
+    untotalled = []
     for key in call.totals:
+        group = groups[key]
         table, inside = _total(
-            cursor, indicator, call, rows, groups[key], keys, value, cells, nulling
+            cursor, indicator, call, rows, group, keys, value, cells, nulling
         )
         tables.append(table)
         in_totals |= inside
-    return pa.concat_tables(tables), replace(found, totals=frozenset(in_totals))
+        if group.dimension == "provider":
+            members_cells = {
+                cell
+                for cell in waiting
+                if cell.provider in group.members.get(cell.year, ())
+            }
+            if members_cells - inside:
+                untotalled.append((group.name, frozenset(members_cells - inside)))
+    return pa.concat_tables(tables), replace(
+        found,
+        totals=frozenset(in_totals),
+        unsummed=frozenset(summing - held(cursor, members, summing, providers=False)),
+        untotalled=tuple(untotalled),
+    )
 
 
 def _kept(

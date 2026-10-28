@@ -85,6 +85,7 @@ IMPUTED_MULTILATERAL_ODA = Indicator(
     ),
     default_basis="gross_disbursement",
     default_providers=None,
+    search_terms=("multilateral by sector",),
     caveats=(
         Caveat(
             "Shares come from each organisation's CRS gross disbursements of ODA "

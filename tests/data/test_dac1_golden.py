@@ -227,6 +227,37 @@ def test_a_total_over_a_preliminary_year_is_null_where_members_drop_a_line(
     assert oda_total["value"].notna().all() and len(oda_total) == 1
 
 
+def test_a_provider_that_has_not_yet_reported_a_line_warns_and_explains(
+    dac1: OecdTables,
+) -> None:
+    """France reported in-donor refugee costs in the year before DAC1's last
+    year and not yet in the last. Expected: its series holds the year before
+    at the table's value, warns that the last year has no France row of line
+    1820, and explain() names the gap."""
+    [(last,)] = dac1.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+    published = _lines(dac1, line=1820, flow=1160)
+    assert (FRANCE, last) not in published
+
+    q = oda.query(
+        "oecd.dac1.in_donor_refugee_costs", years=[last - 1, last], providers=FRANCE
+    )
+    with pytest.warns(oda.OdaDataWarning) as caught:
+        df = q.to_pandas()
+
+    assert df[["year", "value"]].values.tolist() == [
+        [last - 1, pytest.approx(published[(FRANCE, last - 1)], abs=0.005)]
+    ]
+    [warning] = [str(w.message) for w in caught]
+    assert warning.startswith(f"oecd.dac1.in_donor_refugee_costs: {last} is partial")
+    assert warning.endswith(". Line 1820, flow 1160 is missing for France (4).")
+    text = (
+        f"{last} is partial: France (4) reported line 1820, flow 1160 in "
+        f"{last - 1} and has not reported it in {last}, so the result has no "
+        f"{last} rows of line 1820, flow 1160 for it."
+    )
+    assert text in q.explain().splitlines()
+
+
 @pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
 def test_a_line_named_beside_another_gives_what_it_gives_alone(
     dac1: OecdTables, allow_partial: bool

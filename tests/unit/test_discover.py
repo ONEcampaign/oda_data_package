@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 import oda_data as oda
-from oda_data import _context, _discover, _registry
+from oda_data import _context, _discover, _names, _registry
 from oda_data._model import Binding, Caveat, Indicator, Ratio, Sum, Value, basis_lines
 from oda_data._registry import dac1, dac2a, multisystem
 
@@ -308,6 +308,70 @@ def test_search_leaves_out_lines_the_lines_indicators_refuse() -> None:
     assert len(refused) == 6
     assert not listed & refused
     assert ("dac1", "1") in listed  # GNI is money, read on net flows
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "key", "use"),
+    [
+        ("aid effort", "indicator", "oecd.dac1.oda_gni_ratio", None),
+        ("0.7", "indicator", "oecd.dac1.oda_gni_ratio", None),
+        ("Sub-Saharan", "recipient", "10003", "recipients=10003"),
+        ("sub-saharan africa", "recipient", "10003", "recipients=10003"),
+        ("South of Sahara", "recipient", "10003", "recipients=10003"),
+        ("Germany", "provider", "5", "providers=5"),
+    ],
+)
+def test_search_answers_common_questions_and_names(
+    text: str, kind: str, key: str, use: str | None
+) -> None:
+    first = oda.search(text).iloc[0]
+    assert (first["kind"], first["key"]) == (kind, key)
+    assert first["use"] == (use or f'oda.get("{key}")')
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "key"),
+    [
+        ("UK", "provider", "12"),  # what providers="UK" reads, not Ukraine
+        ("USA", "provider", "302"),
+        ("Ken", "recipient", "248"),  # a word start
+        ("Sub", "recipient", "10003"),  # a word start of "Sub-Saharan Africa"
+    ],
+)
+def test_search_first_entity_row_is_what_a_filter_reads(
+    text: str, kind: str, key: str
+) -> None:
+    found = oda.search(text)
+    entities = found[found["kind"].isin(["provider", "recipient"])]
+    assert (entities.iloc[0]["kind"], entities.iloc[0]["key"]) == (kind, key)
+
+
+def test_search_takes_a_digit_that_is_not_a_decimal_code() -> None:
+    assert len(oda.search("²")) > 0  # resolving "²" as a code raised ValueError
+
+
+def test_search_matches_entity_codes_exactly() -> None:
+    found = oda.search("1010")
+    assert not found["kind"].isin(["provider", "recipient"]).any()
+
+
+def test_search_lists_providers_and_recipients_after_every_other_row() -> None:
+    kinds = list(oda.search("total")["kind"])
+    entities = [i for i, kind in enumerate(kinds) if kind in {"provider", "recipient"}]
+    others = [
+        i for i, kind in enumerate(kinds) if kind not in {"provider", "recipient"}
+    ]
+    assert entities and others
+    assert max(others) < min(entities)
+
+
+def test_region_search_terms_name_recipient_totals() -> None:
+    totals = {
+        code
+        for code in _discover._REGION_SEARCH_TERMS
+        if code in _names.names("recipient") and _names.is_aggregate("recipient", code)
+    }
+    assert totals == set(_discover._REGION_SEARCH_TERMS)
 
 
 def test_search_without_a_match_returns_the_empty_schema() -> None:

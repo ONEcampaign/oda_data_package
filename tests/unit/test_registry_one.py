@@ -325,14 +325,19 @@ def test_core_plus_non_core_is_total_oda(core: Context, basis: str) -> None:
 
 
 def test_explain_names_only_providers_with_a_nulled_row(core: Context) -> None:
-    """Germany has no non-core line in 2019, so it has no 2019 row and
-    explain() does not call one null."""
+    """Germany has no non-core line in 2019, so it has no 2019 row, and the
+    result warns that it has none rather than calling one null."""
     query = core.query(
         "one.dac1.non_core_oda", years=[2018, 2019], providers=[FRANCE, GERMANY]
     )
 
-    assert ("5", 2019) not in _values(query.to_pandas(), "provider", "year")
-    assert "rows are null" not in query.explain()
+    with pytest.warns(
+        OdaDataWarning, match="Line 1820, flow 1160 is missing for Germany"
+    ):
+        found = _values(query.to_pandas(), "provider", "year")
+
+    assert ("5", 2019) not in found
+    assert "are null" not in query.explain()
 
 
 def test_core_oda_converts_each_provider_before_the_sum(core: Context) -> None:
@@ -366,6 +371,7 @@ def test_a_member_that_drops_a_subtracted_line_nulls_the_last_year_total(
     assert _values(partial, "year")[(2019,)] == 130.0 - 13.0 - 7.0 + 230.0
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("allow_partial", "germany_2019"),
     [(False, None), (True, 230.0)],
@@ -713,6 +719,7 @@ def test_eu_institutions_gni_is_the_gni_of_each_years_members(eu: Context) -> No
     assert "Germany (5)" in explained
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
 @pytest.mark.parametrize(
     "indicator",

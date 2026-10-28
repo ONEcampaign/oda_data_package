@@ -301,6 +301,7 @@ def test_the_grant_equivalent_caveat_states_its_years_once() -> None:
     assert caveat.count("2015") == 1
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("years", "basis", "warns"),
     [

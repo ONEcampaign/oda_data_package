@@ -343,7 +343,7 @@ def resolve_entity(
         code = str(value).strip().upper()
         if code in names("modality"):
             return code
-    elif isinstance(value, int) or value.strip().isdigit():
+    elif isinstance(value, int) or value.strip().isdecimal():
         return _known_code(dimension, int(value), table=table)
 
     return _resolve_name(dimension, str(value), table=table)
@@ -401,11 +401,7 @@ def _resolve_name(
     system = _SYSTEMS.get(dimension)
     if system is not None:
         return _resolve_with_resolvekit(dimension, text, system)
-    raise UnknownEntityError(
-        f"no {dimension} is named {text!r}",
-        suggestions=_close_names(dimension, key, table),
-        system=dimension,
-    )
+    raise _unknown_name(dimension, text, _close_names(dimension, key, table), dimension)
 
 
 def _resolve_with_resolvekit(dimension: Dimension, text: str, system: str) -> int:
@@ -433,10 +429,8 @@ def _resolve_with_resolvekit(dimension: Dimension, text: str, system: str) -> in
         )
     if not exact:
         near = [entity.canonical_name for entity in entities if entity is not None]
-        raise UnknownEntityError(
-            f"no {dimension} is named {text!r}",
-            suggestions=near or _close_names(dimension, key, None),
-            system=system,
+        raise _unknown_name(
+            dimension, text, near or _close_names(dimension, key, None), system
         )
 
     entity = exact[0]
@@ -447,6 +441,19 @@ def _resolve_with_resolvekit(dimension: Dimension, text: str, system: str) -> in
             system=system,
         )
     return int(code)
+
+
+def _unknown_name(
+    dimension: Dimension, text: str, suggestions: list[str], system: str
+) -> UnknownEntityError:
+    """The error for a name that matched nothing, its first three suggestions
+    in the message."""
+    hint = f"; did you mean {', '.join(suggestions[:3])}?" if suggestions else ""
+    return UnknownEntityError(
+        f"no {dimension} is named {text!r}{hint}",
+        suggestions=suggestions,
+        system=system,
+    )
 
 
 def _entity_keys(entity: EntityRecord, system: str) -> frozenset[str]:

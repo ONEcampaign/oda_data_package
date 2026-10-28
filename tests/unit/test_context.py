@@ -806,11 +806,69 @@ def test_explain_describes_the_call(ctx: Context) -> None:
 
     assert q.explain() == (
         "Total ODA (DAC1), headline basis: net flows 2017, grant equivalent 2018.\n"
-        "3 Trio countries, plus their total, which covers all 3 in every year.\n"
+        "3 Trio countries, plus their total, which covers all 3 in every year "
+        "it returns.\n"
         "Current USD, and constant 2023 USD and EUR using DAC deflators from the "
         "same DAC1 release.\n"
         "DAC1 downloaded 2026-10-12. 24 rows."
     )
+
+
+@pytest.mark.parametrize(
+    ("providers", "years", "by", "lines"),
+    [
+        (
+            total(TRIO),
+            2030,
+            None,
+            [
+                "Total ODA (DAC1), headline basis: net flows to 2017, grant "
+                "equivalent from 2018.",
+                "The result is empty: DAC1 covers 2017-2018 and does not hold 2030.",
+                "The total of 3 Trio countries.",
+            ],
+        ),
+        (
+            TRIO,
+            [2017, 2018, 2019, 2020],
+            None,
+            [
+                "Total ODA (DAC1), headline basis: net flows 2017, grant "
+                "equivalent 2018.",
+                "The result has no rows for 2019-2020: DAC1 covers 2017-2018.",
+                "3 Trio countries.",
+            ],
+        ),
+        (
+            TRIO,
+            [2017, 2030],
+            ["provider"],
+            [
+                "Total ODA (DAC1), headline basis: net flows 2017.",
+                "DAC1 covers 2017-2018 and does not hold 2030.",
+                "3 Trio countries.",
+            ],
+        ),
+        (
+            TRIO,
+            [1950, 2017],
+            None,
+            [
+                "Total ODA (DAC1), headline basis: net flows 2017.",
+                "The result has no rows for 1950: DAC1 covers 2017-2018.",
+                "3 Trio countries.",
+            ],
+        ),
+    ],
+    ids=["empty", "short", "no-year-column", "before-the-first-year"],
+)
+def test_explain_names_the_years_the_tables_do_not_hold(
+    ctx: Context, providers: object, years: object, by: object, lines: list[str]
+) -> None:
+    kwargs = {} if by is None else {"by": by}
+    q = ctx.query("oecd.dac1.total_oda", years=years, providers=providers, **kwargs)
+
+    assert q.explain().splitlines()[:3] == lines
 
 
 @pytest.mark.parametrize(

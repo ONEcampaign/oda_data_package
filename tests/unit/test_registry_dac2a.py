@@ -528,10 +528,14 @@ def test_a_sum_over_providers_in_a_partial_last_year_warns_and_explains(
 ) -> None:
     # Germany, Türkiye, IDA and 918 reported 2023 and not 2024; France did.
     q = ctx.query("oecd.dac2a.recipient_oda", years=[2023, 2024], by=["year"])
-    with pytest.warns(OdaDataWarning, match="2024 is partial: 4 providers") as caught:
+    with pytest.warns(OdaDataWarning) as caught:
         df = q.to_pandas()
 
-    assert len(caught) == 1
+    assert [str(w.message) for w in caught] == [
+        "oecd.dac2a.recipient_oda: 2024 is partial: providers that reported a part "
+        "in 2023 have not reported it in 2024. All of 2024 is left out of the sum "
+        "for 4 providers. Show the providers on their own rows to see who reported."
+    ]
     # 2023: France 13 (Kenya, regional, unspecified), Germany 20, Türkiye 5, IDA 40.
     assert _rows(df, "year", "value") == [(2023, 78.0), (2024, 1.5)]
     assert (
@@ -556,14 +560,38 @@ def test_allow_partial_silences_the_partial_last_year_warning(ctx: Context) -> N
     )
 
 
+def test_a_result_split_by_provider_warns_of_those_that_have_not_reported(
+    ctx: Context,
+) -> None:
+    q = ctx.query(
+        "oecd.dac2a.recipient_oda", years=[2023, 2024], by=["provider", "year"]
+    )
+
+    with pytest.warns(OdaDataWarning) as caught:
+        q.to_pandas()
+
+    providers = (
+        "Germany (5), International Development Association (905) and Türkiye (55)"
+    )
+    warning = (
+        "2024 is partial: providers that reported a part in 2023 have not reported "
+        f"it in 2024. Line 206 is missing for {providers}."
+    )
+    assert [str(w.message) for w in caught] == [f"oecd.dac2a.recipient_oda: {warning}"]
+    text = (
+        f"2024 is partial: {providers} reported line 206 in 2023 and have not "
+        "reported it in 2024, so the result has no 2024 rows of line 206 for them."
+    )
+    assert text in q.explain().splitlines()
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"years": [2023, 2024], "by": ["provider", "year"]},
         {"years": 2023, "by": ["year"]},
         {"years": 2024, "providers": FRANCE, "by": ["year"]},
     ],
-    ids=["split-by-provider", "not-the-last-year", "one-provider"],
+    ids=["not-the-last-year", "one-provider"],
 )
 def test_a_result_that_sums_no_partial_last_year_does_not_warn(
     ctx: Context, kwargs: dict

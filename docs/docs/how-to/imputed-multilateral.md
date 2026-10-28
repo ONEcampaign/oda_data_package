@@ -29,11 +29,11 @@ The three rows add up to USD 6,731 million, the United Kingdom's core contributi
 
 ## Add imputed to bilateral ODA by sector
 
-Bilateral CRS ODA and imputed multilateral ODA share the gross disbursement basis, so the two add up sector by sector.
+Bilateral CRS ODA and imputed multilateral ODA share the gross disbursement basis, so the two add up sector by sector. Some sectors hold only one of the two, so fill both sides with 0, name the columns by indicator id, and check the table against both totals.
 
 ```text
-                                bilateral  imputed   total
-broad_sector_name
+indicator                       bilateral  imputed   total
+sector
 Refugees in Donor Countries        5311.0      0.0  5311.0
 Health                              935.0   1970.0  2905.0
 Humanitarian                        968.0    465.0  1433.0
@@ -50,15 +50,25 @@ bilateral = oda.get("oecd.crs.bilateral_oda", years=2023, providers="GBR", by=["
 imputed = oda.get("one.crs.imputed_multilateral_oda", years=2023, providers="GBR", by=["broad_sector"])
 
 both = pd.concat([bilateral, imputed])
-wide = both.pivot_table(
-    index="broad_sector_name", columns="indicator", values="value", aggfunc="sum", observed=True
-)
-wide.columns = ["bilateral", "imputed"]
-wide["total"] = wide.bilateral + wide.imputed.fillna(0)
+both["sector"] = both.broad_sector_name.astype("string").fillna("Unallocated")
+wide = both.pivot_table(index="sector", columns="indicator", values="value", aggfunc="sum")
+wide = wide.rename(
+    columns={
+        "oecd.crs.bilateral_oda": "bilateral",
+        "one.crs.imputed_multilateral_oda": "imputed",
+    }
+).fillna(0)
+wide["total"] = wide.bilateral + wide.imputed
+
+assert abs(wide.total.sum() - (bilateral.value.sum() + imputed.value.sum())) < 1e-6
 print(wide.sort_values("total", ascending=False).head(5).round(0))
 ```
 
 Two-thirds of the United Kingdom's health ODA in 2023 went through multilateral organisations' core budgets, so a sector chart from bilateral CRS alone understates it threefold.
+
+The assertion holds because both kinds of one-sided row survive. Action Relating to Debt has USD 5.5 million imputed and no bilateral rows, so a total that fills only `imputed` leaves it null and drops the money. The USD 219.6 million with `allocation_status` `unallocated` has no sector name, and `pivot_table` drops a row whose index is missing, so it gets a label first. The table adds up to USD 18,858.3 million, bilateral USD 12,127.1 million plus imputed USD 6,731.2 million.
+
+Filling with 0 suits a complete year such as 2023. In a partial last year a missing component has not been reported yet, so read the `OdaDataWarning`s of both calls before you fill.
 
 ## See which channel lent its shares
 
