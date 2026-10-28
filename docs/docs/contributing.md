@@ -22,6 +22,9 @@ Every public name is defined in a private module under `src/oda_data/` and loade
 - `_registry/`: the indicators, one module per source (`dac1.py`, `dac2a.py`, `crs.py`, `multisystem.py`, `one.py`). Each module defines its bindings, such as `DAC1` in `dac1.py`, and an `INDICATORS` tuple. `_registry/__init__.py` maps every id to its indicator.
 - `_model.py`: `Indicator`, `Binding`, the bases (`Value`, `Flow`, `Line`, `Headline`), the filters (`In`, `NotIn`, `IsNull`, `NotNull`, `Between`, `HasTag`, `AnyOf`), and the kinds (`Sum`, `Ratio`, `Derived`, `Method`).
 - `_compile.py` and `_combine.py`: turn an indicator and a resolved call into DuckDB SQL, then apply groups, totals, ratios, and the partial-year rules.
+- `_rows.py`: reads the rows a call takes from an indicator's tables, in current USD, with the `Incomplete` cells that `Method` indicators report.
+- `_completeness.py`: finds the parts that providers have not yet reported, and decides which rows and sums each one nulls.
+- `_store.py`: holds the values a `Context` computes once per table release, such as a table's providers and last year.
 - `_context.py`: `Context`, `Query`, `get`, `query`, `records`, and `explain()`.
 - `_tables.py`, `_factors.py`, `_provenance.py`: table views over oda-reader's `scan()`, conversion factors from pydeflate, and provenance records.
 - `_resolve.py`, `_names.py`, `_groups.py`: names and codes, and the built-in groups.

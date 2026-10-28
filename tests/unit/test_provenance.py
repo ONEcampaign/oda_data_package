@@ -10,13 +10,38 @@ import pyarrow.parquet as pq
 import pytest
 
 import oda_data
+from oda_data._model import ResolvedCall, ResolvedGroup
 from oda_data._provenance import (
     FORMAT_VERSION,
     PROVENANCE_KEY,
+    Call,
+    CallGroup,
     Provenance,
     Release,
+    call_record,
     to_metadata,
     with_provenance,
+)
+from oda_data._units import constant, current
+
+CALL = Call(
+    indicator="oecd.crs.bilateral_oda",
+    basis="gross_disbursement",
+    years=(2022, 2023),
+    by=("recipient", "year"),
+    units=(current("USD"), constant("EUR", 2023)),
+    allow_partial=True,
+    filters={"provider": (4, 5, 12), "modality": ("B01", "C01")},
+    groups=(
+        CallGroup(
+            dimension="provider",
+            name="trio",
+            shown=False,
+            total=True,
+            members={2022: (4, 5), 2023: (4, 5, 12)},
+        ),
+    ),
+    default_providers=None,
 )
 
 RECORD = Provenance(
@@ -37,6 +62,7 @@ RECORD = Provenance(
     resolvekit="0.1.13",
     reference_data="sha256:abc",
     defaults={"basis": "headline", "providers": "dac_countries"},
+    call=CALL,
 )
 
 
@@ -81,6 +107,56 @@ def test_a_format_1_file_without_label_release_still_reads(tmp_path):
     assert read.tables["crs"].token == "etag-crs"
 
 
+def test_a_format_1_file_without_call_still_reads(tmp_path):
+    document = json.loads(to_metadata(RECORD)[PROVENANCE_KEY])
+    del document["call"]
+    table = pa.table({"value": [1.0]}).replace_schema_metadata(
+        {PROVENANCE_KEY: json.dumps(document).encode()}
+    )
+
+    read = oda_data.provenance(_write(tmp_path, table))
+
+    assert read.call is None
+    assert read.defaults == RECORD.defaults
+
+
+def test_call_record_resolves_groups_and_sorts_codes():
+    trio = ResolvedGroup(
+        name="trio",
+        dimension="provider",
+        members={2023: frozenset({12, 4}), 2022: frozenset({5, 4})},
+    )
+    resolved = ResolvedCall(
+        basis="gross_disbursement",
+        units=(current("USD"),),
+        by=("year",),
+        years=(2022, 2023),
+        members={"provider": frozenset({12, 5, 4}), "modality": frozenset({"C01"})},
+        groups=(trio,),
+        totals=(trio.key,),
+        rows={"provider": frozenset({5}), "modality": frozenset({"C01"})},
+    )
+
+    record = call_record("x", resolved, filtered=["provider", "modality"])
+
+    # Only 5 was named outright; 4 and 12 feed the total and sit in groups.
+    assert dict(record.filters) == {"modality": ("C01",), "provider": (5,)}
+    assert record.groups == (
+        CallGroup("provider", "trio", False, True, {2022: (4, 5), 2023: (4, 12)}),
+    )
+    assert record.default_providers is None
+    # The providers came from a default when the caller filtered none.
+    defaulted = call_record("x", resolved, filtered=["modality"])
+    assert defaulted.default_providers == (4, 5, 12)
+    assert "provider" not in defaulted.filters
+
+
+def test_an_equal_record_writes_byte_identical_json():
+    rebuilt = pickle.loads(pickle.dumps(RECORD))
+
+    assert to_metadata(rebuilt) == to_metadata(RECORD)
+
+
 def test_a_file_without_a_record_raises(tmp_path):
     path = _write(tmp_path, pa.table({"value": [1.0]}))
 
@@ -102,6 +178,8 @@ def test_a_newer_format_raises(tmp_path):
 def test_record_is_read_only_and_pickles():
     with pytest.raises(TypeError):
         RECORD.indicators["x"] = 2
+    with pytest.raises(TypeError):
+        CALL.filters["x"] = ()
 
     assert pickle.loads(pickle.dumps(RECORD)) == RECORD
 
@@ -109,3 +187,5 @@ def test_record_is_read_only_and_pickles():
 def test_public_names_point_at_the_provenance_module():
     assert oda_data.Release is Release
     assert oda_data.Provenance is Provenance
+    assert oda_data.Call is Call
+    assert oda_data.CallGroup is CallGroup

@@ -70,6 +70,20 @@ def test_converts_dac1_total_oda_for_a_few_providers(tables):
     )
 
     assert fallback == frozenset({905})
+    # Current USD alone skips the factors and gives the same rows.
+    alone = ResolvedCall(
+        basis="grant_equivalent", units=(current("USD"),), by=("provider", "year")
+    )
+    usd, usd_fallback = converted(cursor, rows, alone, factors)
+    order = ", ".join(usd.columns)
+    assert usd_fallback == frozenset()
+    assert usd.types == result.types
+    assert (
+        usd.order(order).fetchall()
+        == result.filter("currency = 'USD' AND prices = 'current'")
+        .order(order)
+        .fetchall()
+    )
     assert factors.release() == tables.release("dac1")
     for provider in (4, 302, 918, 905):
         for year in (2022, 2023):

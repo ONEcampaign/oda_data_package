@@ -9,6 +9,7 @@ GNI, and CRS keywords that hold the COVID-19 tag inside another tag.
 provider for any other unit.
 """
 
+import warnings
 from collections.abc import Iterator, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -391,11 +392,23 @@ def test_a_member_that_drops_a_subtracted_line_has_a_null_last_year_row(
         assert found[("5", 2019)] == germany_2019
 
 
-def test_a_sum_over_providers_warns_when_a_subtracted_line_is_missing(
+def test_a_sum_over_providers_is_null_when_a_subtracted_line_is_missing(
     core: Context,
 ) -> None:
-    with pytest.warns(OdaDataWarning, match="2019 is partial: 1 provider"):
-        core.get("one.dac1.core_oda", years=2019, by=["year"])
+    """Germany's 2019 total ODA is in the sum and its refugee costs are not
+    taken out, so the sum would overstate: it is null, says why, and does not
+    also warn that it covers only the providers that have reported."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", OdaDataWarning)
+        q = core.query("one.dac1.core_oda", years=2019, by=["year"])
+    partial = core.get("one.dac1.core_oda", years=2019, by=["year"], allow_partial=True)
+
+    assert pd.isna(q.to_pandas()["value"].item())
+    assert any(
+        line.startswith("2019 sums across providers are null: Germany (5) reported")
+        for line in q.explain().splitlines()
+    )
+    assert partial["value"].tolist() == [130.0 - 13.0 - 7.0 + 230.0]
 
 
 # Recipient ODA with imputed multilateral ------------------------------------------

@@ -32,6 +32,23 @@ The record names the oda-data version, each indicator and its version, and each 
 
 A release token is the file host's ETag or Last-Modified date, so two machines that downloaded the same OECD file hold the same token. The CRS also carries a readable label such as `v20261006`.
 
+## Read what the call computed
+
+`record.call` names the indicator, basis, years, split, units, and `allow_partial`, the codes each filter named outright, each group with its members by year, and the default providers when the call named none.
+
+```text
+oecd.dac1.total_oda ('year',) {'provider': (4,)} None
+```
+
+```python
+import oda_data as oda
+
+call = oda.query("oecd.dac1.total_oda", years=2023, providers="France", by=["year"]).provenance.call
+print(call.indicator, call.by, dict(call.filters), call.default_providers)
+```
+
+France and Germany split by year alone return tables with the same columns and one row each. Their `call` records differ, so a file written from one cannot pass for the other. The same holds for `providers=oda.total(oda.groups.dac_countries)` against `providers=[4, oda.total(oda.groups.dac_countries)]`. Both read France, and only the second shows its row, which `filters` records as `(4,)`.
+
 ## Write a result with its provenance
 
 `to_parquet()` writes the result with the record in the file's metadata. `oda.provenance(path)` reads it back.
@@ -90,4 +107,4 @@ assert oda.provenance("total_oda.parquet") == q.provenance
 ## See also
 
 - [Versions and releases](../explanation/versioning.md) explains what changes a number and how each change is announced.
-- [Public API](../reference/api.md#provenance) documents `Provenance` and `Release`.
+- [Public API](../reference/api.md#provenance) documents `Provenance`, `Release`, `Call`, and `CallGroup`.

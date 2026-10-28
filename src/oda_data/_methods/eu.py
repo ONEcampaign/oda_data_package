@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
     from oda_data._model import Indicator, ResolvedCall
+    from oda_data._store import Releases
     from oda_data._types import Code
 
 _KEYS = "provider, year, basis"
@@ -66,7 +67,9 @@ class EuAttribution:
     base: Indicator
     contributions: Indicator
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
+    def __call__(
+        self, cursor: DuckDBPyConnection, call: ResolvedCall, /, *, memo: Releases
+    ) -> MethodRows:
         """Return ``provider``, ``year``, ``basis`` and ``value`` rows, and
         918's row in the table's last year as incomplete while providers that
         paid it the year before have not reported."""
@@ -148,7 +151,9 @@ class EuGni:
     gni: Indicator
     fixed_eu27: bool = False
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
+    def __call__(
+        self, cursor: DuckDBPyConnection, call: ResolvedCall, /, *, memo: Releases
+    ) -> MethodRows:
         """Return ``provider``, ``year``, ``basis`` and ``value`` rows, 918's
         years after a member's last GNI as incomplete, and a note on each run
         of years with the same members counted as zero."""

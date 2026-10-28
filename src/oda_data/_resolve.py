@@ -230,16 +230,30 @@ def resolve_group(
         AmbiguousEntityError: A member's name could mean more than one entity.
         UnsupportedQueryError: The group holds an aggregate code.
     """
-    _check_dimension(dimension)
-    if dimension not in _GROUP_DIMENSIONS:
-        raise UnsupportedQueryError(f"{dimension} filters take no groups")
-    codes = _member_codes(group, dimension, table=table, seen=())
+    codes = group_codes(group, dimension, table=table)
     members = {
         year: frozenset(code for code in codes if group.is_member(code, year))
         for year in sorted(set(years))
     }
     _check_aggregates(group, dimension, codes)
     return ResolvedGroup(name=group.name, dimension=dimension, members=members)
+
+
+def group_codes(
+    group: Group, dimension: Dimension, *, table: TableName | None = None
+) -> frozenset[Code]:
+    """Every code a group holds in any year, nested groups' members included.
+
+    Raises:
+        UnknownEntityError: A member matched nothing, or the group belongs to
+            another dimension.
+        AmbiguousEntityError: A member's name could mean more than one entity.
+        UnsupportedQueryError: The dimension takes no groups.
+    """
+    _check_dimension(dimension)
+    if dimension not in _GROUP_DIMENSIONS:
+        raise UnsupportedQueryError(f"{dimension} filters take no groups")
+    return _member_codes(group, dimension, table=table, seen=())
 
 
 def _member_codes(

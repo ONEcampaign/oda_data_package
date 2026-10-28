@@ -39,7 +39,6 @@ from oda_data._combine import (
     check_left_out,
     combine,
     tables_for,
-    walk,
 )
 from oda_data._combine import records as combined_records
 from oda_data._compile import (
@@ -58,10 +57,17 @@ from oda_data._errors import (
 from oda_data._factors import converts, pydeflate_currency
 from oda_data._groups import broad_sectors, groups
 from oda_data._model import Flow, Headline, NotIn, Ratio, ResolvedCall, Sum, Tables
-from oda_data._names import is_aggregate, names
-from oda_data._provenance import Provenance, with_provenance
+from oda_data._names import EU_INSTITUTIONS, is_aggregate, names
+from oda_data._provenance import Provenance, call_record, with_provenance
 from oda_data._registry import INDICATORS
-from oda_data._resolve import Selection, resolve_group, resolve_selection
+from oda_data._resolve import (
+    Selection,
+    group_codes,
+    resolve_group,
+    resolve_selection,
+)
+from oda_data._rows import bindings, walk
+from oda_data._store import Releases, Store
 from oda_data._tables import OecdTables
 from oda_data._types import Dimension
 from oda_data._units import Unit, current
@@ -410,7 +416,10 @@ class _Plan:
 
 
 def _plan(
-    cursor: DuckDBPyConnection, request: _Request, tables: tuple[TableName, ...]
+    cursor: DuckDBPyConnection,
+    request: _Request,
+    tables: tuple[TableName, ...],
+    releases: Releases,
 ) -> _Plan:
     """Turn a request into a ``ResolvedCall``.
 
@@ -419,7 +428,7 @@ def _plan(
     """
     indicator = request.indicator
     table = indicator.binding.table
-    read_years = request.years or _distinct(cursor, tables, "year")
+    read_years = request.years or _distinct(cursor, tables, "year", releases)
 
     selections = {
         dimension: resolve_selection(dimension, values, years=read_years, table=table)
@@ -437,7 +446,9 @@ def _plan(
         )
 
     if "provider" in indicator.dimensions and "provider" not in selections:
-        codes, text = _default_providers(cursor, indicator, tables, read_years)
+        codes, text = _default_providers(
+            cursor, indicator, tables, read_years, by=request.by, releases=releases
+        )
         members["provider"] = codes
         defaults["providers"] = indicator.default_providers or "official_providers"
         default_text["provider"] = text
@@ -549,6 +560,9 @@ def _default_providers(
     indicator: Indicator,
     tables: tuple[TableName, ...],
     years: tuple[int, ...],
+    *,
+    by: tuple[Dimension, ...],
+    releases: Releases,
 ) -> tuple[frozenset[Code], str]:
     """The providers a call that names none reads, and a phrase for them.
 
@@ -556,6 +570,11 @@ def _default_providers(
     the indicator's tables except aggregates and private donors. Either way
     the providers the indicator or an indicator it combines excludes are
     dropped, since naming one raises.
+
+    Where ``sums_leave_out_eu_institutions`` holds, a call that sums
+    providers (``provider`` outside ``by``) leaves EU Institutions (918) out.
+    A call split by provider keeps 918's row, so its provider rows may add up
+    to more than the sum by 918's value.
     """
     name = indicator.default_providers
     if name is not None:
@@ -566,7 +585,7 @@ def _default_providers(
         private = _member_union(
             resolve_group(groups.private_donors, "provider", years=years).members
         )
-        found = _distinct(cursor, tables, "provider")
+        found = _distinct(cursor, tables, "provider", releases)
         codes = frozenset(c for c in found if not is_aggregate("provider", c))
         codes -= private
         text = (
@@ -579,7 +598,44 @@ def _default_providers(
         if rule.when is None
         for code in rule.values
     }
-    return codes - excluded, text
+    codes -= excluded
+    if EU_INSTITUTIONS not in codes or not sums_leave_out_eu_institutions(indicator):
+        return codes, text
+    if "provider" in by:
+        return codes, (
+            f"{text}. EU Institutions (918) has its own row, and its members' "
+            "figures hold what they pay it, so the provider rows add up to more "
+            "than a sum across providers by 918's value"
+        )
+    return codes - {EU_INSTITUTIONS}, (
+        f"{text}. EU Institutions (918) is left out of the sum, since its "
+        "members' figures hold what they pay it; add 'provider' to by to see "
+        "its row"
+    )
+
+
+def sums_leave_out_eu_institutions(indicator: Indicator) -> bool:
+    """Whether a call that names no providers leaves EU Institutions (918) out
+    of a sum across providers and shows its row when split by provider.
+
+    It holds on an indicator with a provider dimension and a leaf binding
+    whose members' figures hold what they pay 918, since a sum holding 918
+    would count that money twice, when its default providers can hold 918
+    (every official provider in the table, or a group with 918 as a member),
+    and no exclusion drops 918 from every row. ``describe()`` states it and
+    ``_default_providers`` applies it.
+    """
+    if "provider" not in indicator.dimensions:
+        return False
+    if not any(binding.members_hold_eu_share for binding in bindings(indicator)):
+        return False
+    if any(
+        EU_INSTITUTIONS in rule.values and rule.when is None
+        for rule in _provider_exclusions(indicator)
+    ):
+        return False
+    name = indicator.default_providers
+    return name is None or EU_INSTITUTIONS in group_codes(groups[name], "provider")
 
 
 def _member_union(members: Mapping[int, frozenset[Code]]) -> frozenset[Code]:
@@ -587,11 +643,27 @@ def _member_union(members: Mapping[int, frozenset[Code]]) -> frozenset[Code]:
 
 
 def _distinct(
-    cursor: DuckDBPyConnection, tables: tuple[TableName, ...], column: str
+    cursor: DuckDBPyConnection,
+    tables: tuple[TableName, ...],
+    column: str,
+    releases: Releases,
 ) -> tuple[int, ...]:
-    """The distinct non-null values of ``column`` across ``tables``, sorted."""
-    sql = " UNION ".join(f'SELECT DISTINCT "{column}" FROM "{t}"' for t in tables)
-    return tuple(sorted(v for (v,) in cursor.sql(sql).fetchall() if v is not None))
+    """The distinct non-null values of ``column`` across ``tables``, sorted,
+    each table read once per held release."""
+    found: set[int] = set()
+    for table in tables:
+        found.update(
+            releases.get(
+                table, ("distinct", column), partial(_scan, cursor, table, column)
+            )
+        )
+    return tuple(sorted(found))
+
+
+def _scan(cursor: DuckDBPyConnection, table: TableName, column: str) -> frozenset[int]:
+    """The distinct non-null values of ``column`` in ``table``."""
+    sql = f"SELECT DISTINCT {ident(column)} FROM {ident(table)}"
+    return frozenset(v for (v,) in cursor.sql(sql).fetchall() if v is not None)
 
 
 @cache
@@ -726,10 +798,12 @@ class _Result:
 class Context:
     """Cache folder, offline mode, and release pins for an application.
 
-    A context holds one DuckDB connection and the conversion factors from its
-    DAC1 release, and serves many threads at once. Use it as a context
-    manager, or call ``close()``, to release the connection and the leases on
-    the release files it read, which keep oda-reader from deleting them.
+    A context holds one DuckDB connection, the conversion factors from its
+    DAC1 release, and what it reads once per table release, such as each
+    table's providers and years, and serves many threads at once. Use it as a
+    context manager, or call ``close()``, to release the connection and the
+    leases on the release files it read, which keep oda-reader from deleting
+    them.
 
     Args:
         cache_dir: oda-reader's cache folder, or ``None`` for its default
@@ -770,6 +844,7 @@ class Context:
         self._tables = tables
         self._make_factors = make_factors
         self._factor_source: Factors | None = None
+        self._store = Store()
         self._lock = threading.Lock()
 
     def __enter__(self) -> Self:
@@ -780,7 +855,7 @@ class Context:
 
     def close(self) -> None:
         """Close the context's DuckDB connection, release its leases on the
-        release files, and drop its factors.
+        release files, and drop its factors and the values it read from them.
 
         oda-reader may then delete the files of superseded releases. A later
         call opens a new connection and reads the tables again.
@@ -788,6 +863,7 @@ class Context:
         with self._lock:
             self._tables.close()
             self._factor_source = None
+            self._store.clear()
 
     def get(
         self,
@@ -926,16 +1002,24 @@ class Context:
         indicator = request.indicator
         tables = tables_for(indicator)
         cursor = self._tables.cursor(tables)
+        # The tables the call read, and DAC1 when a unit took its factors.
+        releases: dict[str, Release] = {t: self._tables.release(t) for t in tables}
+        held = Releases(self._store, {t: releases[t].token for t in tables})
         try:
-            plan = _plan(cursor, request, tables)
+            plan = _plan(cursor, request, tables, held)
             if "broad_sector" in plan.call.by:
                 cursor.register(BROAD_SECTORS, _broad_sector_table())
             factors = self._factors()
             if request.columns is None:
-                combined = combine(cursor, indicator, plan.call, factors)
+                combined = combine(cursor, indicator, plan.call, factors, releases=held)
             else:
                 combined = combined_records(
-                    cursor, indicator, plan.call, factors, columns=request.columns
+                    cursor,
+                    indicator,
+                    plan.call,
+                    factors,
+                    columns=request.columns,
+                    releases=held,
                 )
         except duckdb.InvalidInputException as error:
             message = str(error).removeprefix("Invalid Input Error: ")
@@ -945,8 +1029,6 @@ class Context:
         finally:
             cursor.close()
 
-        # The tables the call read, and DAC1 when a unit took its factors.
-        releases: dict[str, Release] = {t: self._tables.release(t) for t in tables}
         if indicator.is_money and any(converts(unit) for unit in plan.call.units):
             releases.setdefault("dac1", factors.release())
         record = Provenance(
@@ -957,6 +1039,7 @@ class Context:
             resolvekit=version("resolvekit"),
             reference_data=_reference_data(),
             defaults=plan.defaults,
+            call=call_record(indicator.id, plan.call, filtered=request.filters),
         )
         if request.columns is not None:
             table = _shape_records(combined.table, indicator, plan)
@@ -1107,7 +1190,7 @@ def explain(
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
-    ``notes`` is ``Combined.notes``: the sentences on the result's incomplete
+    ``notes`` is ``Combined.notes``, the sentences on the result's incomplete
     cells and the notes of its ``Method`` parts.
     """
     table = indicator.binding.table
@@ -1407,8 +1490,8 @@ def get(
             ratio's group total is null when a member's numerator or
             denominator is. With it the group total sums the members that
             reported, those rows hold the parts reported, and the sum across
-            providers does not warn. ``explain()`` still names the
-            incomplete values. A member that has not yet reported, or that
+            providers does not warn. ``explain()`` names the
+            incomplete values either way. A member that has not yet reported, or that
             skips a year and reports again, counts as zero either way.
 
     Raises:

@@ -40,7 +40,7 @@ from oda_data._errors import (
     MissingFactorError,
     UnsupportedQueryError,
 )
-from oda_data._factors import FACTOR_SCHEMA
+from oda_data._factors import FACTOR_SCHEMA, converts
 from oda_data._model import (
     VOCABULARY,
     AnyOf,
@@ -569,7 +569,9 @@ def converted(
     """Convert filtered rows to each of the call's units at row grain.
 
     Every row joins to its own provider-year factor before any sum, so a sum
-    across providers uses each provider's deflator.
+    across providers uses each provider's deflator. A call in current USD
+    alone needs no factor, so its rows only gain the unit columns and the
+    factor source is not asked.
 
     Args:
         cursor: The cursor ``rows`` lives on.
@@ -586,6 +588,19 @@ def converted(
         MissingFactorError: A provider-year in ``rows`` lacks a factor for
             one of the units.
     """
+    names = [name for name in rows.columns if name != "value"]
+    select = [f"r.{ident(name)}" for name in names]
+
+    match call.units:
+        case (unit,) if not converts(unit):
+            select += [
+                f"CAST({literal(unit.currency)} AS VARCHAR) AS currency",
+                f"CAST({literal(unit.prices)} AS VARCHAR) AS prices",
+                "CAST(NULL AS BIGINT) AS base_year",
+                "r.value AS value",
+            ]
+            return rows.set_alias("r").select(", ".join(select)), frozenset()
+
     keys = rows.select(
         "CAST(provider AS BIGINT) AS provider, CAST(year AS BIGINT) AS year"
     )
@@ -594,57 +609,70 @@ def converted(
         table, fallback = FACTOR_SCHEMA.empty_table(), frozenset[int]()
     else:
         result = factors.table(keys, call.units)
-        table = _factors_for(keys, result.factors, call.units)
+        table = _factors_for(cursor, keys, result.factors, call.units)
         fallback = result.fallback_providers
 
-    names = [name for name in rows.columns if name != "value"]
     joined = rows.set_alias("r").join(
         cursor.from_arrow(table).set_alias("f"),
         "r.provider = f.provider AND r.year = f.year",
     )
-    select = [f"r.{ident(name)}" for name in names]
     select += [f"f.{name}" for name in UNIT_COLUMNS]
     select.append("r.value * f.factor AS value")
     return joined.select(", ".join(select)), fallback
 
 
 def _factors_for(
-    keys: pa.Table, factors: pa.Table, units: tuple[Unit, ...]
+    cursor: DuckDBPyConnection,
+    keys: pa.Table,
+    factors: pa.Table,
+    units: tuple[Unit, ...],
 ) -> pa.Table:
-    """Keep the factor rows for ``units``, and raise if a key lacks one."""
-    by_key: dict[tuple[int, int, str, str, int | None], float] = {
-        (r["provider"], r["year"], r["currency"], r["prices"], r["base_year"]): r[
-            "factor"
-        ]
-        for r in factors.select(list(FACTOR_SCHEMA.names)).to_pylist()
-    }
-    kept: list[dict[str, object]] = []
-    for key in keys.to_pylist():
-        for unit in units:
-            factor = by_key.get(
-                (
-                    key["provider"],
-                    key["year"],
-                    unit.currency,
-                    unit.prices,
-                    unit.base_year,
-                )
-            )
-            if factor is None:
-                raise MissingFactorError(
-                    f"no {_unit_label(unit)} factor for provider {key['provider']} "
-                    f"in {key['year']}"
-                )
-            kept.append(
-                key
-                | {
-                    "currency": unit.currency,
-                    "prices": unit.prices,
-                    "base_year": unit.base_year,
-                    "factor": factor,
-                }
-            )
-    return pa.Table.from_pylist(kept, schema=FACTOR_SCHEMA)
+    """Keep the factor rows for ``units``, one per key and unit, and raise if
+    a key lacks one.
+
+    Raises:
+        MissingFactorError: Naming the first key, in ``keys`` order, and the
+            first of ``units`` it lacks a factor for.
+    """
+    wanted = cursor.from_arrow(
+        pa.table(
+            {
+                "currency": pa.array([u.currency for u in units], pa.string()),
+                "prices": pa.array([u.prices for u in units], pa.string()),
+                "base_year": pa.array([u.base_year for u in units], pa.int64()),
+                "unit_order": pa.array(range(len(units)), pa.int64()),
+            }
+        )
+    ).set_alias("u")
+    ordered = keys.select(["provider", "year"]).append_column(
+        "key_order", pa.array(range(keys.num_rows), pa.int64())
+    )
+    expected = cursor.from_arrow(ordered).set_alias("k").cross(wanted)
+    matched = expected.join(
+        cursor.from_arrow(factors.select(list(FACTOR_SCHEMA.names))).set_alias("f"),
+        "k.provider = f.provider AND k.year = f.year"
+        " AND u.currency = f.currency AND u.prices = f.prices"
+        " AND u.base_year IS NOT DISTINCT FROM f.base_year",
+        how="left",
+    )
+    kept = matched.select(
+        "k.provider AS provider, k.year AS year, u.currency AS currency,"
+        " u.prices AS prices, u.base_year AS base_year, f.factor AS factor,"
+        " k.key_order AS key_order, u.unit_order AS unit_order"
+    )
+
+    table = kept.to_arrow_table()
+    missing = table.filter(table["factor"].is_null())
+    if missing.num_rows:
+        first = missing.sort_by(
+            [("key_order", "ascending"), ("unit_order", "ascending")]
+        )
+        provider, year = first["provider"][0].as_py(), first["year"][0].as_py()
+        unit = units[first["unit_order"][0].as_py()]
+        raise MissingFactorError(
+            f"no {_unit_label(unit)} factor for provider {provider} in {year}"
+        )
+    return table.select(list(FACTOR_SCHEMA.names)).cast(FACTOR_SCHEMA)
 
 
 def _unit_label(unit: Unit) -> str:

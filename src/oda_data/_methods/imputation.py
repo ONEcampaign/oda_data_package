@@ -31,6 +31,13 @@ negative row, a reversal in the channel's spending, is.
 The allocation must conserve each provider's contribution to each channel in
 each year, or ``ImputationConservationError`` is raised. The function returns
 current USD, and the engine converts each row with its provider's factor.
+
+Channel spending and shares are the same for every call that reads the same
+CRS release and share years, so ``imputed_rows`` keeps them in the memo the
+engine passes, the Context's store keyed by the CRS release the call holds.
+They go in the store's large section, which drops the least recently used. A
+spending table for nine share years is about 10 MB and a shares table 2-4 MB.
+Each call allocates its own contributions and checks conservation.
 """
 
 from __future__ import annotations
@@ -52,6 +59,7 @@ if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection
 
     from oda_data._model import Indicator
+    from oda_data._store import Releases
 
 #: Years in a share window.
 PERIOD_LENGTH = 3
@@ -100,7 +108,12 @@ _BROAD = "_imputation_broad_sectors"
 
 
 def imputed_rows(
-    cursor: DuckDBPyConnection, call: ResolvedCall, /, *, core: Indicator
+    cursor: DuckDBPyConnection,
+    call: ResolvedCall,
+    /,
+    *,
+    core: Indicator,
+    memo: Releases,
 ) -> MethodRows:
     """Spread core contributions over their channels' spending.
 
@@ -112,6 +125,7 @@ def imputed_rows(
             select the contributions; the shares read every channel's CRS
             spending.
         core: The indicator whose rows are the core contributions.
+        memo: Keeps channel spending and shares per CRS release.
 
     Returns:
         Rows in ``OUTPUT_SCHEMA``. A contribution is spread whole, so no row
@@ -130,10 +144,23 @@ def imputed_rows(
     years = sorted(set(contributions["year"].to_pylist()))
     proxy_channels = channels.proxies()["proxy_channel"].drop_null().to_pylist()
     wanted = sorted({*contributions["channel"].to_pylist(), *proxy_channels})
-    spending = channel_spending(
-        cursor, first=years[0] - (PERIOD_LENGTH - 1 + MAX_SHARE_AGE), last=years[-1]
+    first = years[0] - (PERIOD_LENGTH - 1 + MAX_SHARE_AGE)
+    last = years[-1]
+
+    def spending() -> pa.Table:
+        return memo.get(
+            "crs",
+            ("imputation_spending", first, last),
+            lambda: channel_spending(cursor, first=first, last=last),
+            large=True,
+        )
+
+    shares = memo.get(
+        "crs",
+        ("imputation_shares", first, tuple(years), tuple(wanted)),
+        lambda: channel_shares(cursor, spending(), years=years, wanted=wanted),
+        large=True,
     )
-    shares = channel_shares(cursor, spending, years=years, wanted=wanted)
     rows = allocate(cursor, contributions, shares)
     check_conservation(cursor, rows, contributions)
 

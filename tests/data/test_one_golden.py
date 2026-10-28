@@ -132,6 +132,30 @@ def test_core_oda_is_null_for_members_with_a_line_missing_in_the_last_year(
             assert value == pytest.approx(expected, abs=1e-6), (provider, year)
 
 
+def test_core_oda_summed_across_providers_is_null_in_the_last_year(
+    tables: OecdTables,
+) -> None:
+    """In DAC1's last year most DAC countries report total ODA and not yet
+    the lines core ODA subtracts, so a sum across them would overstate.
+    Expected: null by year, and with allow_partial the DAC countries' line
+    11010 less the lines 1820, 1500 and 1600 reported so far."""
+    [(last,)] = tables.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+    dac = oda.groups.dac_countries
+    members = resolve_group(dac, "provider", years=(last,)).members[last]
+    lines = {line: _line(tables, line=line, flow=1160) for line in CORE_LINES}
+    expected = sum(
+        sign * lines[line].get((code, last), 0.0)
+        for line, sign in zip(CORE_LINES, (1, -1, -1, -1), strict=True)
+        for code in members
+    )
+
+    df = oda.get("one.dac1.core_oda", years=last, by=["year"])
+    partial = oda.get("one.dac1.core_oda", years=last, by=["year"], allow_partial=True)
+
+    assert math.isnan(df["value"].item())
+    assert partial["value"].item() == pytest.approx(expected, abs=1e-6)
+
+
 def test_recipient_oda_with_imputed_multilateral_is_its_two_parts(
     tables: OecdTables,
 ) -> None:

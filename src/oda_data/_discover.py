@@ -27,6 +27,7 @@ from oda_data._model import (
     Ratio,
     Sum,
     line_basis,
+    offered_bases,
 )
 from oda_data._names import names, normalise
 
@@ -112,6 +113,11 @@ class IndicatorInfo:
         example: A call that returns the indicator.
         measure: What the values count: ``money``, or ``people`` for a count
             such as population, which takes no ``unit=``.
+        leaves_out_eu_institutions: Whether a call that names no providers
+            leaves EU Institutions (918) out of a sum across providers and
+            shows its row when split by provider, since its members' figures
+            hold what they pay it. The provider rows of such a split add up
+            to more than the sum by 918's value.
     """
 
     id: str
@@ -127,6 +133,7 @@ class IndicatorInfo:
     caveats: tuple[str, ...]
     example: str
     measure: str = "money"
+    leaves_out_eu_institutions: bool = False
 
     def __repr__(self) -> str:
         bases = ", ".join(_basis_text(self, *pair) for pair in self.bases)
@@ -142,7 +149,9 @@ class IndicatorInfo:
             self.description,
             f"Dimensions: {', '.join(self.dimensions)}",
             f"Bases: {bases}",
-            f"Providers by default: {_default_providers_text(self.default_providers)}",
+            "Providers by default: "
+            f"{_default_providers_text(self.default_providers)}"
+            f"{_eu_institutions_clause(self)}",
             f"Values: {values}",
             *(f"Caveat: {caveat}" for caveat in self.caveats),
             f"Example: {self.example}",
@@ -182,6 +191,7 @@ def _info(indicator: Indicator) -> IndicatorInfo:
         caveats=tuple(_caveat_text(c) for c in indicator.caveats),
         example=_example(indicator),
         measure=indicator.measure,
+        leaves_out_eu_institutions=_context.sums_leave_out_eu_institutions(indicator),
     )
 
 
@@ -190,23 +200,15 @@ def _kind(indicator: Indicator) -> str:
 
 
 def _bases(indicator: Indicator) -> list[tuple[Basis, int | None]]:
-    """Each basis a call may ask for and its first year.
-
-    A ``Sum`` with a line per basis offers only the bases it has a line for,
-    and a headline needs a line for both of the bases it reads. A ratio
-    offers its numerator's bases, since the denominator falls back to its own
-    default where it has none.
-    """
-    kind = indicator.kind
-    if isinstance(kind, Ratio):
-        return _bases(kind.numerator)
-    found: list[tuple[Basis, int | None]] = []
-    for basis, rule in indicator.binding.bases.items():
-        used = (rule.before, rule.after) if isinstance(rule, Headline) else (basis,)
-        if isinstance(kind, Sum) and kind.lines and not set(used) <= set(kind.lines):
-            continue
-        found.append((basis, None if isinstance(rule, Headline) else rule.from_year))
-    return found
+    """Each basis a call may ask for and its first year. A ratio offers its
+    numerator's bases, since the denominator falls back to its own default
+    where it has none."""
+    if isinstance(indicator.kind, Ratio):
+        return _bases(indicator.kind.numerator)
+    return [
+        (basis, None if isinstance(rule, Headline) else rule.from_year)
+        for basis, rule in offered_bases(indicator).items()
+    ]
 
 
 def _basis_text(info: IndicatorInfo, basis: Basis, from_year: int | None) -> str:
@@ -223,6 +225,17 @@ def _default_providers_text(group: str | None) -> str:
         return "every official provider in the table, aggregates excluded"
     found = groups.get(group)
     return f"{found.label} (oda.groups.{group})" if found else group
+
+
+def _eu_institutions_clause(info: IndicatorInfo) -> str:
+    """The sentence tail the default providers line takes when a sum across
+    providers leaves EU Institutions (918) out, or an empty string."""
+    if not info.leaves_out_eu_institutions:
+        return ""
+    return (
+        "; EU Institutions (918) are left out of a sum across providers and "
+        "shown when split by provider"
+    )
 
 
 def _caveat_text(caveat: Caveat) -> str:

@@ -46,7 +46,13 @@ if TYPE_CHECKING:
         sectors,
         total,
     )
-    from oda_data._provenance import Provenance, Release, provenance
+    from oda_data._provenance import (
+        Call,
+        CallGroup,
+        Provenance,
+        Release,
+        provenance,
+    )
     from oda_data._units import Unit, constant, current
 
 # Public name -> the private module that defines it.
@@ -58,6 +64,8 @@ _LAZY: dict[str, str] = {
     "Query": "oda_data._context",
     "Context": "oda_data._context",
     "Provenance": "oda_data._provenance",
+    "Call": "oda_data._provenance",
+    "CallGroup": "oda_data._provenance",
     "Release": "oda_data._provenance",
     "provenance": "oda_data._provenance",
     # discovery
@@ -99,6 +107,8 @@ _LAZY: dict[str, str] = {
 __all__ = [
     "AmbiguousEntityError",
     "BasisRangeError",
+    "Call",
+    "CallGroup",
     "Context",
     "DataUnavailableError",
     "DimensionError",

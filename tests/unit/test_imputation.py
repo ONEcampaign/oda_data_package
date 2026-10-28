@@ -20,19 +20,24 @@ import pyarrow as pa
 import pytest
 
 from oda_data._context import Context
-from oda_data._errors import ImputationConservationError, UnmappedChannelError
+from oda_data._errors import (
+    ImputationConservationError,
+    UnmappedChannelError,
+    UnsupportedQueryError,
+)
 from oda_data._factors import FACTOR_SCHEMA
 from oda_data._groups import Group, total
 from oda_data._methods import channels, imputation
 from oda_data._model import VOCABULARY, FactorTable, ResolvedCall
 from oda_data._provenance import Release
 from oda_data._registry.multisystem import CORE_CONTRIBUTIONS
+from oda_data._store import UNCACHED
 from oda_data._units import Unit, constant, current
 
 INDICATOR = "one.crs.imputed_multilateral_oda"
 USD = current("USD")
 RELEASE = Release("token", datetime(2026, 10, 27))
-FRANCE, GERMANY, UK = 4, 5, 12
+FRANCE, GERMANY, UK, EU = 4, 5, 12, 918
 NDF, IDA = 104, 905  # CRS reporters
 NDF_CHANNEL, IDA_CHANNEL, MDRI, PEACEKEEPING, NOWHERE = (
     47128,
@@ -576,22 +581,55 @@ def test_a_group_total_sums_its_members(mixed: Context) -> None:
     }
 
 
+def test_a_default_sum_leaves_out_eu_institutions_and_a_split_shows_them() -> None:
+    """EU members' Multisystem figures hold what they pay EU Institutions
+    (918), so the default providers leave 918 out of a sum across providers
+    and keep its row when the call splits by provider. Named, 918 and a
+    member still refuse to sum."""
+    multisystem = [*_MIXED_CORE, core(EU, NDF_CHANNEL, 2022, 10.0)]
+    with context(_MIXED_CRS, multisystem) as ctx:
+        summed = ctx.query(INDICATOR, years=2022, by=["year"])
+        split = ctx.query(INDICATOR, years=2022, by=["provider", "year"])
+
+        assert _values(summed.to_pandas(), "year") == {(2022,): 1150.0}
+        assert _values(split.to_pandas(), "provider") == {
+            (str(FRANCE),): 1000.0,
+            (str(GERMANY),): 150.0,
+            (str(EU),): 10.0,
+        }
+        summed_default = summed.provenance.call.default_providers
+        split_default = split.provenance.call.default_providers
+        assert summed_default is not None
+        assert split_default is not None
+        assert EU not in summed_default
+        assert set(split_default) - set(summed_default) == {EU}
+        assert "(918) is left out" in summed.explain()
+        assert "(918) has its own row" in split.explain()
+        with pytest.raises(UnsupportedQueryError, match="918"):
+            ctx.get(INDICATOR, years=2022, providers=[FRANCE, EU], by=["year"])
+
+
 @pytest.mark.parametrize(
-    ("allow_partial", "expected"),
-    [(False, None), (True, 1000.0)],
-    ids=["null", "allow-partial"],
+    ("commitment", "allow_partial", "expected"),
+    [(False, False, None), (False, True, 1000.0), (True, False, 1000.0)],
+    ids=["null", "allow-partial", "any-row-reports-the-year"],
 )
 def test_a_member_missing_from_the_last_year_nulls_the_total(
-    allow_partial: bool, expected: float | None
+    commitment: bool, allow_partial: bool, expected: float | None
 ) -> None:
-    """Germany contributed in 2021 and has only a commitment in 2022, the
-    Multisystem's last year, so the pair's 2022 total is partial."""
+    """Germany contributed in 2021 and has no 2022 row, the Multisystem's last
+    year, so the pair's 2022 total is partial. A provider reports a
+    Multisystem year whole, so a Germany with only a 2022 commitment has
+    reported it, and its disbursements count as zero."""
     multisystem = [
         core(FRANCE, NDF_CHANNEL, 2021, 1000.0),
         core(FRANCE, NDF_CHANNEL, 2022, 1000.0),
         core(GERMANY, NDF_CHANNEL, 2021, 100.0),
-        core(GERMANY, NDF_CHANNEL, 2022, 100.0, flow_type="Commitments"),
     ]
+    if commitment:
+        multisystem.append(
+            core(GERMANY, NDF_CHANNEL, 2022, 100.0, flow_type="Commitments")
+        )
     with context(_MIXED_CRS, multisystem) as ctx:
         df = ctx.get(
             INDICATOR,
@@ -625,7 +663,88 @@ def test_method_output_follows_its_schema(mixed: Context) -> None:
     )
     cursor = mixed._tables.cursor(("multisystem", "crs"))
 
-    table = imputation.imputed_rows(cursor, call, core=CORE_CONTRIBUTIONS).table
+    table = imputation.imputed_rows(
+        cursor, call, core=CORE_CONTRIBUTIONS, memo=UNCACHED
+    ).table
 
     assert table.schema == imputation.OUTPUT_SCHEMA
     assert set(table["allocation_status"].to_pylist()) == {"imputed", "unallocated"}
+
+
+# Memo ------------------------------------------------------------------------
+_CACHED_CRS = spending(NDF, HEALTH, range(2018, 2023), 300.0)
+_CACHED_CORE = [
+    core(FRANCE, NDF_CHANNEL, 2021, 800.0),
+    core(FRANCE, NDF_CHANNEL, 2022, 1000.0),
+    core(UK, NDF_CHANNEL, 2022, 500.0),
+]
+
+
+@pytest.fixture
+def computed(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """The intermediates the imputation computes, in order."""
+    calls: list[str] = []
+    for name in ("channel_spending", "channel_shares"):
+        original = getattr(imputation, name)
+
+        def counted(*args: object, _name=name, _original=original, **kwargs: object):
+            calls.append(_name)
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(imputation, name, counted)
+    return calls
+
+
+def test_a_context_reuses_spending_and_shares_across_calls(
+    computed: list[str],
+) -> None:
+    with context(_CACHED_CRS, _CACHED_CORE) as ctx:
+        first = ctx.records(INDICATOR, years=2022, providers=FRANCE)
+        # Another provider asks for the same channels, so the shares hold.
+        second = ctx.records(INDICATOR, years=2022, providers=UK)
+
+    assert computed == ["channel_spending", "channel_shares"]
+    assert listed(first, "sector", "value") == [(str(HEALTH), 1000.0)]
+    assert listed(second, "sector", "value") == [(str(HEALTH), 500.0)]
+
+
+def test_a_new_crs_release_and_close_each_miss(
+    computed: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tables = FakeTables(_CACHED_CRS, _CACHED_CORE)
+    ctx = Context._from_parts(tables, FakeFactors())
+    ctx.records(INDICATOR, years=2022, providers=FRANCE)
+
+    newer = Release("newer", datetime(2026, 10, 28))
+    monkeypatch.setattr(tables, "release", lambda table: newer)
+    ctx.records(INDICATOR, years=2022, providers=FRANCE)
+    assert computed.count("channel_spending") == 2
+
+    # Keep the connection open, so the call after close() reads the tables.
+    monkeypatch.setattr(tables, "close", lambda: None)
+    ctx.close()
+    ctx.records(INDICATOR, years=2022, providers=FRANCE)
+    assert computed.count("channel_spending") == 3
+
+
+def test_the_memo_drops_its_least_recently_used_tables(computed: list[str]) -> None:
+    with context(_CACHED_CRS, _CACHED_CORE) as ctx:
+        ctx._store.max_large = 2  # one call's spending and shares
+        ctx.records(INDICATOR, years=2022, providers=FRANCE)
+        ctx.records(INDICATOR, years=2021, providers=FRANCE)
+        ctx.records(INDICATOR, years=2022, providers=FRANCE)
+
+    assert computed == ["channel_spending", "channel_shares"] * 3
+
+
+def test_a_memo_hit_still_checks_conservation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with context(_CACHED_CRS, _CACHED_CORE) as ctx:
+        ctx.records(INDICATOR, years=2022, providers=FRANCE)
+        allocate = imputation.allocate
+        monkeypatch.setattr(
+            imputation, "allocate", lambda *args: allocate(*args).slice(0, 0)
+        )
+        with pytest.raises(ImputationConservationError):
+            ctx.records(INDICATOR, years=2022, providers=FRANCE)
