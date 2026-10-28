@@ -10,6 +10,8 @@ not yet in 2025.
 import re
 import warnings
 from collections.abc import Iterator
+from contextlib import nullcontext
+from dataclasses import replace
 
 import duckdb
 import pyarrow as pa
@@ -27,6 +29,7 @@ from oda_data._completeness import Outcome, holding, outcomes
 from oda_data._errors import OdaDataWarning
 from oda_data._model import (
     Binding,
+    Derived,
     Flow,
     In,
     Incomplete,
@@ -169,6 +172,35 @@ CRS_ODA = Indicator(
     default_providers=None,
 )
 
+MULTISYSTEM_ODA = Indicator(
+    id="oecd.multisystem.core_contributions",
+    name="Core contributions",
+    description="Core contributions.",
+    binding=Binding(
+        table="multisystem",
+        dimensions={"provider": "provider", "year": "year"},
+        bases={"gross_disbursement": Value("value")},
+        reporting=(),
+    ),
+    kind=Sum(),
+    dimensions=("provider", "year"),
+    default_basis="gross_disbursement",
+    default_providers=None,
+)
+
+#: CRS bilateral ODA plus Multisystem core contributions, as
+#: ``one.crs.bilateral_plus_multilateral_oda`` adds them.
+BOTH_TABLES = Indicator(
+    id="one.crs.bilateral_plus_multilateral_oda",
+    name="Bilateral and multilateral ODA",
+    description="Bilateral and multilateral ODA.",
+    binding=MULTISYSTEM_ODA.binding,
+    kind=Derived(plus=(CRS_ODA, MULTISYSTEM_ODA)),
+    dimensions=("provider", "year"),
+    default_basis="gross_disbursement",
+    default_providers=None,
+)
+
 RECIPIENT_ODA = Indicator(
     id="oecd.dac2a.recipient_oda",
     name="Recipient ODA",
@@ -242,13 +274,21 @@ def test_bundled_lines_give_what_separate_calls_give(
     1820 alone or beside a line France has reported, whose total holds both."""
 
     def run(named: tuple[int, ...]) -> dict:
-        found = combine(
-            con,
-            LINES,
-            lines_call(named, basis=basis, flows=flows, allow_partial=allow_partial),
-            FakeFactors(),
-            releases=UNCACHED,
-        )
+        short = allow_partial and 1820 in named
+        with (
+            pytest.warns(OdaDataWarning, match="short in the pair total")
+            if short
+            else nullcontext()
+        ):
+            found = combine(
+                con,
+                LINES,
+                lines_call(
+                    named, basis=basis, flows=flows, allow_partial=allow_partial
+                ),
+                FakeFactors(),
+                releases=UNCACHED,
+            )
         return by_line(found.table)
 
     bundled = run(lines)
@@ -528,8 +568,14 @@ def test_a_flow_part_not_yet_reported_nulls_the_provider_total(
     the pair's 2025 grants total is null, or Germany's grants alone with
     allow_partial."""
     call = grants_call(indicator, allow_partial=allow_partial)
+    short = "Line 1010, flow 1121 is short in the pair total, which lacks Italy (6)."
 
-    found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+    with (
+        pytest.warns(OdaDataWarning, match=re.escape(short))
+        if allow_partial
+        else nullcontext()
+    ):
+        found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
 
     assert found.table.column("value").to_pylist() == [expected]
 
@@ -691,14 +737,18 @@ def _pair_total(
     )
 
 
+@pytest.mark.parametrize(
+    ("germany_106", "count"), [(True, 3), (False, 2)], ids=["reported", "never"]
+)
 @pytest.mark.parametrize("lines", [(206, 106), (106,)], ids=["bundled", "alone"])
 def test_a_total_counts_a_whole_year_gap_at_each_line_it_has_no_row_for(
-    lines: tuple[int, ...],
+    lines: tuple[int, ...], germany_106: bool, count: int
 ) -> None:
     """Austria and France reported lines 206 and 106 in 2024 and only line
     206 in 2025, and Germany nothing of 2025. The total's 2025 row of line
     206 holds Germany's gap, and no row of line 106 exists, so the warning
-    counts all three on line 106, whether or not the call also reads 206."""
+    counts all three on line 106, whether or not the call also reads 206. A
+    Germany that reported only line 206 in 2024 is not missing line 106."""
     connection = duckdb.connect()
     connection.execute(
         "CREATE TABLE dac2a (provider BIGINT, recipient BIGINT, year BIGINT,"
@@ -708,8 +758,9 @@ def test_a_total_counts_a_whole_year_gap_at_each_line_it_has_no_row_for(
         *DAC2A_ROWS,
         (AUSTRIA, KENYA, 2024, 106, 1.0),
         (FRANCE, KENYA, 2024, 106, 2.0),
-        (GERMANY, KENYA, 2024, 106, 3.0),
     ]
+    if germany_106:
+        rows.append((GERMANY, KENYA, 2024, 106, 3.0))
     connection.executemany("INSERT INTO dac2a VALUES (?, ?, ?, ?, 'A', ?)", rows)
     call = _pair_total(frozenset({AUSTRIA, FRANCE, GERMANY}), lines, "net_disbursement")
 
@@ -718,12 +769,36 @@ def test_a_total_counts_a_whole_year_gap_at_each_line_it_has_no_row_for(
     connection.close()
 
     assert [str(w.message) for w in caught] == [
-        f"{dac2a.LINES.id}: {PARTIAL}Line 106 is missing from the pair total for 3 "
-        "providers. Show the providers on their own rows to see who reported."
+        f"{dac2a.LINES.id}: {PARTIAL}Line 106 is missing from the pair total for "
+        f"{count} providers. Show the providers on their own rows to see who "
+        "reported."
     ]
-    assert unsummed_text(2025, 3, part="line 106", where="the pair total") in (
+    assert unsummed_text(2025, count, part="line 106", where="the pair total") in (
         found.notes
     )
+
+
+def test_a_whole_year_gap_is_not_counted_at_a_line_the_total_never_holds() -> None:
+    """Germany reported nothing of 2025, and in 2024 line 206 to Kenya and
+    line 213 to Egypt alone. A total of Kenya has rows of line 206 alone, in
+    every year, so Germany's gap is held by its 2025 row of line 206 and the
+    result does not warn of a line 213 it never holds."""
+    connection = duckdb.connect()
+    connection.execute(
+        "CREATE TABLE dac2a (provider BIGINT, recipient BIGINT, year BIGINT,"
+        " line BIGINT, amount_type VARCHAR, value DOUBLE)"
+    )
+    rows = [*DAC2A_ROWS, (GERMANY, EGYPT, 2024, 213, 1.0)]
+    connection.executemany("INSERT INTO dac2a VALUES (?, ?, ?, ?, 'A', ?)", rows)
+    pair = frozenset({AUSTRIA, FRANCE, GERMANY})
+    call = _pair_total(pair, (), "net_disbursement")
+    call = replace(call, members={"provider": pair, "recipient": frozenset({KENYA})})
+
+    found = combine(connection, dac2a.LINES, call, FakeFactors(), releases=UNCACHED)
+    connection.close()
+
+    assert found.notes == ()
+    assert found.table.column("value").to_pylist() == [3.0 + 6.0 + 5.0, None]
 
 
 @pytest.mark.parametrize(
@@ -747,6 +822,211 @@ def test_a_total_counts_a_whole_year_gap_at_each_dac1_part(
         "pair total for 2 providers. Show the providers on their own rows to see "
         "who reported."
     ]
+
+
+@pytest.mark.parametrize(
+    ("indicator", "providers", "line", "short", "notes", "expected"),
+    [
+        (
+            LINES,
+            frozenset({AUSTRIA, FRANCE, GERMANY}),
+            1820,
+            ["Line 1820 is short in the pair total, which sums only Germany (5)."],
+            [
+                "2025 is partial: the pair total of line 1820 sums only Germany (5), "
+                "since 2 members that reported it in 2024 have not reported it in "
+                "2025"
+            ],
+            22.0,
+        ),
+        (
+            LINES,
+            frozenset({AUSTRIA, FRANCE, GERMANY}),
+            11010,
+            ["Line 11010 is short in the pair total, which lacks Austria (1)."],
+            [
+                "2025 is partial: the pair total of line 11010 lacks Austria (1), "
+                "which reported it in 2024 and has not reported it in 2025"
+            ],
+            320.0,
+        ),
+        (LINES, frozenset({FRANCE, GERMANY}), 11010, [], [], 320.0),
+        (
+            one.CORE_ODA,
+            frozenset({AUSTRIA, FRANCE, GERMANY, ITALY}),
+            None,
+            [
+                "Line 11010, flow 1160 is short in the pair total, which lacks "
+                "Austria (1).",
+                "Line 1820, flow 1160 is short in the pair total, which sums only "
+                "Germany (5).",
+            ],
+            [
+                "2025 is partial: the pair total of line 11010, flow 1160 lacks "
+                "Austria (1), which reported it in 2024 and has not reported it in "
+                "2025",
+                "2025 is partial: the pair total of line 1820, flow 1160 sums only "
+                "Germany (5), since 2 members that reported it in 2024 have not "
+                "reported it in 2025",
+            ],
+            110.0 + 210.0 + 44.0 - 22.0,
+        ),
+        (
+            CRS_ODA,
+            frozenset({FRANCE, GERMANY, ITALY}),
+            None,
+            ["All of 2025 is short in the pair total, which sums only France (4)."],
+            [
+                "2025 is partial: the pair total sums only France (4), since 2 "
+                "members that reported 2024 have not reported 2025"
+            ],
+            7.0,
+        ),
+    ],
+    ids=["sums-only", "lacks", "all-reported", "core-oda", "crs"],
+)
+def test_an_allow_partial_total_names_the_members_it_sums_or_lacks(
+    con: duckdb.DuckDBPyConnection,
+    indicator: Indicator,
+    providers: frozenset[int],
+    line: int | None,
+    short: list[str],
+    notes: list[str],
+    expected: float,
+) -> None:
+    """Austria reported nothing of 2025 and France not yet line 1820, so with
+    allow_partial the pair's 2025 total of line 1820 sums Germany alone and
+    its total of line 11010 lacks Austria alone. France and Germany both
+    reported line 11010, so their total is whole and does not warn. Italy
+    reports total ODA (line 11010) and never refugee costs, so core ODA's
+    total, whose rows carry no line, sums the line for Germany alone. On the
+    CRS, which providers report a year whole, Germany and Italy reported 2024
+    and not 2025, so the total sums France alone."""
+    con.executemany(
+        "INSERT INTO dac1 VALUES (?, ?, 11010, 1160, 'A', ?)",
+        [(ITALY, 2024, 40.0), (ITALY, 2025, 44.0)],
+    )
+    con.execute(f"INSERT INTO crs VALUES ({ITALY}, {KENYA}, 110, 1000, 2024, 2.0)")
+    if line is None:
+        group = ResolvedGroup("pair", "provider", {2025: providers})
+        call = ResolvedCall(
+            basis=indicator.default_basis,
+            units=(USD,),
+            by=("provider", "year"),
+            years=(2025,),
+            members={"provider": providers},
+            groups=(group,),
+            totals=(group.key,),
+            rows={"provider": frozenset()},
+            allow_partial=True,
+        )
+    else:
+        call = lines_call((line,), providers=providers, allow_partial=True)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", OdaDataWarning)
+        found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    expected_warnings = [f"{indicator.id}: {PARTIAL}{' '.join(short)}"] if short else []
+    assert [str(w.message) for w in caught] == expected_warnings
+    assert list(found.notes) == notes
+    assert found.table.column("value").to_pylist() == [expected]
+
+
+@pytest.mark.parametrize(
+    ("indicator", "total", "multisystem_2025", "short", "expected"),
+    [
+        (
+            BOTH_TABLES,
+            True,
+            True,
+            "Its CRS part is short in the pair total, which lacks Germany (5). "
+            "Its Multisystem part is short in the pair total, which lacks "
+            "France (4).",
+            4.0 + 7.0 + 40.0 + 50.0,
+        ),
+        (
+            BOTH_TABLES,
+            True,
+            False,
+            "Its CRS part is short in the pair total, which lacks Germany (5). "
+            "Its Multisystem part is missing from the pair total for 3 providers. "
+            "Show the providers on their own rows to see who reported.",
+            4.0 + 7.0,
+        ),
+        (
+            BOTH_TABLES,
+            False,
+            True,
+            "Its CRS part is left out of the sum for 1 provider. Its Multisystem "
+            "part is left out of the sum for 1 provider. Show the providers on "
+            "their own rows to see who reported.",
+            4.0 + 7.0 + 40.0 + 50.0,
+        ),
+        (
+            CRS_ODA,
+            True,
+            True,
+            "All of 2025 is short in the pair total, which lacks Germany (5).",
+            4.0 + 7.0,
+        ),
+    ],
+    ids=["two-tables-total", "no-multisystem-row", "two-tables-sum", "one-table"],
+)
+def test_each_table_of_a_whole_year_indicator_has_its_own_gap(
+    con: duckdb.DuckDBPyConnection,
+    indicator: Indicator,
+    total: bool,
+    multisystem_2025: bool,
+    short: str,
+    expected: float,
+) -> None:
+    """Germany has CRS rows for 2024 alone and France Multisystem rows for
+    2024 alone, so a 2025 total over both tables lacks Germany's CRS part
+    and France's Multisystem part, and holds the other part of each. With
+    no 2025 Multisystem row from the pair, the total has no Multisystem
+    part, whatever CRS rows it holds."""
+    con.execute("CREATE TABLE multisystem (provider BIGINT, year BIGINT, value DOUBLE)")
+    con.executemany(
+        "INSERT INTO multisystem VALUES (?, ?, ?)",
+        [
+            (AUSTRIA, 2024, 30.0),
+            (FRANCE, 2024, 20.0),
+            (GERMANY, 2024, 45.0),
+            *(
+                [(AUSTRIA, 2025, 40.0), (GERMANY, 2025, 50.0)]
+                if multisystem_2025
+                # Italy, outside the pair, keeps 2025 the table's last year.
+                else [(ITALY, 2025, 1.0)]
+            ),
+        ],
+    )
+    providers = frozenset({AUSTRIA, FRANCE, GERMANY})
+    group = ResolvedGroup("pair", "provider", {2025: providers})
+    call = ResolvedCall(
+        basis="gross_disbursement",
+        units=(USD,),
+        by=("provider", "year") if total else ("year",),
+        years=(2025,),
+        members={"provider": providers},
+        groups=(group,) if total else (),
+        totals=(group.key,) if total else (),
+        rows={"provider": frozenset()} if total else {},
+        allow_partial=total,
+    )
+
+    with pytest.warns(OdaDataWarning) as caught:
+        found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
+
+    assert [str(w.message) for w in caught] == [f"{indicator.id}: {PARTIAL}{short}"]
+    assert found.table.column("value").to_pylist() == [expected]
+    if indicator is BOTH_TABLES and total and multisystem_2025:
+        assert found.notes == (
+            "2025 is partial: the pair total of its CRS part lacks Germany (5), "
+            "which reported it in 2024 and has not reported it in 2025",
+            "2025 is partial: the pair total of its Multisystem part lacks "
+            "France (4), which reported it in 2024 and has not reported it in 2025",
+        )
 
 
 def test_a_sum_short_of_one_part_and_without_another_warns_once(

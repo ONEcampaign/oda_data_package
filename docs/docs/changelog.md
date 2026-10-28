@@ -5,6 +5,14 @@ All notable changes to the oda_data package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-10-28
+
+### Fixed
+
+- `explain()` on an `oda.total()` group that is null in the table's last year says the total "is empty in 2025, when a member that reported a part in 2024 has not yet reported it in 2025". 3.0.0 said a member "had stopped reporting". A total that is null in an earlier year keeps that wording.
+- With `allow_partial=True`, an `oda.total()` group that sums a part of the table's last year for only some of its members warns, and `explain()` says so. Both name the members the total sums or those it lacks, whichever list is shorter, five at most with the rest counted. `oecd.dac1.in_donor_refugee_costs` for the DAC countries total in 2025 warns that line 1820, flow 1160 "is short in the dac_countries total, which sums only Austria (1) and Portugal (9)". `one.crs.bilateral_plus_multilateral_oda` names its CRS part and its Multisystem part apart. Values are unchanged.
+- A provider with no row in the table's last year counts as missing only the parts it reported the year before. 3.0.0 counted it as missing every line the result's rows hold, so `oecd.dac2a.lines` for the DAC countries total over 2024 and 2025 counted 31 providers missing line 214, where 2 reported it in 2024.
+
 ## [3.0.0] - 2026-10-28
 
 oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oecd.dac1.total_oda", years=..., providers=..., unit=...)`, returns one table with fixed columns, and `oda.search()` gives the 3.0 call for any 2.x indicator code. [Migrating from 2.x](migration.md) maps every 2.x code and lists the numbers that change.

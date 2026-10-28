@@ -517,7 +517,9 @@ def test_a_member_missing_from_the_last_year_nulls_the_group_total(
     # France reports 2024, DAC2A's last year here; Germany does not.
     kwargs = {"years": 2024, "providers": total(groups.dac_countries)}
     df = ctx.get("oecd.dac2a.recipient_oda", **kwargs)
-    partial = ctx.get("oecd.dac2a.recipient_oda", allow_partial=True, **kwargs)
+    short = "Line 206 is short in the dac_countries total, which lacks Germany (5)."
+    with pytest.warns(OdaDataWarning, match=re.escape(short)):
+        partial = ctx.get("oecd.dac2a.recipient_oda", allow_partial=True, **kwargs)
 
     assert df["value"].isna().tolist() == [True]
     assert partial["value"].tolist() == [1.5]

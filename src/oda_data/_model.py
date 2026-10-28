@@ -536,6 +536,11 @@ class Incomplete:
             cell when its provider and year match and each key whose
             dimension the row carries matches. A row without the dimension,
             such as one that sums lines, holds it whatever the code.
+        table: The table whose rows the provider has not reported, for an
+            indicator that reads more than one, as the CRS and Multisystem
+            parts of ``one.crs.bilateral_plus_multilateral_oda``, so each
+            table's gap is its own cell. ``None`` otherwise. A row holds the
+            cell whatever its table.
     """
 
     provider: Code
@@ -543,6 +548,7 @@ class Incomplete:
     missing: frozenset[Code]
     inputs: str = "its inputs"
     keys: tuple[tuple[Dimension, Code], ...] = ()
+    table: TableName | None = None
 
 
 @dataclass(frozen=True, slots=True)

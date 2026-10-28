@@ -127,7 +127,7 @@ def test_a_2x_name_names_its_replacement_on_import_and_attribute_read(
 
 
 def test_version_is_the_package_version() -> None:
-    assert oda_data.__version__ == "3.0.0"
+    assert oda_data.__version__ == "3.0.1"
 
 
 def test_the_package_ships_type_information() -> None:
