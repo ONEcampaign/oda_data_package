@@ -1,0 +1,658 @@
+"""Context, Query, and the module functions on in-memory tables.
+
+``FakeTables`` serves DuckDB tables that carry the logical column names from
+``_model.VOCABULARY``. ``FakeFactors`` gives factor 1 for current USD and 2
+for any other unit. The registry is a stand-in mapping of the indicators
+defined here.
+"""
+
+import inspect
+import io
+import threading
+from collections.abc import Iterator
+from datetime import datetime
+
+import duckdb
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+import oda_data as oda
+from oda_data import _context
+from oda_data._context import Context
+from oda_data._errors import (
+    DimensionError,
+    UnknownIndicatorError,
+    UnsupportedQueryError,
+)
+from oda_data._factors import FACTOR_SCHEMA
+from oda_data._groups import Group, total
+from oda_data._model import (
+    Binding,
+    FactorTable,
+    Flow,
+    Headline,
+    In,
+    Indicator,
+    Ratio,
+    Sum,
+    Value,
+)
+from oda_data._provenance import Release
+from oda_data._units import Unit, constant, current
+
+USD = current("USD")
+DAC1_RELEASE = Release("dac1-token", datetime(2026, 10, 12))
+CRS_RELEASE = Release("v20260803", datetime(2026, 9, 1))
+
+DAC1_ROWS = [
+    # provider, year, line, flow, value
+    (4, 2017, 1010, 1140, 10.0),
+    (5, 2017, 1010, 1140, 20.0),
+    (12, 2017, 1010, 1140, 30.0),
+    (918, 2017, 1010, 1140, 5.0),  # EU Institutions report only in 2017
+    (55, 2017, 1010, 1140, 7.0),  # so does Türkiye, which is no DAC member
+    (20001, 2017, 1010, 1140, 60.0),
+    (4, 2018, 11010, 1160, 11.0),
+    (5, 2018, 11010, 1160, 22.0),
+    (12, 2018, 11010, 1160, 33.0),
+    (20001, 2018, 11010, 1160, 66.0),
+    (4, 2017, 1, 1140, 1000.0),
+    (5, 2017, 1, 1140, 2000.0),
+    (4, 2018, 1, 1140, 1100.0),
+    (5, 2018, 1, 1140, 2200.0),
+]
+
+CRS_ROWS = [
+    # provider, recipient, year, sector, disbursement, project_title
+    (4, 248, 2019, 12220, 3.0, "Clinic"),
+    (918, 248, 2019, 11110, 2.0, "School"),
+    (1601, 248, 2019, 12220, 9.0, "Vaccines"),  # a private donor
+    (20001, 248, 2019, 12220, 50.0, "DAC total"),  # an aggregate
+]
+
+
+class FakeTables:
+    """Views as DuckDB tables, with a cursor count and a close flag."""
+
+    def __init__(self) -> None:
+        self.connection = duckdb.connect()
+        self.connection.execute(
+            "CREATE TABLE dac1 (provider BIGINT, year BIGINT, line BIGINT,"
+            " flow BIGINT, amount_type VARCHAR, value DOUBLE)"
+        )
+        self.connection.executemany(
+            "INSERT INTO dac1 VALUES (?, ?, ?, ?, 'A', ?)", DAC1_ROWS
+        )
+        self.connection.execute(
+            "CREATE TABLE crs (provider BIGINT, recipient BIGINT, year BIGINT,"
+            " category BIGINT, bi_multi BIGINT, sector BIGINT,"
+            " disbursement DOUBLE, project_title VARCHAR)"
+        )
+        self.connection.executemany(
+            "INSERT INTO crs VALUES (?, ?, ?, 10, 1, ?, ?, ?)", CRS_ROWS
+        )
+        self.cursors = 0
+        self.closed = False
+
+    def cursor(self, tables: tuple[str, ...]) -> duckdb.DuckDBPyConnection:
+        self.cursors += 1
+        return self.connection.cursor()
+
+    def path(self, table: str) -> object:
+        raise NotImplementedError
+
+    def release(self, table: str) -> Release:
+        return {"dac1": DAC1_RELEASE, "crs": CRS_RELEASE}[table]
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class FakeFactors:
+    """Factor 1 for current USD and 2 for any other unit."""
+
+    def __init__(self, fallback: frozenset[int] = frozenset()) -> None:
+        self.fallback = fallback
+
+    def table(self, keys: pa.Table, units: tuple[Unit, ...], /) -> FactorTable:
+        rows = [
+            key
+            | {
+                "currency": unit.currency,
+                "prices": unit.prices,
+                "base_year": unit.base_year,
+                "factor": 1.0 if unit == USD else 2.0,
+            }
+            for key in keys.to_pylist()
+            for unit in units
+        ]
+        return FactorTable(
+            pa.Table.from_pylist(rows, schema=FACTOR_SCHEMA), self.fallback
+        )
+
+    def release(self) -> Release:
+        return DAC1_RELEASE
+
+
+# Indicators ---------------------------------------------------------------------
+
+DAC1 = Binding(
+    table="dac1",
+    dimensions={"provider": "provider", "line": "line", "year": "year"},
+    bases={
+        "net_disbursement": Flow(1140),
+        "grant_equivalent": Flow(1160, from_year=2018),
+        "headline": Headline("net_disbursement", "grant_equivalent"),
+    },
+    rows=(In("amount_type", ("A",)),),
+)
+
+CRS = Binding(
+    table="crs",
+    dimensions={
+        "provider": "provider",
+        "recipient": "recipient",
+        "sector": "sector",
+        "broad_sector": "sector",
+        "year": "year",
+    },
+    bases={
+        "gross_disbursement": Value("disbursement", rows=(In("category", (10,)),)),
+        # A stand-in: the fake table holds no repayments to subtract.
+        "net_disbursement": Value("disbursement", rows=(In("category", (10,)),)),
+    },
+    rows=(In("bi_multi", (1, 3, 7, 8)),),
+)
+
+TOTAL_ODA = Indicator(
+    id="oecd.dac1.total_oda",
+    name="Total ODA",
+    description="Total ODA.",
+    binding=DAC1,
+    kind=Sum(lines={"net_disbursement": 1010, "grant_equivalent": 11010}),
+    dimensions=("provider", "year"),
+    default_basis="headline",
+    default_providers="dac_countries",
+)
+GNI = Indicator(
+    id="oecd.dac1.gni",
+    name="GNI",
+    description="GNI.",
+    binding=DAC1,
+    kind=Sum(lines={"net_disbursement": 1}),
+    dimensions=("provider", "year"),
+    default_basis="net_disbursement",
+    default_providers="dac_countries",
+)
+ODA_GNI = Indicator(
+    id="oecd.dac1.oda_gni_ratio",
+    name="ODA/GNI",
+    description="ODA over GNI.",
+    binding=DAC1,
+    kind=Ratio(TOTAL_ODA, GNI),
+    dimensions=("provider", "year"),
+    default_basis="headline",
+    default_providers="dac_countries",
+)
+BILATERAL = Indicator(
+    id="oecd.crs.bilateral_oda",
+    name="Bilateral ODA",
+    description="Bilateral ODA.",
+    binding=CRS,
+    kind=Sum(),
+    dimensions=("provider", "recipient", "sector", "broad_sector", "year"),
+    default_basis="gross_disbursement",
+    default_providers=None,
+)
+BILATERAL_NO_EU = Indicator(
+    id="test.crs.bilateral_without_eu",
+    name="Bilateral ODA without EU Institutions",
+    description="Bilateral ODA, EU Institutions excluded.",
+    binding=CRS,
+    kind=Sum(),
+    dimensions=("provider", "recipient", "year"),
+    default_basis="gross_disbursement",
+    default_providers=None,
+    excluded_providers=frozenset({918}),
+)
+
+TRIO = Group("trio", [4, 5, 12], label="Trio countries", dimension="provider")
+
+
+@pytest.fixture(autouse=True)
+def registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _context,
+        "INDICATORS",
+        {i.id: i for i in (TOTAL_ODA, GNI, ODA_GNI, BILATERAL, BILATERAL_NO_EU)},
+    )
+
+
+@pytest.fixture
+def tables() -> Iterator[FakeTables]:
+    fake = FakeTables()
+    yield fake
+    fake.connection.close()
+
+
+@pytest.fixture
+def ctx(tables: FakeTables) -> Context:
+    return Context._from_parts(tables, FakeFactors())
+
+
+def _rows(frame, *columns: str) -> list[tuple]:
+    return [tuple(row) for row in frame[list(columns)].itertuples(index=False)]
+
+
+# Signatures -----------------------------------------------------------------------
+
+
+def _parameters(function) -> list[inspect.Parameter]:
+    parameters = list(inspect.signature(function).parameters.values())
+    return [p for p in parameters if p.name != "self"]
+
+
+def test_get_query_and_context_methods_share_one_signature() -> None:
+    expected = _parameters(oda.get)
+    for function in (oda.query, Context.get, Context.query):
+        assert _parameters(function) == expected
+
+
+def test_records_takes_the_filter_arguments_and_columns() -> None:
+    get = {p.name: p for p in _parameters(oda.get)}
+    filters = [p for name, p in get.items() if name not in {"by", "allow_partial"}]
+    columns = inspect.Parameter(
+        "columns",
+        inspect.Parameter.KEYWORD_ONLY,
+        default=(),
+        annotation="Iterable[str]",
+    )
+
+    assert _parameters(oda.records) == [filters[0], columns, *filters[1:]]
+    assert _parameters(Context.records) == _parameters(oda.records)
+
+
+def test_indicator_is_positional_only_and_the_rest_keyword_only() -> None:
+    kinds = [p.kind for p in _parameters(oda.get)]
+    assert kinds[0] is inspect.Parameter.POSITIONAL_ONLY
+    assert set(kinds[1:]) == {inspect.Parameter.KEYWORD_ONLY}
+
+
+# Result schema --------------------------------------------------------------------
+
+RESULT_DTYPES = {
+    "provider": "string",
+    "provider_name": "string",
+    "year": "Int64",
+    "indicator": "category",
+    "indicator_version": "Int64",
+    "basis": "category",
+    "currency": "category",
+    "prices": "category",
+    "base_year": "Int64",
+    "scale": "category",
+    "is_aggregate": "bool",
+    "value": "float64",
+}
+
+
+def test_get_returns_the_result_schema(ctx: Context) -> None:
+    df = ctx.get("oecd.dac1.total_oda", years=2017, providers="France")
+
+    assert {name: str(dtype) for name, dtype in df.dtypes.items()} == RESULT_DTYPES
+    assert list(df.columns) == list(RESULT_DTYPES)
+    assert df["base_year"].isna().all()
+    assert df.drop(columns="base_year").iloc[0].to_dict() == {
+        "provider": "4",
+        "provider_name": "France",
+        "year": 2017,
+        "indicator": "oecd.dac1.total_oda",
+        "indicator_version": 1,
+        "basis": "net_disbursement",
+        "currency": "USD",
+        "prices": "current",
+        "scale": "millions",
+        "is_aggregate": False,
+        "value": 10.0,
+    }
+
+
+def test_an_empty_result_keeps_the_schema(ctx: Context) -> None:
+    df = ctx.get("oecd.dac1.total_oda", years=1990)
+
+    assert len(df) == 0
+    assert {name: str(dtype) for name, dtype in df.dtypes.items()} == RESULT_DTYPES
+
+
+def test_ratio_rows_have_no_unit(ctx: Context) -> None:
+    q = ctx.query("oecd.dac1.oda_gni_ratio", years=2017, providers=["France"])
+    df = q.to_pandas()
+
+    assert _rows(df, "provider", "scale", "value") == [("4", "percent", 1.0)]
+    assert df["currency"].isna().all()
+    assert df["base_year"].isna().all()
+    assert "unit" not in q.provenance.defaults
+    assert q.provenance.indicators == {
+        "oecd.dac1.oda_gni_ratio": 1,
+        "oecd.dac1.total_oda": 1,
+        "oecd.dac1.gni": 1,
+    }
+
+
+def test_check_frame_refuses_a_wrong_dtype(ctx: Context) -> None:
+    q = ctx.query("oecd.dac1.total_oda", years=2017)
+    frame = q.to_pandas()
+    frame["year"] = frame["year"].astype("float64")
+
+    with pytest.raises(RuntimeError):
+        _context.check_frame(frame, _context.result_schema(["provider", "year"]))
+
+
+# Defaults -------------------------------------------------------------------------
+
+
+def test_default_providers_are_the_indicators_group(ctx: Context) -> None:
+    q = ctx.query("oecd.dac1.total_oda", by=["provider"])
+
+    providers = set(q.to_pandas()["provider"])
+
+    assert providers == {"4", "5", "12"}  # not 918, nor the aggregate 20001
+    assert q.provenance.defaults == {
+        "providers": "dac_countries",
+        "basis": "headline",
+        "unit": "current USD",
+    }
+
+
+def test_no_default_group_means_every_official_provider(ctx: Context) -> None:
+    df = ctx.get("oecd.crs.bilateral_oda", by=["provider"])
+
+    # The private donor 1601 and the aggregate 20001 drop out.
+    assert _rows(df, "provider", "value") == [("4", 3.0), ("918", 2.0)]
+
+
+def test_default_providers_leave_out_excluded_providers(ctx: Context) -> None:
+    df = ctx.get("test.crs.bilateral_without_eu", by=["provider"])
+
+    assert _rows(df, "provider", "value") == [("4", 3.0)]
+
+
+def test_naming_an_excluded_provider_raises(ctx: Context) -> None:
+    with pytest.raises(UnsupportedQueryError):
+        ctx.get("test.crs.bilateral_without_eu", providers=918, by=["provider"])
+
+
+# Groups and names -----------------------------------------------------------------
+
+
+def test_group_total_without_years_covers_every_table_year(ctx: Context) -> None:
+    df = ctx.get("oecd.dac1.total_oda", providers=[TRIO, total(TRIO)])
+
+    totals = df[df["is_aggregate"]]
+    assert _rows(totals, "provider", "provider_name", "year", "value") == [
+        ("trio", "Trio countries", 2017, 60.0),
+        ("trio", "Trio countries", 2018, 66.0),
+    ]
+    assert len(df) == 8
+
+
+def test_a_member_that_did_not_report_empties_the_total(ctx: Context) -> None:
+    pair = Group("pair", [12, 55], dimension="provider")
+    q = ctx.query("oecd.dac1.total_oda", providers=total(pair))
+
+    df = q.to_pandas()
+
+    assert df["value"].isna().tolist() == [False, True]  # 55 is absent in 2018
+    assert "which is empty in 2018" in q.explain()
+
+
+def test_broad_sectors_split_crs_rows(ctx: Context) -> None:
+    df = ctx.get("oecd.crs.bilateral_oda", by=["broad_sector"])
+
+    assert _rows(df, "broad_sector", "broad_sector_name", "value") == [
+        ("education", "Education", 2.0),
+        ("health", "Health", 3.0),
+    ]
+
+
+def test_units_add_rows_and_record_the_factor_release(tables: FakeTables) -> None:
+    ctx = Context._from_parts(tables, FakeFactors())
+    q = ctx.query(
+        "oecd.crs.bilateral_oda",
+        providers="France",
+        by=["provider"],
+        unit=[USD, constant("EUR", 2023)],
+    )
+
+    df = q.to_pandas()
+
+    assert _rows(df, "currency", "base_year", "value") == [
+        ("EUR", 2023, 6.0),
+        ("USD", pd.NA, 3.0),
+    ]
+    assert dict(q.provenance.tables) == {"crs": CRS_RELEASE, "dac1": DAC1_RELEASE}
+
+
+# Records ---------------------------------------------------------------------------
+
+
+def test_records_returns_rows_with_names_and_extra_columns(ctx: Context) -> None:
+    df = ctx.records(
+        "oecd.crs.bilateral_oda", providers="France", columns="project_title"
+    )
+
+    assert list(df.columns) == [
+        "provider",
+        "provider_name",
+        "recipient",
+        "recipient_name",
+        "sector",
+        "sector_name",
+        "broad_sector",
+        "broad_sector_name",
+        "year",
+        "project_title",
+        "indicator",
+        "indicator_version",
+        "basis",
+        "currency",
+        "prices",
+        "base_year",
+        "scale",
+        "value",
+    ]
+    row = df.iloc[0]
+    assert (row["recipient_name"], row["sector"], row["project_title"]) == (
+        "Kenya",
+        "12220",
+        "Clinic",
+    )
+    assert str(df["year"].dtype) == "Int64"
+    assert str(df["basis"].dtype) == "category"
+
+
+def test_records_refuses_a_ratio(ctx: Context) -> None:
+    with pytest.raises(UnsupportedQueryError):
+        ctx.records("oecd.dac1.oda_gni_ratio", years=2017)
+
+
+# Query -----------------------------------------------------------------------------
+
+
+def test_query_runs_once_on_first_use(ctx: Context, tables: FakeTables) -> None:
+    q = ctx.query("oecd.dac1.total_oda", years=2017)
+    assert tables.cursors == 0
+
+    q.to_pandas()
+    q.to_arrow()
+    q.explain()
+    _ = q.provenance
+
+    assert tables.cursors == 1
+
+
+def test_to_parquet_writes_the_provenance(ctx: Context, tmp_path) -> None:
+    q = ctx.query("oecd.dac1.total_oda", years=2017)
+    path = tmp_path / "total_oda.parquet"
+    buffer = io.BytesIO()
+
+    q.to_parquet(path)
+    q.to_parquet(buffer)
+
+    assert oda.provenance(path) == q.provenance
+    assert pq.read_table(io.BytesIO(buffer.getvalue())).num_rows == 3
+    assert q.provenance.tables == {"dac1": DAC1_RELEASE}
+    assert q.provenance.indicators == {"oecd.dac1.total_oda": 1}
+
+
+def test_to_polars_holds_the_same_rows(ctx: Context) -> None:
+    q = ctx.query("oecd.dac1.total_oda", years=2017)
+
+    frame = q.to_polars()
+
+    assert frame["value"].to_list() == q.to_pandas()["value"].tolist()
+
+
+def test_explain_describes_the_call(ctx: Context) -> None:
+    q = ctx.query(
+        "oecd.dac1.total_oda",
+        providers=[TRIO, total(TRIO)],
+        unit=[USD, constant("USD", 2023), constant("EUR", 2023)],
+    )
+
+    assert q.explain() == (
+        "Total ODA (DAC1), headline basis: net flows 2017, grant equivalent 2018.\n"
+        "3 Trio countries, plus their total, which covers all 3 in every year.\n"
+        "Current USD, and constant 2023 USD and EUR using DAC deflators from the "
+        "same DAC1 release.\n"
+        "DAC1 downloaded 2026-10-12. 24 rows."
+    )
+
+
+@pytest.mark.parametrize(
+    ("indicator", "first_line"),
+    [
+        ("oecd.dac1.total_oda", "Total ODA (DAC1), net flows 2017."),
+        ("oecd.crs.bilateral_oda", "Bilateral ODA (CRS), net disbursements 2019."),
+    ],
+)
+def test_explain_names_net_disbursements_as_each_table_does(
+    ctx: Context, indicator: str, first_line: str
+) -> None:
+    years = 2017 if indicator.startswith("oecd.dac1") else 2019
+    q = ctx.query(indicator, years=years, basis="net_disbursement")
+
+    assert q.explain().splitlines()[0] == first_line
+
+
+def test_explain_states_defaults_and_fallback_deflators(tables: FakeTables) -> None:
+    ctx = Context._from_parts(tables, FakeFactors(fallback=frozenset({918})))
+    q = ctx.query("oecd.crs.bilateral_oda", unit=constant("USD", 2023))
+
+    text = q.explain().splitlines()
+
+    assert text[1].endswith("aggregates and private donors excluded (the default).")
+    assert text[2].startswith("Recipients: every recipient in the table")
+    assert "EU Institutions took the DAC total's deflators" in text[3]
+    assert text[4] == "CRS downloaded 2026-09-01; DAC1 downloaded 2026-10-12. 2 rows."
+
+
+# Arguments --------------------------------------------------------------------------
+
+
+def test_unknown_indicator_suggests_near_ids(ctx: Context) -> None:
+    with pytest.raises(UnknownIndicatorError) as error:
+        ctx.query("oecd.dac1.total_odaa")
+
+    assert error.value.suggestions[0] == "oecd.dac1.total_oda"
+
+
+@pytest.mark.parametrize(
+    ("arguments", "error"),
+    [
+        ({"by": ["provider", "sectors"]}, DimensionError),
+        ({"years": []}, ValueError),
+        ({"years": "2020"}, TypeError),
+        ({"unit": "USD"}, TypeError),
+        # A currency oda-data cannot convert to, refused before any table read.
+        ({"unit": [USD, constant("XYZ", 2023)]}, UnsupportedQueryError),
+    ],
+)
+def test_bad_arguments_fail_before_the_query_runs(
+    ctx: Context, tables: FakeTables, arguments: dict, error: type[Exception]
+) -> None:
+    with pytest.raises(error):
+        ctx.query("oecd.dac1.total_oda", **arguments)
+    assert tables.cursors == 0
+
+
+# Context lifetime and the default context -------------------------------------------
+
+
+def test_leaving_the_block_closes_the_tables_and_drops_factors(
+    tables: FakeTables,
+) -> None:
+    built: list[FakeFactors] = []
+
+    def make() -> FakeFactors:
+        built.append(FakeFactors())
+        return built[-1]
+
+    ctx = Context._from_parts(tables, FakeFactors())
+    ctx._make_factors = make
+    with ctx:
+        ctx.get("oecd.dac1.total_oda", years=2017)
+    ctx.get("oecd.dac1.total_oda", years=2017)
+
+    assert tables.closed
+    assert len(built) == 2
+
+
+def test_the_default_context_is_built_once_across_threads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built: list[object] = []
+    barrier = threading.Barrier(8)
+
+    class Counting:
+        def __init__(self) -> None:
+            built.append(self)
+
+    monkeypatch.setattr(_context, "_default", None)
+    monkeypatch.setattr(_context, "Context", Counting)
+    seen: list[object] = []
+
+    def call() -> None:
+        barrier.wait()
+        seen.append(_context.default_context())
+
+    threads = [threading.Thread(target=call) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(built) == 1
+    assert len(seen) == 8
+    assert all(context is built[0] for context in seen)
+
+
+def test_module_functions_use_the_default_context(
+    monkeypatch: pytest.MonkeyPatch, ctx: Context
+) -> None:
+    monkeypatch.setattr(_context, "_default", ctx)
+
+    df = oda.get("oecd.dac1.total_oda", years=2017, by="provider")
+    rows = oda.records("oecd.dac1.total_oda", years=2017)
+
+    assert _rows(df, "provider", "value") == [("4", 10.0), ("5", 20.0), ("12", 30.0)]
+    assert len(rows) == 3
+    assert isinstance(oda.query("oecd.dac1.total_oda"), oda.Query)
+
+
+def test_a_filter_outside_by_narrows_the_rows(ctx: Context) -> None:
+    df = ctx.get("oecd.crs.bilateral_oda", recipients="Kenya", by=["broad_sector"])
+
+    assert _rows(df, "broad_sector", "value") == [("education", 2.0), ("health", 3.0)]

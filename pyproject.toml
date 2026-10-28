@@ -1,6 +1,6 @@
 [project]
 name = "oda_data"
-version = "2.9.0"
+version = "3.0.0.dev0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 requires-python = ">=3.12"
 
@@ -12,28 +12,30 @@ authors = [
 ]
 
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 dependencies = [
-    "cachetools>=6.2.0",
-    "filelock>=3.20.0",
-    "oda-reader>=1.13.0",
-    "platformdirs>=4.0.0",
-    "pandas[excel,parquet,performance]>=2.2.0",
-    "pydeflate>=2.3.3",
-    "reader>=3.18",
+    "duckdb>=1.1.0",
+    "oda-reader>=1.14.0rc1",
+    "pandas>=2.2.0",
+    "pyarrow>=17.0.0",
+    "pydeflate>=2.7.0rc1",
+    "readerkit>=0.1.0",
+    "resolvekit>=0.1.13",
 ]
+
+[project.optional-dependencies]
+polars = ["polars>=1.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/ONEcampaign/oda_data_package"
@@ -53,37 +55,21 @@ dev = [
 ]
 test = [
     "pytest>=8.0.0",
-    "pytest-mock>=3.12.0",
     "pytest-cov>=4.1.0",
-    "pytest-xdist>=3.5.0",
-    "freezegun>=1.4.0",
+    "polars>=1.0.0",
 ]
-# Maintenance-only tooling for scripts/refresh_channel_crosswalk.py. Never a
-# runtime dependency of the oda_data package; excluded from the default
-# groups below so a plain `uv sync` never requires it. Install explicitly
-# with `uv sync --group maintenance`.
+# Maintenance-only tooling for scripts/refresh_channel_crosswalk.py.
 maintenance = [
-    "resolvekit==0.1.12",
     "pyyaml>=6.0",
 ]
 
 [tool.uv]
-# Preserve today's implicit default (dev + test both installed by a plain
-# `uv sync` / `uv run`); without this, adding the "maintenance" group above
-# would otherwise be pulled into that same default set.
 default-groups = ["dev", "test"]
 
 [tool.ruff]
-# Set the maximum line length
 line-length = 88
-
-# Target Python 3.12+
 target-version = "py312"
-
-# Lint/format notebooks too
 extend-include = ["*.ipynb"]
-
-# Exclude common directories
 exclude = [
     ".git",
     ".venv",
@@ -97,7 +83,6 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Enable recommended rules plus extras
 select = [
     "E",     # pycodestyle errors
     "W",     # pycodestyle warnings
@@ -114,8 +99,6 @@ select = [
     "PERF",  # perflint
     "ANN",   # flake8-annotations (require type hints on public APIs)
 ]
-
-# Ignore specific rules that might be too strict
 ignore = [
     "E501",    # Line too long (handled by formatter)
     "PLR0913", # Too many arguments
@@ -123,46 +106,24 @@ ignore = [
     "PLR0914", # Too many locals
     "PLR0915", # Too many statements
     "PLR2004", # Magic value used in comparison
-    "PLC0415", # Import outside top-level (used to avoid circular imports)
+    "PLC0415", # Import outside top-level (the package defers heavy imports)
     "ANN401",  # Allow `Any` in typed signatures
 ]
-
-# Allow autofix for all enabled rules
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-# Allow test files to have longer lines and more assertions
-"tests/**/*.py" = ["ANN", "E501", "PLR2004", "RUF002", "RUF003", "PLW0603", "ERA001"]  # Tests don't need annotations (ANN); allow × in comments/docstrings; PLW0603 for spawn-pool worker globals; ERA001 for intentional commented-out fixtures
-# Allow global variable usage in __init__.py (architectural decision)
+"tests/**/*.py" = ["ANN", "E501", "PLR2004"]
+# The module-level __getattr__ loads names lazily and caches them in globals().
 "src/oda_data/__init__.py" = ["PLW0603", "PLW0602", "F811"]
-# Lazy module-level state (override flag, chained-root cache, auto-migrate gate, 5GB warning latch).
-"src/oda_data/cache/config.py" = ["PLW0603"]
-"src/oda_data/cache/api.py" = ["PLW0603"]
-# Allow tmpdir reassignment pattern (Path conversion)
-"src/oda_data/tools/cache.py" = ["PLW2901"]
-# Existing complexity in OECDClient._apply_filters — out of scope for refactor here.
-"src/oda_data/api/oecd.py" = ["PLR0912"]
-# Allow loop variable binding patterns (intentional for lambda closures)
-"src/oda_data/indicators/crs/crs_functions.py" = ["B023"]
-"src/oda_data/indicators/research/sector_imputations.py" = ["B023"]
-# Allow mixedCase variable names matching official sector code names
-"src/oda_data/tools/sector_lists.py" = ["N816"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.format]
-# Use double quotes for strings
 quote-style = "double"
-
-# Use spaces for indentation
 indent-style = "space"
-
-# Like Black, respect magic trailing commas
 skip-magic-trailing-comma = false
-
-# Like Black, automatically detect line endings
 line-ending = "auto"
 
 [tool.ty.environment]
@@ -171,15 +132,9 @@ python-version = "3.12"
 [tool.ty.src]
 include = ["src/oda_data"]
 
-# NOTE: The following two sections are borrowed from the bblocks-projects
-# `project` preset (the `package` preset omits them). This is a pandas/numpy-
-# heavy package, so the same false-positive cascade from those libraries'
-# incomplete stubs applies here. Kept as a deliberate divergence.
+# pandas and numpy stubs are incomplete; treating them as Any avoids a cascade
+# of false positives without disabling checks on this package's own code.
 [tool.ty.analysis]
-# Replace pandas / numpy type information with `Any` to eliminate the cascade
-# of false positives from those libraries' incomplete or absent stubs without
-# disabling type checking on our own code.
-# https://docs.astral.sh/ty/reference/configuration/
 replace-imports-with-any = [
     "pandas",
     "pandas.**",
@@ -188,63 +143,19 @@ replace-imports-with-any = [
 ]
 
 [tool.ty.rules]
-# These warn-by-default rules fire frequently on dynamic dataframe / dict
-# patterns common in this codebase. Demoted to ignore.
 possibly-missing-attribute = "ignore"
 possibly-unresolved-reference = "ignore"
 
 [tool.pytest.ini_options]
-# Test discovery patterns
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
-# Test execution options. Integration/network tests are deselected by default.
-addopts = """
-    -v
-    --strict-markers
-    --tb=short
-    --cov=src/oda_data
-    --cov-report=term-missing
-    --cov-report=html
-    --cov-branch
-    -m "not integration and not network"
-"""
-
-# Custom markers for organizing tests
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests that call real OECD API (deselected by default)",
-    "network: marks tests requiring live network access (opt-in via RUN_NETWORK_TESTS=1; deselected by default)",
-    "unit: marks tests as unit tests",
-    "cache: marks tests related to caching functionality",
-    "validation: marks tests related to input validation",
-    "cleaning: marks tests related to data cleaning",
+    "data: reads the real OECD tables through the oda-reader cache (needs a warm cache; ODA_DATA_REQUIRE_DATA=1 turns a skip into a failure)",
 ]
-
-# Directories not searched for tests
 norecursedirs = [".git", ".venv", "venv", "__pycache__", "*.egg-info", ".pytest_cache", "htmlcov"]
 
-[tool.coverage.run]
-source = ["src/oda_data"]
-branch = true
-omit = [
-    "*/tests/*",
-    "*/__init__.py",
-    "*/config.py",
-    "*/logger.py",
-]
-
-[tool.coverage.report]
-precision = 2
-show_missing = true
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-]
+[tool.codespell]
+# NotIn is a filter class in _model.py; Programm is a deliberate typo that
+# tests/unit/test_resolve.py feeds the resolver.
+ignore-words-list = "NotIn,Programm"

@@ -1,249 +1,85 @@
-"""
-Tests for name utilities - adding human-readable names to code columns.
+"""Names per dimension and the OECD aggregate codes."""
 
-This module tests the logic for mapping code columns (e.g., recipient_code,
-donor_code) to their human-readable name equivalents (e.g., recipient_name,
-donor_name) using predefined mappings.
-"""
-
-from unittest.mock import patch
-
-import pandas as pd
 import pytest
 
-from oda_data.tools.names.add import add_names_columns
-
-# ============================================================================
-# Fixtures
-# ============================================================================
+from oda_data._names import aggregate_codes, is_aggregate, name_of, names, normalise
 
 
-@pytest.fixture
-def sample_mock_mapping():
-    """Sample mapping structure as returned by get_merged_names_mapping."""
-    return {
-        "recipient_code": {
-            "100": "Country A",
-            "200": "Country B",
-            "300": "Country C",
-        },
-        "donor_code": {
-            "1": "United States",
-            "2": "France",
-            "3": "Germany",
-        },
-        "sector_code": {
-            "110": "Education",
-            "120": "Health",
-            "140": "Water",
-        },
-    }
+@pytest.mark.parametrize(
+    ("dimension", "code", "table", "name"),
+    [
+        ("provider", 4, None, "France"),
+        ("provider", 918, None, "EU Institutions"),
+        ("provider", 20001, None, "DAC Countries, Total"),
+        ("recipient", 248, None, "Kenya"),
+        ("recipient", 289, None, "South of Sahara, regional"),
+        ("sector", 12220, None, "Basic health care"),
+        ("channel", 41114, None, "United Nations Development Programme"),
+        ("flow", 1140, None, "Disbursements, net"),
+        ("modality", "A01", None, "Budget support"),
+        ("line", 1010, "dac1", "Official Development Assistance (ODA)"),
+        ("line", 207, "dac2a", "Technical cooperation, disbursements"),
+        ("broad_sector", "health", None, "Health"),
+    ],
+)
+def test_name_of_a_code(dimension, code, table, name) -> None:
+    assert name_of(dimension, code, table=table) == name
 
 
-# ============================================================================
-# Tests for add_names_columns
-# ============================================================================
+def test_lines_are_numbered_per_table() -> None:
+    assert name_of("line", 207, table="dac1") != name_of("line", 207, table="dac2a")
 
 
-class TestAddNamesColumns:
-    """Tests for the add_names_columns function."""
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_single_code_column(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test adding name column for a single code column."""
-        mock_get_mapping.return_value = sample_mock_mapping
-
-        df = pd.DataFrame(
-            {
-                "year": [2020, 2021],
-                "recipient_code": [100, 200],
-                "value": [1000.0, 2000.0],
-            }
-        )
-
-        result = add_names_columns(df, "recipient_code")
-
-        # Should have added recipient_name column
-        assert "recipient_name" in result.columns
-
-        # Values should be mapped correctly
-        assert result["recipient_name"].iloc[0] == "Country A"
-        assert result["recipient_name"].iloc[1] == "Country B"
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_multiple_code_columns(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test adding name columns for multiple code columns."""
-        mock_get_mapping.return_value = sample_mock_mapping
-
-        df = pd.DataFrame(
-            {
-                "year": [2020, 2021],
-                "donor_code": [1, 2],
-                "recipient_code": [100, 200],
-                "value": [1000.0, 2000.0],
-            }
-        )
-
-        result = add_names_columns(df, ["donor_code", "recipient_code"])
-
-        # Should have added both name columns
-        assert "donor_name" in result.columns
-        assert "recipient_name" in result.columns
-
-        # Values should be mapped correctly
-        assert result["donor_name"].iloc[0] == "United States"
-        assert result["donor_name"].iloc[1] == "France"
-        assert result["recipient_name"].iloc[0] == "Country A"
-        assert result["recipient_name"].iloc[1] == "Country B"
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_with_empty_dataframe(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test that empty DataFrame is returned unchanged."""
-        mock_get_mapping.return_value = sample_mock_mapping
-
-        df = pd.DataFrame(columns=["year", "recipient_code", "value"])
-
-        result = add_names_columns(df, "recipient_code")
-
-        # Should return the empty DataFrame without errors
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 0
-        assert result is df  # Should return same object for empty df
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_raises_error_for_nonexistent_column(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test that ValueError is raised when code column doesn't exist."""
-        mock_get_mapping.return_value = sample_mock_mapping
-
-        df = pd.DataFrame(
-            {
-                "year": [2020],
-                "value": [1000.0],
-            }
-        )
-
-        with pytest.raises(ValueError, match="does not exist in the DataFrame"):
-            add_names_columns(df, "recipient_code")
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_raises_error_for_unmapped_column(self, mock_get_mapping):
-        """Test that ValueError is raised when no mapping exists for column."""
-        # Mapping doesn't include "sector_code"
-        mock_get_mapping.return_value = {
-            "recipient_code": {"100": "Country A"},
-        }
-
-        df = pd.DataFrame(
-            {
-                "year": [2020],
-                "sector_code": [110],
-                "value": [1000.0],
-            }
-        )
-
-        with pytest.raises(ValueError, match="No name mapping available"):
-            add_names_columns(df, "sector_code")
-
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_inserts_next_to_code_column(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test that name column is inserted immediately after code column."""
-        mock_get_mapping.return_value = sample_mock_mapping
-
-        df = pd.DataFrame(
-            {
-                "year": [2020],
-                "recipient_code": [100],
-                "value": [1000.0],
-                "other_column": ["data"],
-            }
-        )
-
-        result = add_names_columns(df, "recipient_code")
-
-        # Get column positions
-        columns = result.columns.tolist()
-        recipient_code_idx = columns.index("recipient_code")
-        recipient_name_idx = columns.index("recipient_name")
-
-        # Name column should be immediately after code column
-        assert recipient_name_idx == recipient_code_idx + 1
+def test_line_names_need_a_table() -> None:
+    with pytest.raises(ValueError, match="table"):
+        names("line")
 
 
-# ============================================================================
-# Integration Tests
-# ============================================================================
+def test_dimensions_without_names_are_empty() -> None:
+    assert names("year") == {}
 
 
-class TestAddNamesColumnsIntegration:
-    """Integration tests for add_names_columns function."""
+def test_unknown_code_has_no_name() -> None:
+    assert name_of("provider", 123456) is None
 
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_complete_workflow(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test complete workflow with realistic data."""
-        mock_get_mapping.return_value = sample_mock_mapping
 
-        # Simulate realistic ODA data
-        df = pd.DataFrame(
-            {
-                "year": [2020, 2020, 2021, 2021],
-                "donor_code": [1, 2, 1, 2],
-                "recipient_code": [100, 100, 200, 200],
-                "sector_code": [110, 120, 110, 140],
-                "value": [1000.0, 1500.0, 2000.0, 2500.0],
-            }
-        )
+@pytest.mark.parametrize(
+    ("dimension", "code", "expected"),
+    [
+        ("provider", 20001, True),
+        ("provider", 21600, True),
+        ("provider", 29999, True),  # every provider code from 20000 up
+        ("provider", 918, False),
+        ("recipient", 10100, True),
+        ("recipient", 10024, True),
+        ("recipient", 289, False),  # a regional row, not a total
+        ("recipient", 1027, False),
+        ("recipient", 9998, False),
+        ("recipient", 10280, False),  # Middle Africa, unspecified
+        ("recipient", 15006, True),  # Regional and Unspecified, Total
+        ("sector", 12220, False),
+    ],
+)
+def test_is_aggregate(dimension, code, expected) -> None:
+    assert is_aggregate(dimension, code) is expected
 
-        result = add_names_columns(df, ["donor_code", "recipient_code", "sector_code"])
 
-        # Verify all name columns added
-        assert "donor_name" in result.columns
-        assert "recipient_name" in result.columns
-        assert "sector_name" in result.columns
+def test_recipient_aggregates_all_have_names() -> None:
+    recipient_names = names("recipient")
+    assert aggregate_codes("recipient") <= set(recipient_names)
 
-        # Verify correct column order (name after code)
-        columns = result.columns.tolist()
-        assert columns.index("donor_name") == columns.index("donor_code") + 1
-        assert columns.index("recipient_name") == columns.index("recipient_code") + 1
-        assert columns.index("sector_name") == columns.index("sector_code") + 1
 
-        # Verify all mappings work
-        assert result["donor_name"].iloc[0] == "United States"
-        assert result["recipient_name"].iloc[0] == "Country A"
-        assert result["sector_name"].iloc[0] == "Education"
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        ("Côte d\N{RIGHT SINGLE QUOTATION MARK}Ivoire", "cote d'ivoire"),
+        ("  Türkiye ", "turkiye"),
+        ("DAC  Countries", "dac countries"),
+    ],
+)
+def test_normalise_folds_case_accents_quotes_and_spaces(left, right) -> None:
+    assert normalise(left) == normalise(right)
 
-    @patch("oda_data.tools.names.add.get_merged_names_mapping")
-    def test_add_names_columns_doesnt_duplicate_existing_names(
-        self, mock_get_mapping, sample_mock_mapping
-    ):
-        """Test that existing name columns are not duplicated."""
-        mock_get_mapping.return_value = sample_mock_mapping
 
-        # DataFrame already has recipient_name
-        df = pd.DataFrame(
-            {
-                "year": [2020],
-                "recipient_code": [100],
-                "recipient_name": ["Existing Name"],
-                "value": [1000.0],
-            }
-        )
-
-        result = add_names_columns(df, "recipient_code")
-
-        # Should not duplicate the column
-        assert result.columns.tolist().count("recipient_name") == 1
-
-        # Original name should be preserved
-        assert result["recipient_name"].iloc[0] == "Existing Name"
+def test_normalise_keeps_typos_apart() -> None:
+    assert normalise("Frnace") != normalise("France")
