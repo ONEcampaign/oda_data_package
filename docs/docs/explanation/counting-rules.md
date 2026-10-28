@@ -60,15 +60,52 @@ Provider codes from 20000 up, such as the DAC countries total (20001), are OECD 
 
 The OECD publishes each table's latest year before every provider has reported it. In the October 2026 releases, 30 DAC countries had reported 2024 in-donor refugee costs and not 2025, and the CRS held 2025 activities from a handful of providers.
 
-A total over those providers reads as the full total and is not. oda-data makes a group total null in a year in which a member that reported in an earlier year has reported nothing in that year or any later one. A member that has not started reporting counts as zero, and so does a member that skips a year and reports again: Spain and Portugal skip 1971 to 1979 in DAC1, Hungary 1993 to 2002. A sum across providers outside `by` returns its total for the last year, warns with `OdaDataWarning`, and has `explain()` count the missing providers that reported the year before. A provider that stopped earlier counts as zero there and does not count in the warning. `allow_partial=True` sums whoever reported and silences the warning.
+A total over those providers reads as the full total and is not. oda-data makes a group total null in a year in which a member that reported in an earlier year has reported nothing in that year or any later one. A member that has not started reporting counts as zero, and so does a member that skips a year and reports again: Spain and Portugal skip 1971 to 1979 in DAC1, Hungary 1993 to 2002. A sum across providers outside `by` returns its total for the last year, and the year's `OdaDataWarning` says which parts the sum is short of and for how many providers that reported them the year before, as does `explain()`. A provider that stopped earlier counts as zero there and does not count in the warning. `allow_partial=True` sums whoever reported and leaves the short sum out of the warning.
 
-Providers report a table's last year in parts that differ by table. DAC1 providers report it line by line and flow by flow. A provider with rows for a line, or for a flow of it, in the year before the last and none in the last year has not yet reported that part. In 2025, Austria and Ireland alone split gross disbursements into grants (flow 1121) and non-grants (1122), against 47 providers in 2024, so a 2025 total of `flows=1121` over DAC countries is null. A group total of the part is null, and a total of a part the provider has reported keeps its value, whichever lines and flows the call names together. A result that shows a provider on its own row with no row for a part it has not yet reported, such as France's 2025 refugee costs, has `explain()` name the part and the provider. DAC2A providers report line by line too, but DAC2A's last year holds few providers. In the October 2026 release, 12 of the 131 with 2024 rows had reported 2025. A provider with any last-year row for a line has reported it, whichever recipient the row goes to, a recipient total such as 10100 or a multilateral agency included, and a recipient with no row in a reporting provider's last year counts as zero, as in any other year. CRS and Multisystem providers report a year whole, so a provider with any row in the last year has reported it, and a recipient, sector, or channel with no rows from that provider counts as zero.
+Providers report a table's last year in parts that differ by table. DAC1 providers report it line by line and flow by flow. A provider with rows for a line, or for a flow of it, in the year before the last and none in the last year has not yet reported that part. In 2025, Austria and Ireland alone split gross disbursements into grants (flow 1121) and non-grants (1122), against 47 providers in 2024, so a 2025 total of `flows=1121` over DAC countries is null. A group total of the part is null, and a total of a part the provider has reported keeps its value, whichever lines and flows the call names together. A call that asks for the last year gets one `OdaDataWarning` for that year. It names each part that providers have not yet reported once, with what the part does to the result: rows of a provider the call shows that are missing or null, with the provider named, and sums and `oda.total()` groups that are short of the part or have no row of it, with their providers counted. `explain()` gives one sentence per part. `oecd.dac1.in_donor_refugee_costs` for France over 2024 and 2025 returns 2024 alone and warns that line 1820, flow 1160 is missing for France. Over the G7 total for 2023 to 2025 it returns 2023 and 2024 and warns that the part is missing from the g7 total for 7 providers. With France shown beside the G7 total, the one warning names France and counts it among the 7. `explain()` also names the years the call asks for that the result has no rows for, and those the indicator's own table does not hold, before its first year or after its last, whether or not the result has a `year` column. `one.crs.imputed_multilateral_oda` reads its rows from Multisystem, which covers 2011 to 2025, so a call for 1980 says Multisystem does not hold it, though the imputation also reads the CRS from 1973. DAC2A providers report line by line too, but DAC2A's last year holds few providers. In the October 2026 release, 12 of the 131 with 2024 rows had reported 2025. A provider with any last-year row for a line has reported it, whichever recipient the row goes to, a recipient total such as 10100 or a multilateral agency included, and a recipient with no row in a reporting provider's last year counts as zero, as in any other year. CRS and Multisystem providers report a year whole, so a provider with any row in the last year has reported it, and a recipient, sector, or channel with no rows from that provider counts as zero.
 
 The same rule applies to the parts of a derived indicator. In the table's last year, a provider that reported one of the lines core ODA subtracts the year before, and has not reported it yet, gets a null core ODA row. A recipient total of that provider's rows is null too. So is a sum across providers outside `by` that holds the provider's row, because its total ODA is in the sum and the line is not taken out, which would overstate the sum. In 2025, `one.dac1.core_oda` by year is null, and `allow_partial=True` returns 172,968.09, which subtracts only the lines reported so far. A sum that is null does not also warn that it covers only the providers that have reported.
 
 A ratio over several providers, a group total or a sum outside `by`, leaves out a member with a denominator and no numerator. Once a member's numerator stops while its denominator goes on, as with GNI and no ODA, the ratio is null in those years unless the call passes `allow_partial=True`.
 
 A row is one provider's when `provider` is in `by`, or when the call shows one provider in the row's year, as a dated group can. The rule follows each year, so a call for several years gives each year the row a call for that year alone gives.
+
+### Check requested years against returned years
+
+A call for 2024 and 2025 can return 2024 alone. France has not reported refugee costs for 2025, so the result has no row for it, and a chart of that result ends a year early. Compare the years you asked for with the years that came back, and read the warning.
+
+```text
+oecd.dac1.in_donor_refugee_costs: 2025 is partial: providers that reported a part in 2024 have not reported it in 2025. Line 1820, flow 1160 is missing for France (4).
+  provider_name  year    value
+0        France  2024  1227.19
+missing years: [2025]
+In-donor refugee costs (DAC1), headline basis: grant equivalent 2024.
+The result has no rows for 2025.
+France.
+2025 is partial: France (4) reported line 1820, flow 1160 in 2024 and has not reported it in 2025, so the result has no 2025 rows of line 1820, flow 1160 for it.
+Current USD (the default).
+DAC1 downloaded 2026-10-28. 1 rows.
+```
+
+```python
+import warnings
+
+import oda_data as oda
+
+requested = [2024, 2025]
+q = oda.query("oecd.dac1.in_donor_refugee_costs", years=requested, providers="FRA")
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    df = q.to_pandas()
+
+for warning in caught:
+    print(warning.message)
+print(df[["provider_name", "year", "value"]])
+print("missing years:", sorted(set(requested) - set(df.year)))
+print(q.explain())
+```
+
+`allow_partial=True` does not silence this warning, because the missing row has no partial value to return.
 
 ## CRS and DAC1 totals
 

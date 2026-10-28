@@ -155,7 +155,20 @@ Lists every indicator, one row each, with columns `id`, `name`, `table`, `kind`,
 def search(text: str) -> pd.DataFrame: ...
 ```
 
-Finds indicators, groups, sector groups, and DAC lines whose id or name holds every word of `text`, in any case and accent, best match first. Columns: `kind` (`code`, `indicator`, `group`, `sector_group`, or `line`), `key`, `name`, `table`, `use` (the argument or call that puts the row to work), and `note`.
+Finds indicators, groups, sector groups, DAC lines, providers, and recipients whose id, name, or search terms hold every word of `text`, in any case and accent, best match first. Columns: `kind` (`code`, `indicator`, `group`, `sector_group`, `line`, `provider`, or `recipient`), `key`, `name`, `table`, `use` (the argument or call that puts the row to work), and `note`.
+
+Search terms cover common questions: `"aid effort"` and `"0.7"` find `oecd.dac1.oda_gni_ratio`. A few OECD regional totals have common names for search only, so `"Sub-Saharan"` finds recipient 10003 (South of Sahara, Total), while `recipients=` takes the code or the OECD's name. Provider and recipient rows come after every other row, and their `use` gives the code, such as `recipients=10003`. The first is the entity `providers=` or `recipients=` reads `text` as, so `"UK"` gives provider 12 and `"USA"` provider 302. Other entity rows match a code exactly, or a name with a word starting with each word of `text`, so `"Ken"` finds Kenya.
+
+```text
+        kind    key                    name table               use  note
+0  recipient  10003  South of Sahara, Total  <NA>  recipients=10003  <NA>
+```
+
+```python
+import oda_data as oda
+
+print(oda.search("Sub-Saharan").to_string())
+```
 
 An oda-data 2.x indicator code or slug returns a first row of kind `code` whose `use` is the 3.0 call and whose `note` says why the number differs from 2.x, if it does. Raises `TypeError` for a non-string and `ValueError` for blank text.
 

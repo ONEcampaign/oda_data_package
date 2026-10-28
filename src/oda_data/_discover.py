@@ -11,6 +11,7 @@ Both DataFrames have a fixed schema, ``INDICATORS_SCHEMA`` and
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
@@ -18,7 +19,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from oda_data import _compat, _context
-from oda_data._groups import groups, sectors
+from oda_data._errors import AmbiguousEntityError, UnknownEntityError
+from oda_data._groups import Group, groups, sectors
 from oda_data._model import (
     Caveat,
     Headline,
@@ -29,7 +31,8 @@ from oda_data._model import (
     line_basis,
     offered_bases,
 )
-from oda_data._names import names, normalise
+from oda_data._names import is_aggregate, names, normalise
+from oda_data._resolve import resolve_entity
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -53,7 +56,8 @@ INDICATORS_SCHEMA: Mapping[str, str] = MappingProxyType(
 )
 
 #: The columns of ``search()`` and their pandas dtypes. ``table`` is null for
-#: groups and sector groups, and ``note`` is null except on a 2.x code.
+#: groups, sector groups, providers, and recipients, and ``note`` is null
+#: except on a 2.x code.
 SEARCH_SCHEMA: Mapping[str, str] = MappingProxyType(
     {
         "kind": "string",
@@ -312,10 +316,38 @@ class _Entry:
     use: str
     detail: str = ""
     note: str | None = None
+    terms: tuple[str, ...] = ()
 
 
 #: The order kinds appear in among results that match equally well.
-_KIND_ORDER = ("code", "indicator", "group", "sector_group", "line")
+_KIND_ORDER = (
+    "code",
+    "indicator",
+    "group",
+    "sector_group",
+    "line",
+    "recipient",
+    "provider",
+)
+
+#: The dimensions whose codes ``search`` lists by name, after every other row,
+#: and the ``get`` argument each code goes in.
+_ENTITY_ARGUMENT: Mapping[Dimension, str] = MappingProxyType(
+    {"recipient": "recipients", "provider": "providers"}
+)
+
+#: Common words for OECD regional and income totals, which the OECD names
+#: otherwise ("South of Sahara, Total"). ``search`` matches them as it matches
+#: the total's name, so "Sub-Saharan" finds recipient 10003. Filters do not
+#: read them: ``recipients=`` takes the code or the OECD's name.
+_REGION_SEARCH_TERMS: Mapping[Code, tuple[str, ...]] = MappingProxyType(
+    {
+        10002: ("North Africa",),
+        10003: ("Sub-Saharan Africa",),
+        10016: ("Least developed countries",),
+        10202: ("Small island developing states", "SIDS"),
+    }
+)
 
 #: The ``get`` argument that takes each dimension's groups.
 _GROUP_ARGUMENT: Mapping[str, str] = MappingProxyType(
@@ -324,7 +356,8 @@ _GROUP_ARGUMENT: Mapping[str, str] = MappingProxyType(
 
 
 def search(text: str) -> pd.DataFrame:
-    """Find indicators, groups, sector groups, and DAC lines that match ``text``.
+    """Find indicators, groups, sector groups, DAC lines, providers, and
+    recipients that match ``text``.
 
     When ``text`` is an oda-data 2.x indicator code or ``settings`` slug, such
     as ``"DAC1.10.1010"``, the first row is of kind ``code``: ``use`` holds the
@@ -332,16 +365,27 @@ def search(text: str) -> pd.DataFrame:
     number differs from 2.x's, if it does.
 
     A row matches when every word of ``text`` appears, in any case and
-    accent, in the id or name, or for an indicator also in its description.
-    Rows come best match first: the id or name equals ``text``, then starts
-    with it, then contains every word, then only the description does.
+    accent, in the id, name, or search terms, or for an indicator also in its
+    description. An indicator's search terms answer common questions, such as
+    ``"aid effort"`` and ``"0.7"`` for ``oecd.dac1.oda_gni_ratio``, and a few
+    regional totals have common names, such as ``"Sub-Saharan Africa"`` for
+    recipient 10003 (South of Sahara, Total). Rows come best match first: the
+    id, name, or a search term equals ``text``, then starts with it, then
+    contains every word, then only the description does. Provider and
+    recipient rows come after every other row. Their first is the entity
+    ``providers=`` or ``recipients=`` reads ``text`` as, so ``"UK"`` gives
+    provider 12. Others match a code exactly, or a name or search term that
+    equals ``text``, starts with it, or has a word starting with each word of
+    it, regional and income totals first among equal matches.
 
     The columns and dtypes are ``SEARCH_SCHEMA``: ``kind`` (``code``,
-    ``indicator``, ``group``, ``sector_group``, or ``line``), ``key`` (the 2.x
-    code, the indicator id, the name in ``oda.groups`` or ``oda.sectors``, or
-    the line code), ``name``, ``table`` (null for groups), ``use``, the
-    argument or call that puts the row to work, such as
-    ``providers=oda.groups.g7`` or ``lines=1010``, and ``note``.
+    ``indicator``, ``group``, ``sector_group``, ``line``, ``provider``, or
+    ``recipient``), ``key`` (the 2.x code, the indicator id, the name in
+    ``oda.groups`` or ``oda.sectors``, or the line, provider, or recipient
+    code), ``name``, ``table`` (null for groups, providers, and recipients),
+    ``use``, the argument or call that puts the row to work, such as
+    ``providers=oda.groups.g7``, ``lines=1010`` or ``recipients=10003``, and
+    ``note``.
     A line that only a non-default basis reads names the basis too, such as
     ``lines=240, basis="gross_disbursement"``. DAC1 and DAC2A number lines
     separately, so a line appears once for each table that has it.
@@ -357,14 +401,18 @@ def search(text: str) -> pd.DataFrame:
         raise ValueError("search needs some text")
     tokens = query.split()
 
+    resolved = _resolved(text)
     ranked = []
     for entry in _entries():
-        tier = _tier(entry, query, tokens)
+        if entry.kind in _ENTITY_ARGUMENT:
+            tier = _entity_tier(entry, query, tokens, resolved)
+        else:
+            tier = _tier(entry, query, tokens)
         if tier is not None:
-            ranked.append((tier, _KIND_ORDER.index(entry.kind), entry))
-    ranked.sort(key=lambda found: found[:2])  # stable: ties keep source order
+            ranked.append((_rank(entry, tier), entry))
+    ranked.sort(key=lambda found: found[0])  # stable: ties keep source order
 
-    rows = [*_legacy_rows(text), *(entry for _, _, entry in ranked)]
+    rows = [*_legacy_rows(text), *(entry for _, entry in ranked)]
     return _frame(
         [
             {
@@ -403,20 +451,60 @@ def _legacy_rows(text: str) -> list[_Entry]:
     ]
 
 
+def _rank(entry: _Entry, tier: int) -> tuple[bool, int, int]:
+    """The sort key of a match: provider and recipient rows after the rest,
+    then by tier, then by kind."""
+    return (entry.kind in _ENTITY_ARGUMENT, tier, _KIND_ORDER.index(entry.kind))
+
+
 def _tier(entry: _Entry, query: str, tokens: list[str]) -> int | None:
     """How well ``entry`` matches: 0 is best, ``None`` is no match."""
-    key, name = normalise(entry.key), normalise(entry.name)
-    if query in (key, name):
+    labels = [normalise(text) for text in (entry.key, entry.name, *entry.terms)]
+    if query in labels:
         return 0
-    if key.startswith(query) or name.startswith(query):
+    if any(label.startswith(query) for label in labels):
         return 1
-    label = f"{key} {name}"
+    label = " ".join(labels)
     if all(token in label for token in tokens):
         return 2
     if entry.detail:
         full = f"{label} {normalise(entry.detail)}"
         if all(token in full for token in tokens):
             return 3
+    return None
+
+
+def _resolved(text: str) -> frozenset[tuple[str, str]]:
+    """The ``(kind, key)`` of each provider or recipient that ``providers=``
+    or ``recipients=`` reads ``text`` as, such as provider 12 for ``"UK"``."""
+    found = set()
+    for dimension in _ENTITY_ARGUMENT:
+        try:
+            code = resolve_entity(dimension, text)
+        except (UnknownEntityError, AmbiguousEntityError):
+            continue
+        if not isinstance(code, Group):
+            found.add((dimension, str(code)))
+    return frozenset(found)
+
+
+def _entity_tier(
+    entry: _Entry, query: str, tokens: list[str], resolved: frozenset[tuple[str, str]]
+) -> int | None:
+    """How well a provider or recipient row matches: 0 when a filter reads
+    ``query`` as this entity, then 1 when the code, name, or a search term
+    equals it, 2 when the name or a term starts with it, and 3 when every word
+    starts a word of them. ``None`` is no match."""
+    if (entry.kind, entry.key) in resolved:
+        return 0
+    labels = [normalise(text) for text in (entry.name, *entry.terms)]
+    if query == entry.key or query in labels:
+        return 1
+    if any(label.startswith(query) for label in labels):
+        return 2
+    label = " ".join(labels)
+    if all(re.search(rf"(?<!\w){re.escape(token)}", label) for token in tokens):
+        return 3
     return None
 
 
@@ -429,6 +517,7 @@ def _entries() -> Iterator[_Entry]:
             indicator.binding.table,
             f'oda.get("{indicator.id}")',
             indicator.description,
+            terms=indicator.search_terms,
         )
     for slug, group in groups.items():
         argument = _GROUP_ARGUMENT[group.dimension or "provider"]
@@ -447,6 +536,20 @@ def _entries() -> Iterator[_Entry]:
         for code, name in names("line", table=table).items():
             if code not in refused:
                 yield _Entry("line", str(code), name, table, _line_use(reader, code))
+    for dimension, argument in _ENTITY_ARGUMENT.items():
+        named = names(dimension)
+        terms = _REGION_SEARCH_TERMS if dimension == "recipient" else {}
+        totals = [code for code in named if is_aggregate(dimension, code)]
+        others = [code for code in named if not is_aggregate(dimension, code)]
+        for code in (*totals, *others):
+            yield _Entry(
+                dimension,
+                str(code),
+                named[code],
+                None,
+                f"{argument}={code}",
+                terms=terms.get(code, ()),
+            )
 
 
 def _lines_indicator(table: TableName) -> Indicator | None:

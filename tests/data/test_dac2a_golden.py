@@ -359,7 +359,10 @@ def test_a_sum_over_providers_warns_of_the_partial_last_year(
     """Expected: DAC2A's 2025 holds a few providers' rows only, so a sum over
     the default providers warns, and explain() names the year and the count."""
     q = oda.query("oecd.dac2a.recipient_oda", years=[2024, 2025], by=["year"])
-    with pytest.warns(oda.OdaDataWarning, match=r"2025 is partial: \d+ providers"):
+    with pytest.warns(
+        oda.OdaDataWarning,
+        match=r"All of 2025 is left out of the sum for \d+ providers",
+    ):
         df = q.to_pandas()
     reported = _distinct(dac2a, "provider", "year = 2025 AND provider < 20000")
 

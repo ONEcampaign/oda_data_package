@@ -25,6 +25,7 @@ nav:
   - Home: index.md
   - Tutorial: tutorial.md
   - How-to guides:
+      - Find the indicator for a question: how-to/find-an-indicator.md
       - Constant prices and currencies: how-to/units.md
       - Groups and totals: how-to/groups-and-totals.md
       - Sectors and policy markers: how-to/sectors-and-markers.md

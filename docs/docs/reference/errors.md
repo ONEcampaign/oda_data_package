@@ -23,8 +23,8 @@ except oda.UnknownIndicatorError as error:
 | ----------------------------- | ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `OdaDataError`                | `oda_data_error`          |                   | Base class of every error below                                                                                                                                                                                                |
 | `UnknownIndicatorError`       | `unknown_indicator`       | `LookupError`     | No indicator has the id. `suggestions` holds near ids. A 2.x code gives its 3.0 call in the message                                                                                                                            |
-| `UnknownEntityError`          | `unknown_entity`          | `LookupError`     | A filter value matches no code or exact name. `suggestions` holds near names and `system` the code system tried                                                                                                                |
-| `AmbiguousEntityError`        | `ambiguous_entity`        | `ValueError`      | A name could mean more than one entity, such as `"Congo"`, or an OECD aggregate and a group. `candidates` lists them                                                                                                           |
+| `UnknownEntityError`          | `unknown_entity`          | `LookupError`     | A filter value matches no code or exact name. `suggestions` holds near names, the message names the first three, and `system` holds the code system tried                                                                      |
+| `AmbiguousEntityError`        | `ambiguous_entity`        | `ValueError`      | A name could mean more than one entity, such as `"DAC countries"`, which is both an OECD aggregate and a group. `candidates` lists them                                                                                        |
 | `DimensionError`              | `dimension`               | `ValueError`      | The indicator lacks a dimension used in `by=` or a filter. The message names an indicator that has it                                                                                                                          |
 | `BasisRangeError`             | `basis_range`             | `ValueError`      | The basis does not cover a year asked for, such as grant equivalents before 2018. The message names the bases that do                                                                                                          |
 | `UnsupportedQueryError`       | `unsupported_query`       | `ValueError`      | The call is undefined, such as `unit=` on a ratio, an unsupported currency, `records()` on a ratio, `total()` outside `by`, a code the indicator leaves out, or 918 summed with a provider that pays it on DAC1 or Multisystem |
@@ -62,11 +62,35 @@ for call in (
         print(error)
 ```
 
+## Names that fail
+
+A name that matches nothing raises `UnknownEntityError`, and its message ends with the nearest names. A name that matches two things raises `AmbiguousEntityError`, and its message says what to pass instead.
+
+```text
+no provider is named 'Frnace'; did you mean France? [unknown_entity]
+'DAC countries' could mean provider 20001 (DAC Countries, Total) or the group oda.groups.dac_countries; pass the code or the group [ambiguous_entity]
+('20001', 'dac_countries')
+```
+
+```python
+import oda_data as oda
+
+for name in ("Frnace", "DAC countries"):
+    try:
+        oda.get("oecd.dac1.total_oda", years=2024, providers=name)
+    except (oda.UnknownEntityError, oda.AmbiguousEntityError) as error:
+        print(error)
+        if isinstance(error, oda.AmbiguousEntityError):
+            print(error.candidates)
+```
+
+The two Congos are COG (234), the Republic of the Congo, and COD (235), the Democratic Republic of the Congo. `recipients="Congo"` means COG and raises no error.
+
 ## Warnings
 
 `OdaDataWarning` subclasses `UserWarning` and flags a caveat on a result the call still returns:
 
-- A sum across providers outside `by` in the table's last year, when providers that reported the year before have not reported it yet. The message reads "`<year>` is partial: `<n>` providers that reported `<year - 1>` have not reported `<year>`", or, where the providers reported the year and not yet one of its parts, "`<n>` providers that reported line `<code>`, flow `<code>` in `<year - 1>` have not reported it in `<year>`". A provider that stopped reporting earlier does not count. A sum that is null for another reason, such as a part a derived indicator subtracts and a provider has not yet reported, does not warn, and `explain()` says why it is null. `allow_partial=True` silences it, and `explain()` still names the partial year.
+- A call that asks for the table's last year, when providers reported a part of the indicator the year before and have not reported it yet. One warning per year reads "`<year>` is partial: providers that reported a part in `<year - 1>` have not reported it in `<year>`." It then names each part once with what the part does to the result, such as "Line 1820, flow 1160 is missing for France (4), and missing from the g7 total for 7 providers." A provider the call shows is named, with its rows of the part missing or null. A sum across providers outside `by` is short of the part or has no row of it, and an `oda.total()` group has no row of it, with their providers counted. The warning names five parts and five providers per part, and counts the rest. A provider that stopped reporting before the year before does not count. `allow_partial=True` returns the partial values of null rows and short sums and leaves them out of the warning, and a part with no row warns whatever it says. A sum that is null for another reason, such as a part a derived indicator subtracts and a provider has not yet reported, is not in the warning, and `explain()` says why it is null. `explain()` gives one sentence per part.
 - A caveat scoped to a basis or years that the call reads, such as grant equivalents on `oecd.dac1.lines` from 2015 to 2017, which only 25 to 27 DAC members reported.
 
 Caveats with no basis or years appear in `describe()` and `explain()` and raise no warning. To turn every caveat into an error in a pipeline, run Python with `-W error::oda_data.OdaDataWarning`.

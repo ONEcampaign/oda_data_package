@@ -70,3 +70,13 @@ def test_imputation_conserves_every_provider_year(ctx: oda.Context) -> None:
     spread = imputed.set_index(["provider", "year"])["value"].sort_index()
     contributed = _nonzero(core.set_index(["provider", "year"])["value"]).sort_index()
     pd.testing.assert_series_equal(spread, contributed, check_names=False, rtol=1e-9)
+
+
+def test_explain_names_the_years_multisystem_does_not_hold(ctx: oda.Context) -> None:
+    """The indicator's rows come from Multisystem, which starts in 2011, though
+    the imputation also reads the CRS from 1973."""
+    q = ctx.query(INDICATOR, years=[1980, 2023], providers=FRANCE, by=["year"])
+
+    assert q.to_pandas()["year"].tolist() == [2023]
+    [line] = [line for line in q.explain().splitlines() if "1980" in line]
+    assert line.startswith("The result has no rows for 1980: Multisystem covers 2011-")

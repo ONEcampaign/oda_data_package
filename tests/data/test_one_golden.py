@@ -106,7 +106,11 @@ def test_core_oda_is_null_for_members_with_a_line_missing_in_the_last_year(
     [(last,)] = tables.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
     assert last >= 2025
     lines = {line: _line(tables, line=line, flow=1160) for line in CORE_LINES}
-    df = oda.get("one.dac1.core_oda", years=[last - 1, last])
+    with pytest.warns(
+        oda.OdaDataWarning,
+        match=rf"{last} is partial: .* Line 1500, flow 1160 is null for",
+    ):
+        df = oda.get("one.dac1.core_oda", years=[last - 1, last])
     partial = oda.get("one.dac1.core_oda", years=[last - 1, last], allow_partial=True)
     found = _by_provider_year(df)
     partial_found = _by_provider_year(partial)
@@ -306,7 +310,8 @@ def test_a_recipient_total_is_null_where_its_provider_row_is(
         "recipients": [55, oda.total(Group("mine", [55]))],
         "by": ["provider", "recipient", "year"],
     }
-    strict = oda.get("one.dac2a.recipient_oda_with_imputed_multilateral", **call)
+    with pytest.warns(oda.OdaDataWarning, match=r"Line 106 is null for Austria \(1\)"):
+        strict = oda.get("one.dac2a.recipient_oda_with_imputed_multilateral", **call)
     partial = oda.get(
         "one.dac2a.recipient_oda_with_imputed_multilateral", allow_partial=True, **call
     )

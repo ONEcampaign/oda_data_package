@@ -30,7 +30,7 @@ oda-data reads the OECD's bulk files through [oda-reader](https://github.com/ONE
 ## Where to go next
 
 - [Chart ten years of G7 aid](tutorial.md) walks through a first call, constant prices, a group total, and a chart.
-- The how-to guides cover single tasks: [units](how-to/units.md), [groups and totals](how-to/groups-and-totals.md), [sectors and policy markers](how-to/sectors-and-markers.md), [imputed multilateral sectors](how-to/imputed-multilateral.md), [records](how-to/records.md), [provenance](how-to/provenance.md), and [offline use](how-to/offline-and-caching.md).
+- The how-to guides cover single tasks: [finding the indicator for a question](how-to/find-an-indicator.md), [units](how-to/units.md), [groups and totals](how-to/groups-and-totals.md), [sectors and policy markers](how-to/sectors-and-markers.md), [imputed multilateral sectors](how-to/imputed-multilateral.md), [records](how-to/records.md), [provenance](how-to/provenance.md), and [offline use](how-to/offline-and-caching.md).
 - [Indicators](reference/indicators.md) lists every indicator, and [Public API](reference/api.md) every function.
 - [Counting rules](explanation/counting-rules.md) explains which rows count and why.
 - [Migrating from 2.x](migration.md) gives the 3.0 call for any 2.x code and lists the numbers that change.

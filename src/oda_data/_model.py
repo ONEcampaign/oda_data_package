@@ -675,6 +675,9 @@ class Indicator:
             cannot convert with ``unit=`` and no ``Ratio`` or ``Derived``
             indicator may combine with money. A ``Ratio`` reads money and
             gives a per cent.
+        search_terms: Words and phrases ``oda.search`` matches as it matches
+            the name, for questions the name does not answer, such as
+            ``"0.7"`` for ODA as a share of GNI. They change no number.
 
     Raises:
         ValueError: If ``rows`` names a column outside the table vocabulary,
@@ -697,6 +700,7 @@ class Indicator:
     caveats: tuple[Caveat, ...] = ()
     version: int = 1
     measure: Measure = "money"
+    search_terms: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         binding = self.binding

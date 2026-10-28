@@ -118,6 +118,7 @@ def _named(
     *,
     rows: tuple[NotIn, ...] = (),
     caveats: tuple[Caveat, ...] = (),
+    search_terms: tuple[str, ...] = (),
 ) -> Indicator:
     return Indicator(
         id=id_,
@@ -130,6 +131,7 @@ def _named(
         default_providers=None,
         rows=rows,
         caveats=caveats,
+        search_terms=search_terms,
     )
 
 
@@ -161,6 +163,7 @@ RECIPIENT_ODA = _named(
     "ODA each recipient receives from each provider: net disbursements (line "
     "206) by default, and gross disbursements (line 240) on request.",
     _binding(net=206, gross=240),
+    search_terms=("recipient ODA", "aid received", "aid to countries"),
     caveats=(
         Caveat(
             _non_dac_gap(
@@ -181,6 +184,7 @@ IMPUTED_MULTILATERAL_ODA = _named(
     "Multilateral providers are left out, since the shares are their own "
     "flows.",
     _binding(net=106),
+    search_terms=("multilateral by recipient",),
     rows=(
         NotIn(
             "provider",

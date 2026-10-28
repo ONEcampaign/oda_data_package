@@ -1005,6 +1005,7 @@ class Context:
         # The tables the call read, and DAC1 when a unit took its factors.
         releases: dict[str, Release] = {t: self._tables.release(t) for t in tables}
         held = Releases(self._store, {t: releases[t].token for t in tables})
+        coverage: dict[TableName, frozenset[int]] = {}
         try:
             plan = _plan(cursor, request, tables, held)
             if "broad_sector" in plan.call.by:
@@ -1012,6 +1013,8 @@ class Context:
             factors = self._factors()
             if request.columns is None:
                 combined = combine(cursor, indicator, plan.call, factors, releases=held)
+                if plan.call.years is not None:
+                    coverage = _coverage_by_table(cursor, indicator, held)
             else:
                 combined = combined_records(
                     cursor,
@@ -1062,6 +1065,7 @@ class Context:
             releases,
             combined.fallback_providers,
             notes=combined.notes,
+            coverage=coverage,
         )
         return _Result(table, schema, record, text)
 
@@ -1197,17 +1201,23 @@ def explain(
     fallback: frozenset[int],
     *,
     notes: tuple[str, ...] = (),
+    coverage: Mapping[TableName, frozenset[int]] | None = None,
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
     ``notes`` is ``Combined.notes``, the sentences on the result's incomplete
-    cells and the notes of its ``Method`` parts.
+    cells and the notes of its ``Method`` parts. ``coverage`` gives, when the
+    call names years, the years each table that holds the indicator's rows
+    holds: the binding table of each of its leaves. An empty result names its
+    basis without years.
     """
     table = indicator.binding.table
-    years = _result_years(result, plan.call)
+    coverage = coverage or {}
+    years = _result_years(result, plan.call, coverage) if result.num_rows else None
     lines = [
         f"{indicator.name} ({TABLE_LABELS[table]}), "
-        f"{_basis_text(indicator, plan.call.basis, years)}."
+        f"{_basis_text(indicator, plan.call.basis, years)}.",
+        *_missing_text(result, plan.call, coverage),
     ]
     for _, dimension in _FILTERS:
         selection = plan.selections.get(dimension)
@@ -1290,11 +1300,92 @@ def _sentence(text: str) -> str:
     return text if text.endswith(".") else f"{text}."
 
 
-def _result_years(result: pa.Table, call: ResolvedCall) -> tuple[int, ...] | None:
+def _result_years(
+    result: pa.Table, call: ResolvedCall, coverage: Mapping[TableName, frozenset[int]]
+) -> tuple[int, ...] | None:
+    """The years of the result's rows, or without a year column the years
+    the call asks for that one of the tables in ``coverage`` holds, each of
+    which adds to the result."""
     if "year" in result.column_names:
         found = {year for year in result["year"].to_pylist() if year is not None}
         return tuple(sorted(found))
-    return call.years
+    if call.years is None:
+        return None
+    held = frozenset[int]().union(*coverage.values())
+    return tuple(year for year in call.years if year in held)
+
+
+def _coverage_by_table(
+    cursor: DuckDBPyConnection, indicator: Indicator, releases: Releases
+) -> dict[TableName, frozenset[int]]:
+    """The years each table that holds the indicator's rows holds: the binding
+    table of each of its leaves, in order."""
+    tables = dict.fromkeys(binding.table for binding in bindings(indicator))
+    return {
+        table: frozenset(_distinct(cursor, (table,), "year", releases))
+        for table in tables
+    }
+
+
+def _missing_text(
+    result: pa.Table, call: ResolvedCall, coverage: Mapping[TableName, frozenset[int]]
+) -> list[str]:
+    """The sentence on an empty result, on the years the call asks for that
+    the result has no row for, and on the tables in ``coverage`` that do not
+    hold a year the call asks for.
+
+    A year no table holds is named as such. Where the tables cover different
+    years, each table's years are named, with the requested years one of
+    them lacks and another holds, which the result counts from the others.
+    """
+    requested = list(call.years or ())
+    held = frozenset[int]().union(*coverage.values())
+    outside = sorted(year for year in requested if held and year not in held)
+    lacking = {
+        table: sorted(year for year in requested if year in held and year not in years)
+        for table, years in coverage.items()
+    }
+    lacking = {table: years for table, years in lacking.items() if years}
+    named = False
+    if not result.num_rows:
+        lead: str | None = "The result is empty"
+    elif "year" in result.column_names:
+        missing = sorted(set(requested) - set(result["year"].to_pylist()))
+        lead = f"The result has no rows for {_span(missing)}" if missing else None
+        named = bool(missing) and missing == outside
+    else:
+        lead = None
+    if not outside and not lacking:
+        return [] if lead is None else [f"{lead}."]
+    if len(set(coverage.values())) == 1:
+        [table, *rest] = coverage
+        label, cover, hold = (
+            (TABLE_LABELS[table], "covers", "does")
+            if not rest
+            else ("the tables", "cover", "do")
+        )
+        text = f"{label} {cover} {_range(held)}"
+        if not named:
+            text += f" and {hold} not hold {_span(outside)}"
+    else:
+        text = "; ".join(
+            f"{TABLE_LABELS[table]} covers {_range(years)}"
+            for table, years in coverage.items()
+        )
+        if outside and not named:
+            text += f"; no table holds {_span(outside)}"
+        if lacking:
+            text += ", so " + " and ".join(
+                f"{TABLE_LABELS[table]} has no rows for {_span(years)}"
+                for table, years in lacking.items()
+            )
+    return [f"{text[0].upper()}{text[1:]}." if lead is None else f"{lead}: {text}."]
+
+
+def _range(years: Iterable[int]) -> str:
+    """The first and last of ``years``, or the one year."""
+    first, last = min(years), max(years)
+    return str(first) if first == last else f"{first}-{last}"
 
 
 def _basis_text(
@@ -1338,8 +1429,13 @@ def _selection_text(
         text = (
             f"{counted}, plus their total" if group.shown else f"the total of {counted}"
         )
-        if selection.dimension == "provider":
-            text += ", " + _coverage(group.name, group.members, call, result)
+        coverage = (
+            _coverage(group.name, group.members, call, result)
+            if selection.dimension == "provider"
+            else None
+        )
+        if coverage is not None:
+            text += f", {coverage}"
         parts.append(text)
     direct = selection.rows - in_groups
     if direct:
@@ -1352,23 +1448,28 @@ def _coverage(
     members: Mapping[int, frozenset[Code]],
     call: ResolvedCall,
     result: pa.Table,
-) -> str:
+) -> str | None:
+    """What a provider total over a group covers, or ``None`` when the result
+    has no row of it."""
+    codes = result["provider"].to_pylist()
+    if name not in codes:
+        return None
     if call.allow_partial:
-        return "which sums the members that reported in each year"
+        return "which sums the members that reported in each year it returns"
     years = result["year"].to_pylist() if "year" in result.column_names else None
     empty = [
         i
         for i, (code, value) in enumerate(
-            zip(
-                result["provider"].to_pylist(), result["value"].to_pylist(), strict=True
-            )
+            zip(codes, result["value"].to_pylist(), strict=True)
         )
         if code == name and value is None
     ]
     if not empty:
         if len(set(members.values())) > 1:
-            return "which covers its members in every year"
-        return f"which covers all {len(_member_union(members))} in every year"
+            return "which covers its members in every year it returns"
+        return (
+            f"which covers all {len(_member_union(members))} in every year it returns"
+        )
     if years is None:
         return "which is empty, because a member has stopped reporting"
     found = sorted({years[i] for i in empty})

@@ -82,6 +82,8 @@ def test_a_typo_raises_with_the_match_as_a_suggestion(
     with pytest.raises(oda.UnknownEntityError) as caught:
         resolve_entity(dimension, value)
     assert suggestion in caught.value.suggestions
+    assert suggestion in str(caught.value)
+    assert caught.value.code == "unknown_entity"
 
 
 @pytest.mark.parametrize(
@@ -90,6 +92,7 @@ def test_a_typo_raises_with_the_match_as_a_suggestion(
         ("provider", "Atlantis", "oecd:provider"),
         ("provider", "Kosovo", "oecd:provider"),  # a recipient, not a provider
         ("provider", 99999, "oecd:provider"),
+        ("provider", "²", "oecd:provider"),  # a digit, not a decimal code
         ("sector", 99, "sector"),  # no purpose code
         ("flow", 7, "flow"),
     ],

@@ -287,6 +287,7 @@ def _preliminary_2019(con: duckdb.DuckDBPyConnection) -> None:
 # Group totals and allow_partial ---------------------------------------------------
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("allow_partial", "expected"),
     [(False, {2017: 60.0, 2018: None}), (True, {2017: 60.0, 2018: 33.0})],
@@ -367,6 +368,7 @@ def test_a_member_that_drops_a_line_in_the_last_year_nulls_the_total(
     assert totals(result, "year") == {(2019,): expected}
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("members", "expected"),
     [({1, 2}, 7.0), ({2, 3}, None)],
@@ -542,7 +544,7 @@ def test_a_sum_warns_of_providers_it_holds_in_the_last_year(
 
     if warns:
         with pytest.warns(
-            OdaDataWarning, match="2018 is partial: 1 provider that reported 2017"
+            OdaDataWarning, match="All of 2018 is left out of the sum for 1 provider"
         ):
             combine(con, TOTAL_ODA, resolved, FakeFactors(), releases=UNCACHED)
     else:
@@ -628,6 +630,7 @@ def test_aggregates_are_never_summed_with_members(
         combine(con, TOTAL_ODA, resolved, FakeFactors(), releases=UNCACHED)
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("indicator", "by", "member", "years", "named", "raises"),
     [
@@ -831,6 +834,7 @@ def test_result_columns(con: duckdb.DuckDBPyConnection) -> None:
 # Ratio -----------------------------------------------------------------------------
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 def test_ratio_pairs_each_members_numerator_with_its_denominator(
     con: duckdb.DuckDBPyConnection,
 ) -> None:
@@ -946,7 +950,7 @@ def test_ratio_total_nulls_only_on_a_member_that_stopped_reporting(
         )
 
     if summed == "by-year" and oda_2019 is None and not allow_partial:
-        with pytest.warns(OdaDataWarning, match="2018 is partial: 1 provider"):
+        with pytest.warns(OdaDataWarning, match="left out of the sum for 1 provider"):
             result = combine(
                 con, ODA_GNI, resolved, FakeFactors(), releases=UNCACHED
             ).table
@@ -999,6 +1003,7 @@ def test_derived_uses_the_basis_of_each_year(con: duckdb.DuckDBPyConnection) -> 
     assert "line" not in result.column_names
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize(
     ("by", "providers", "allow_partial", "expected", "incomplete"),
     [
@@ -1045,6 +1050,7 @@ def test_derived_member_row_is_null_when_a_part_drops_in_the_last_year(
     assert {(c.provider, c.year) for c in combined.incomplete} == incomplete
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 @pytest.mark.parametrize("years", [(2018, 2019), (2019,)], ids=["two-years", "last"])
 def test_a_shown_dated_group_of_one_provider_a_year_shows_its_own_rows(
     con: duckdb.DuckDBPyConnection, years: tuple
@@ -1092,6 +1098,7 @@ def test_nulled_text_names_providers_up_to_the_listed_cap(
     assert nulled_text(2018, codes).startswith(expected)
 
 
+@pytest.mark.filterwarnings("ignore:.*is partial:oda_data.OdaDataWarning")
 def test_derived_member_rows_before_the_last_year_are_never_null(
     con: duckdb.DuckDBPyConnection,
 ) -> None:

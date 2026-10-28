@@ -119,7 +119,7 @@ The name `"DAC countries"` could mean the OECD row or the group, so it raises `A
 A group total is null in a year in which a member that reported before has not reported yet. That happens in the table's last year, when some providers have filed and others have not. `allow_partial=True` sums whoever reported.
 
 ```text
-        provider  year    value
+        provider  year     value
 0  dac_countries  2024  27972.50
 1  dac_countries  2025    127.67
 ```
