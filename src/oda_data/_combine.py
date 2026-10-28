@@ -70,6 +70,7 @@ from oda_data._completeness import (
     Outcome,
     cell_order,
     held,
+    held_parts,
     holding,
     is_own_gap,
     last_year,
@@ -134,6 +135,14 @@ _AGGREGATE_DIMENSIONS: tuple[Dimension, ...] = ("provider", "recipient")
 
 #: The most codes a sentence names one by one. More are counted.
 LISTED = 5
+
+#: Each table's name as the OECD writes it.
+TABLE_LABELS: Mapping[str, str] = {
+    "dac1": "DAC1",
+    "dac2a": "DAC2A",
+    "crs": "CRS",
+    "multisystem": "Multisystem",
+}
 
 #: The DAC1 line of what a provider pays EU Institutions (918).
 _EU_PAYMENT_LINE = 2102
@@ -407,10 +416,13 @@ def unreported_text(
 
 
 def _part_text(cell: Incomplete) -> str | None:
-    """The keys of a cell as text, such as ``"line 1820"``, or ``None``."""
-    if not cell.keys:
-        return None
-    return ", ".join(f"{dimension} {code}" for dimension, code in cell.keys)
+    """The part a cell names as text: its keys, such as ``"line 1820"``, and
+    for a gap of one of several tables that table, as ``"its Multisystem
+    part"``, or ``None`` for the whole provider-year."""
+    parts = [f"{dimension} {code}" for dimension, code in cell.keys]
+    if cell.table is not None:
+        parts.insert(0, f"its {TABLE_LABELS[cell.table]} part")
+    return ", ".join(parts) or None
 
 
 def reported_text(
@@ -1271,6 +1283,7 @@ def _assemble(
             fixed=gaps.fixed,
             named=call.members,
             dropped=gaps.dropped,
+            reported=gaps.reported,
             providers=False,
         ),
         untotalled=tuple(untotalled),
@@ -1373,7 +1386,9 @@ def _total(
             named=call.members,
             dropped=gaps.dropped,
         )
-        totalled = held(cursor, inside, parts, providers=False)
+        totalled = held_parts(
+            cursor, inside, parts, gaps.reported, providers=False, among=group.members
+        )
         missing = parts - totalled
         short = _short_parts(totalled, gaps.reported, group)
     else:

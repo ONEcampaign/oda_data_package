@@ -35,6 +35,7 @@ import pyarrow as pa
 from oda_data import _compat
 from oda_data._combine import (
     LISTED,
+    TABLE_LABELS,
     caveats_for,
     check_left_out,
     combine,
@@ -1157,14 +1158,6 @@ class Query:
 
 
 # Explain ----------------------------------------------------------------------
-
-#: Each table's name as the OECD writes it.
-TABLE_LABELS: Mapping[str, str] = {
-    "dac1": "DAC1",
-    "dac2a": "DAC2A",
-    "crs": "CRS",
-    "multisystem": "Multisystem",
-}
 
 #: Each basis in explain(). DAC1 calls its net disbursements net flows.
 _BASIS_LABELS: Mapping[str, str] = {

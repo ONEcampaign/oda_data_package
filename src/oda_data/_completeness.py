@@ -90,9 +90,9 @@ if TYPE_CHECKING:
 
 
 #: A key a provider reported to a leaf's table in a year: the provider, the
-#: year, and the codes of the binding's ``reporting`` dimensions, as
-#: ``_dropped`` reads them.
-type Reported = tuple[Code, int, tuple[tuple[Dimension, Code], ...]]
+#: year, the codes of the binding's ``reporting`` dimensions, as ``_dropped``
+#: reads them, and the table as ``Incomplete.table`` names it.
+type Reported = tuple[Code, int, tuple[tuple[Dimension, Code], ...], TableName | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,23 +158,36 @@ def reporting_gaps(
     checked = years
     if last is not None and last in years:
         checked = sorted({*years, last - 1})
+    # An indicator over more than one table keeps each table's gaps apart.
+    several = len({binding.table for binding in bindings(indicator)}) > 1
+
+    def of(binding: Binding) -> TableName | None:
+        return binding.table if several else None
+
     cells: set[Incomplete] = set()
     subtracted_cells: set[Incomplete] = set()
     dropped_cells: set[Incomplete] = set()
     reported: set[Reported] = set()
     for binding, codes in tables.values():
         if sums:
-            cells |= _stopped(cursor, binding, codes, checked)
-    # Only a provider total that allows partial values names who reported.
-    named = call.allow_partial and any(key[0] == "provider" for key in call.totals)
+            found = _stopped(cursor, binding, codes, checked)
+            cells |= {replace(cell, table=of(binding)) for cell in found}
+    # A provider total that allows partial values names who reported, and a
+    # gap of one of several tables reads who reported each.
+    named = several or (
+        call.allow_partial and any(key[0] == "provider" for key in call.totals)
+    )
     for leaf, leaf_call, subtracted, codes in reads:
+        table = of(leaf.binding)
         if not leaf.binding.reporting:
             if named:
-                reported |= _whole_years(cursor, leaf.binding, codes, years, releases)
+                found = _whole_years(cursor, leaf.binding, codes, years, releases)
+                reported |= {(*key, table) for key in found}
             continue
         dropped, now = _dropped(cursor, leaf, leaf_call, codes, years, releases)
+        dropped = {replace(cell, table=table) for cell in dropped}
         dropped_cells |= dropped
-        reported |= now
+        reported |= {(*key, table) for key in now}
         if subtracted:
             subtracted_cells |= dropped
     cells |= dropped_cells
@@ -182,9 +195,8 @@ def reporting_gaps(
         for side, side_call in ratio_parts(indicator, call):
             codes = _counted(cursor, side, side_call)
             if isinstance(side.kind, Sum) and codes:
-                cells |= _side_stopped(
-                    cursor, side, side_call, codes, checked, releases
-                )
+                found = _side_stopped(cursor, side, side_call, codes, checked, releases)
+                cells |= {replace(cell, table=of(side.binding)) for cell in found}
     return Gaps(
         frozenset(cells),
         frozenset(subtracted_cells),
@@ -235,11 +247,12 @@ def normalised(cells: Iterable[Incomplete]) -> frozenset[Incomplete]:
     provider-year with the same missing inputs covers, as a provider that
     stopped reporting covers each line it has not yet reported."""
     cells = frozenset(cells)
-    whole = {(c.provider, c.year, c.missing) for c in cells if not c.keys}
+    whole = {(c.provider, c.year, c.missing, c.table) for c in cells if not c.keys}
     return frozenset(
         cell
         for cell in cells
-        if not cell.keys or (cell.provider, cell.year, cell.missing) not in whole
+        if not cell.keys
+        or (cell.provider, cell.year, cell.missing, cell.table) not in whole
     )
 
 
@@ -336,7 +349,7 @@ def _dropped(
     codes: Iterable[Code],
     years: list[int],
     releases: Releases,
-) -> tuple[set[Incomplete], set[Reported]]:
+) -> tuple[set[Incomplete], set[tuple[Code, int, tuple[tuple[Dimension, Code], ...]]]]:
     """The cells of providers with rows for the leaf in the year before its
     table's last year at a key of the binding's ``reporting`` dimensions, and
     none at that key in the last year, when ``years`` holds the last year,
@@ -420,7 +433,7 @@ def _whole_years(
     codes: Iterable[Code],
     years: list[int],
     releases: Releases,
-) -> set[Reported]:
+) -> set[tuple[Code, int, tuple[()]]]:
     """The providers of ``codes`` with any row in the binding's table in its
     last year, when ``years`` holds it, as keys without codes: a binding
     without ``reporting``, as the CRS, has a provider report a year whole."""
@@ -542,15 +555,43 @@ def unheld(
     fixed: Mapping[Dimension, Code],
     named: Mapping[Dimension, frozenset[Code]],
     dropped: Iterable[Incomplete],
+    reported: Iterable[Reported],
     providers: bool = True,
 ) -> frozenset[Incomplete]:
-    """The cells of ``cells`` that no row of ``rows`` holds, as ``held``
-    decides, at the grain of the ``split`` dimensions (``reporting_parts``),
-    with their keys in the order of ``split``."""
+    """The cells of ``cells`` that no row of ``rows`` holds, as
+    ``held_parts`` decides, at the grain of the ``split`` dimensions
+    (``reporting_parts``), with their keys in the order of ``split``."""
     parts = reporting_parts(
         rows, cells, split=split, fixed=fixed, named=named, dropped=dropped
     )
-    return parts - held(cursor, rows, parts, providers=providers)
+    return parts - held_parts(cursor, rows, parts, reported, providers=providers)
+
+
+def held_parts(
+    cursor: DuckDBPyConnection,
+    rows: DuckDBPyRelation,
+    parts: Iterable[Incomplete],
+    reported: Iterable[Reported],
+    *,
+    providers: bool = True,
+    among: Mapping[int, frozenset[Code]] | None = None,
+) -> frozenset[Incomplete]:
+    """The parts of ``parts`` that a row of ``rows`` holds, as ``held``
+    decides. Rows carry no table, so a part of one of several tables
+    (``Incomplete.table``) is held only where a provider, of ``among`` in
+    the part's year when given, reported that table in the year
+    (``reporters``)."""
+    reported = list(reported)
+
+    def reported_by(part: Incomplete) -> frozenset[Code]:
+        found = reporters(reported, part)
+        return found if among is None else found & among.get(part.year, frozenset())
+
+    return frozenset(
+        part
+        for part in held(cursor, rows, parts, providers=providers)
+        if part.table is None or reported_by(part)
+    )
 
 
 def reporting_parts(
@@ -589,13 +630,13 @@ def reporting_parts(
         for d in order
         if d in rows.columns
     }
-    before: dict[tuple[Code, int], list[Incomplete]] = {}
+    before: dict[tuple[Code, int, TableName | None], list[Incomplete]] = {}
     for cell in dropped:
-        before.setdefault((cell.provider, cell.year), []).append(cell)
+        before.setdefault((cell.provider, cell.year, cell.table), []).append(cell)
     every: set[Incomplete] = set()
     for cell in cells:
         if order and not cell.keys:
-            for part in before.get((cell.provider, cell.year), []):
+            for part in before.get((cell.provider, cell.year, cell.table), []):
                 if all(code in codes[d] for d, code in part.keys if codes.get(d)):
                     every |= _split(part, codes, fixed, order)
         else:
@@ -645,8 +686,8 @@ def reporters(reported: Iterable[Reported], cell: Incomplete) -> frozenset[Code]
     keys = set(cell.keys)
     return frozenset(
         provider
-        for provider, year, codes in reported
-        if year == cell.year and keys <= set(codes)
+        for provider, year, codes, table in reported
+        if year == cell.year and table == cell.table and keys <= set(codes)
     )
 
 
@@ -790,7 +831,8 @@ def not_yet_reported(
     return (
         cell.year == last
         and is_own_gap(cell)
-        and Incomplete(cell.provider, cell.year - 1, cell.missing) not in cells
+        and Incomplete(cell.provider, cell.year - 1, cell.missing, table=cell.table)
+        not in cells
     )
 
 
@@ -800,13 +842,16 @@ def is_own_gap(cell: Incomplete) -> bool:
     return cell.missing == {cell.provider}
 
 
-def cell_order(cell: Incomplete) -> tuple[str, int, tuple[str, ...], tuple[str, ...]]:
-    """Cells by provider, year, keys and missing inputs, as text."""
+def cell_order(
+    cell: Incomplete,
+) -> tuple[str, int, tuple[str, ...], tuple[str, ...], str]:
+    """Cells by provider, year, keys, missing inputs and table, as text."""
     return (
         str(cell.provider),
         cell.year,
         tuple(f"{d} {c}" for d, c in cell.keys),
         tuple(sorted(map(str, cell.missing))),
+        cell.table or "",
     )
 
 
