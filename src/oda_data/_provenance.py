@@ -5,8 +5,8 @@ releases behind a result. ``Query.to_parquet`` stores it as JSON under
 ``PROVENANCE_KEY`` in the file's schema metadata, and ``provenance(path)``
 reads it back. The JSON carries ``"format": FORMAT_VERSION`` so a later
 release can change the layout and still read older files. Adding an optional
-key leaves the format at 1: a reader of format 1 ignores keys it does not
-know, and ``from_metadata`` reads ``label_release`` as ``None`` when a file
+key leaves the format at 1, because a reader of format 1 ignores keys it does
+not know, and ``from_metadata`` reads ``label_release`` as ``None`` when a file
 omits it.
 """
 
@@ -68,6 +68,9 @@ class Provenance:
             and channel crosswalk.
         defaults: Each default the call relied on and the value it took,
             such as ``{"basis": "headline", "providers": "dac_countries"}``.
+            ``excluded_providers`` holds the providers the indicator
+            excludes from its count and why, as ``"<codes>: <reason>"``, one per exclusion
+            joined by ``"; "``.
     """
 
     oda_data: str

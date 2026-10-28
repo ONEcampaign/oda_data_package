@@ -6,6 +6,7 @@ per provider for other units.
 """
 
 from collections.abc import Iterator
+from dataclasses import replace
 
 import duckdb
 import pyarrow as pa
@@ -30,6 +31,7 @@ from oda_data._model import (
     Indicator,
     Line,
     Method,
+    NotIn,
     Ratio,
     ResolvedCall,
     ResolvedGroup,
@@ -154,6 +156,7 @@ DAC1 = Binding(
         "headline": Headline("net_disbursement", "grant_equivalent"),
     },
     rows=(In("amount_type", ("A",)),),
+    members_hold_eu_share=True,
 )
 
 CRS = Binding(
@@ -539,14 +542,16 @@ def test_aggregates_are_never_summed_with_members(
 
 
 @pytest.mark.parametrize(
-    ("by", "member", "years", "named", "raises"),
+    ("indicator", "by", "member", "years", "named", "raises"),
     [
-        (("year",), 4, (2017, 2018), True, True),
-        (("provider", "year"), 4, (2017, 2018), True, False),
-        (("year",), 4, (2017, 2018), False, False),
-        (("year",), 12, (2020,), True, True),
-        (("year",), 12, (2021,), True, False),
-        (("year",), 12, None, True, True),
+        (TOTAL_ODA, ("year",), 4, (2017, 2018), True, True),
+        (TOTAL_ODA, ("provider", "year"), 4, (2017, 2018), True, False),
+        (TOTAL_ODA, ("year",), 4, (2017, 2018), False, False),
+        (TOTAL_ODA, ("year",), 12, (2020,), True, True),
+        (TOTAL_ODA, ("year",), 12, (2021,), True, False),
+        (TOTAL_ODA, ("year",), 12, None, True, True),
+        (ODA_GNI, ("year",), 4, (2017, 2018), True, True),
+        (BILATERAL, ("year",), 4, (2019,), True, False),
     ],
     ids=[
         "named-and-summed",
@@ -555,10 +560,13 @@ def test_aggregates_are_never_summed_with_members(
         "uk-while-a-member",
         "uk-after-it-left",
         "uk-every-year",
+        "a-ratio-over-dac1",
+        "a-binding-whose-members-leave-out-their-eu-share",
     ],
 )
 def test_eu_institutions_are_never_summed_with_named_eu_members(
     con: duckdb.DuckDBPyConnection,
+    indicator: Indicator,
     by: tuple,
     member: int,
     years: tuple | None,
@@ -566,9 +574,12 @@ def test_eu_institutions_are_never_summed_with_named_eu_members(
     raises: bool,
 ) -> None:
     # France (4) is an EU member; the United Kingdom (12) was one to 2020. A
-    # default holds no entry in ``rows``.
+    # default holds no entry in ``rows``. Only DAC1 members' figures hold their
+    # contribution to EU Institutions.
     providers = frozenset({918, member})
     resolved = call(
+        basis=indicator.default_basis,
+        units=() if isinstance(indicator.kind, Ratio) else (USD,),
         by=by,
         years=years,
         members={"provider": providers},
@@ -577,9 +588,9 @@ def test_eu_institutions_are_never_summed_with_named_eu_members(
 
     if raises:
         with pytest.raises(UnsupportedQueryError, match="918"):
-            combine(con, TOTAL_ODA, resolved, FakeFactors())
+            combine(con, indicator, resolved, FakeFactors())
     else:
-        combine(con, TOTAL_ODA, resolved, FakeFactors())
+        combine(con, indicator, resolved, FakeFactors())
 
 
 @pytest.mark.parametrize(
@@ -868,6 +879,18 @@ def test_method_records_keep_its_extra_columns(con: duckdb.DuckDBPyConnection) -
     assert function.seen == [resolved]
 
 
+def test_method_drops_the_providers_its_rows_exclude(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    indicator = imputed(Imputation(), rows=(NotIn("provider", (2,), reason="twice"),))
+
+    result = combine(
+        con, indicator, call(basis="gross_disbursement", years=(2019,)), FakeFactors()
+    )
+
+    assert values(result.table, "provider") == {("1",): 3.0}
+
+
 def test_method_basis_before_its_start_raises(con: duckdb.DuckDBPyConnection) -> None:
     with pytest.raises(BasisRangeError):
         combine(
@@ -881,21 +904,55 @@ def test_method_basis_before_its_start_raises(con: duckdb.DuckDBPyConnection) ->
 # Errors, warnings, tables -------------------------------------------------------------
 
 
+_EXCLUDE_2 = NotIn("provider", (2,), reason="counted by provider 1")
+_BILATERAL_WITHOUT_2 = replace(BILATERAL, rows=(_EXCLUDE_2,))
+
+
+@pytest.mark.parametrize(
+    "indicator",
+    [
+        pytest.param(_BILATERAL_WITHOUT_2, id="sum"),
+        pytest.param(imputed(Imputation(), rows=(_EXCLUDE_2,)), id="method"),
+        pytest.param(
+            replace(BILATERAL, id="derived", kind=Derived((_BILATERAL_WITHOUT_2,))),
+            id="derived-part",
+        ),
+    ],
+)
+def test_naming_an_excluded_provider_raises_with_the_reason(
+    con: duckdb.DuckDBPyConnection, indicator: Indicator
+) -> None:
+    resolved = call(
+        basis="gross_disbursement", years=(2019,), members={"provider": {1, 2}}
+    )
+
+    with pytest.raises(UnsupportedQueryError, match="provider 2: counted by"):
+        combine(con, indicator, resolved, FakeFactors())
+
+
 def test_dimension_outside_the_indicator_raises(con: duckdb.DuckDBPyConnection) -> None:
     with pytest.raises(DimensionError):
         combine(con, ODA_GNI, call(units=(), by=("recipient",)), FakeFactors())
 
 
-def test_caveats_warn(con: duckdb.DuckDBPyConnection) -> None:
+def test_scoped_caveats_warn_and_unscoped_ones_do_not(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    # pytest turns the unscoped caveat's warning, were there one, into an error.
     caveated = dac1(
         "oecd.dac1.idrc",
         IDRC.kind.lines,  # type: ignore[union-attr]
-        caveats=(Caveat("Few members report this before 2018."),),
+        caveats=(
+            Caveat("Few members report this before 2018.", years=(2010, 2017)),
+            Caveat("Some members count students too."),
+        ),
     )
     derived = dac1("x", {}, kind=Derived(plus=(TOTAL_ODA,), minus=(caveated,)))
 
-    with pytest.warns(OdaDataWarning, match="Few members"):
+    with pytest.warns(OdaDataWarning, match="Few members") as caught:
         combine(con, derived, call(members={"provider": frozenset({1})}), FakeFactors())
+
+    assert len(caught) == 1
 
 
 def test_records_refuse_a_column_the_view_lacks(

@@ -4,9 +4,9 @@
 Arrow table in the result shape. It builds on the compiler's stages in
 ``_compile``:
 
-- ``Sum`` rows come from ``filtered``; ``Method`` rows from the indicator's
-  function; ``Derived`` rows from each part, the ``minus`` parts negated.
-  Each is converted to the call's units at row grain by ``converted``.
+- ``Sum`` rows come from ``filtered``. ``Method`` rows come from the
+  indicator's function. ``Derived`` rows come from each part, the ``minus``
+  parts negated. Each is converted to the call's units at row grain by ``converted``.
 - ``Ratio`` reads its numerator and denominator in current USD, pairs them
   per member, and divides sums. It refuses units.
 - Member rows sum by ``by`` plus ``SPLIT_COLUMNS``. Group totals sum the
@@ -42,7 +42,6 @@ from oda_data._compile import (
     basis_sql,
     check_basis,
     check_dimensions,
-    check_excluded,
     converted,
     filtered,
     ident,
@@ -50,7 +49,7 @@ from oda_data._compile import (
     literals,
 )
 from oda_data._errors import OdaDataWarning, UnsupportedQueryError
-from oda_data._model import Derived, Headline, Method, Ratio, Sum
+from oda_data._model import Derived, Headline, In, Method, NotIn, Ratio, Sum
 from oda_data._names import (
     EU_INSTITUTIONS,
     PROVIDER_AGGREGATE_FROM,
@@ -91,10 +90,14 @@ class Combined:
             ``by``, then each total in the order of ``call.totals``. For
             ``records``, stage 2 rows with table types.
         fallback_providers: Providers whose factors came from the DAC total.
+        partial: For a sum across providers that reads the table's last year,
+            that year and the number of the summed providers that reported
+            the year before and have not reported it; ``None`` otherwise.
     """
 
     table: pa.Table
     fallback_providers: frozenset[int]
+    partial: tuple[int, int] | None = None
 
 
 def tables_for(indicator: Indicator, /) -> tuple[TableName, ...]:
@@ -118,8 +121,8 @@ def combine(
 ) -> Combined:
     """Compute an indicator for a resolved call.
 
-    Emits each caveat of the indicator, and of its parts, that concerns a
-    basis and year the call reads, as an ``OdaDataWarning``.
+    Emits each scoped caveat of the indicator, and of its parts, that
+    concerns a basis and year the call reads, as an ``OdaDataWarning``.
 
     Args:
         cursor: A cursor holding a view for each of ``tables_for(indicator)``,
@@ -139,7 +142,8 @@ def combine(
         UnsupportedQueryError: ``oda.total()`` without its dimension in
             ``by``; a total over a group holding an aggregate code; an
             aggregate code summed with other codes; EU Institutions (918)
-            summed with EU members; a provider the indicator excludes;
+            summed with EU members it names, on a binding whose members' figures
+            hold their EU share; a code the indicator's row filters leave out;
             ``unit=`` on a ratio; a basis the indicator lacks.
         BasisRangeError: The call asks for years before the basis starts.
         MissingFactorError: A provider-year lacks a factor.
@@ -158,7 +162,23 @@ def combine(
     stage1 = _stage1(cursor, indicator, call)
     stage2, fallback = converted(cursor, stage1, call, factors)
     rows = _materialize(cursor, stage2)
-    return Combined(_assemble(cursor, indicator, call, rows, ratio=False), fallback)
+    table = _assemble(cursor, indicator, call, rows, ratio=False)
+    partial = _partial_sum(cursor, indicator, call, rows)
+    if partial is not None and not call.allow_partial:
+        warnings.warn(
+            f"{indicator.id}: {partial_text(*partial)}", OdaDataWarning, stacklevel=2
+        )
+    return Combined(table, fallback, partial)
+
+
+def partial_text(year: int, count: int, /) -> str:
+    """The note on a sum across providers whose last year is partial."""
+    providers = "provider" if count == 1 else "providers"
+    return (
+        f"{year} is partial: {count} {providers} that reported {year - 1} "
+        f"{'has' if count == 1 else 'have'} not reported {year}, so its sum "
+        "covers only those that have; add 'provider' to by to see who reported"
+    )
 
 
 def records(
@@ -212,9 +232,59 @@ def _check_columns(
         )
 
 
+def check_left_out(indicator: Indicator, call: ResolvedCall, /) -> None:
+    """Raise when the call filters a dimension by a code that a ``NotIn`` in
+    the row filters of the indicator, or of an indicator it combines, leaves
+    out.
+
+    Such a code would return no rows and look like missing data. The message
+    gives the rule's reason. A rule with ``when`` raises only when the call
+    names both a code it leaves out and a code of its scope, such as provider
+    918 and line 106.
+
+    Raises:
+        UnsupportedQueryError: The call names a left-out code.
+    """
+    for part in walk(indicator):
+        columns = {column: d for d, column in part.binding.dimensions.items()}
+        for rule in (*part.binding.rows, *part.rows):
+            if not isinstance(rule, NotIn) or rule.column not in columns:
+                continue
+            named = _named_codes(call, columns, rule)
+            if not named:
+                continue
+            where = ""
+            if rule.when is not None:
+                # Default providers keep the codes a scoped rule leaves out,
+                # since it leaves out only some of their rows.
+                scope = _named_codes(call, columns, rule.when)
+                if not scope or columns[rule.column] not in call.rows:
+                    continue
+                where = f" on {columns[rule.when.column]} {_listed(scope)}"
+            reason = f": {rule.reason}" if rule.reason else ""
+            raise UnsupportedQueryError(
+                f"{indicator.id} leaves out {columns[rule.column]} {_listed(named)}"
+                f"{where}{reason}"
+            )
+
+
+def _named_codes(
+    call: ResolvedCall, columns: Mapping[str, Dimension], rule: In | NotIn
+) -> set[Code]:
+    """The codes of ``rule`` the call names in the dimension of its column."""
+    dimension = columns.get(rule.column)
+    if dimension is None:
+        return set()
+    return set(call.members.get(dimension, frozenset())) & set(rule.values)
+
+
+def _listed(codes: Iterable[Code]) -> str:
+    return ", ".join(map(str, sorted(codes, key=str)))
+
+
 def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
     check_dimensions(indicator, call)
-    check_excluded(indicator, call)
+    check_left_out(indicator, call)
 
     shown = {*call.by, *(group.dimension for group in call.groups)}
     for dimension, codes in call.rows.items():
@@ -255,10 +325,14 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
                 f"so they cannot be summed with them; add {dimension!r} to by"
             )
 
-    # Named providers only: a default such as every CRS provider is no sum
-    # the caller chose.
+    # Named providers only, since a default is no sum the caller chose. Only a table
+    # whose members' figures hold their EU contribution counts it twice.
     providers = call.members.get("provider", frozenset())
-    if "provider" in call.rows and "provider" not in call.by:
+    if (
+        "provider" in call.rows
+        and "provider" not in call.by
+        and any(binding.members_hold_eu_share for binding in _bindings(indicator))
+    ):
         clashes = sorted(providers & eu_members(call.years), key=str)
         if EU_INSTITUTIONS in providers and clashes:
             raise UnsupportedQueryError(
@@ -279,16 +353,35 @@ def _check_call(indicator: Indicator, call: ResolvedCall) -> None:
 
 
 def _warn_caveats(indicator: Indicator, call: ResolvedCall) -> None:
-    for text in dict.fromkeys(_caveats(indicator, call)):
-        warnings.warn(f"{indicator.id}: {text}", OdaDataWarning, stacklevel=3)
+    for caveat in caveats_for(indicator, call):
+        if is_scoped(caveat):
+            warnings.warn(
+                f"{indicator.id}: {caveat.text}", OdaDataWarning, stacklevel=3
+            )
 
 
-def _caveats(indicator: Indicator, call: ResolvedCall) -> Iterator[str]:
+def caveats_for(indicator: Indicator, call: ResolvedCall, /) -> tuple[Caveat, ...]:
+    """The caveats of the indicator and its parts that concern the call, once
+    each.
+
+    An unscoped caveat concerns every call. A scoped one concerns a call that
+    reads its basis in one of its years; ``combine`` and ``records`` warn of
+    those.
+    """
+    return tuple(dict.fromkeys(_caveats(indicator, call)))
+
+
+def is_scoped(caveat: Caveat, /) -> bool:
+    """Whether a caveat names a basis or years, so it warns."""
+    return caveat.basis is not None or caveat.years is not None
+
+
+def _caveats(indicator: Indicator, call: ResolvedCall) -> Iterator[Caveat]:
     """The caveats of the indicator and its parts that the call reads, each
     part with the call it reads (a ratio's denominator its own basis)."""
     for caveat in indicator.caveats:
         if _concerns(caveat, indicator, call):
-            yield caveat.text
+            yield caveat
     match indicator.kind:
         case Ratio():
             for part, part_call in _ratio_parts(indicator, call):
@@ -300,6 +393,8 @@ def _caveats(indicator: Indicator, call: ResolvedCall) -> Iterator[str]:
 
 def _concerns(caveat: Caveat, indicator: Indicator, call: ResolvedCall) -> bool:
     """Whether the call reads the caveat's basis in one of its years."""
+    if not is_scoped(caveat):
+        return True
     rule = indicator.binding.bases.get(call.basis)
     if rule is None:
         return False
@@ -433,9 +528,12 @@ def _method_rows(
         conditions.append(_in("year", read.years))
     if "provider" not in read.members:
         conditions.append(f"provider < {PROVIDER_AGGREGATE_FROM}")
-    if indicator.excluded_providers:
-        excluded = literals(sorted(indicator.excluded_providers))
-        conditions.append(f"provider NOT IN ({excluded})")
+    for rule in indicator.provider_exclusions:
+        excluded = f"provider NOT IN ({literals(rule.values)})"
+        if rule.when is not None:
+            scope = f"{ident(rule.when.column)} NOT IN ({literals(rule.when.values)})"
+            excluded = f"({scope} OR {excluded})"
+        conditions.append(excluded)
     if conditions:
         rows = rows.filter(" AND ".join(conditions))
     if keep_all:
@@ -645,13 +743,25 @@ def _unreported(
     """Years in which a member has stopped reporting to one of the
     indicator's tables (see ``_gaps``).
 
-    Any row counts as reporting: on CRS, any row for the provider and year.
+    Any row counts as reporting. On CRS, that is any row for the provider and
+    year.
     """
     codes = _codes(group, years)
-    if not codes:
-        return set()
-    by_table = {binding.table: binding for binding in _bindings(indicator)}
     missing: set[int] = set()
+    for last in _last_reports(cursor, indicator, codes):
+        missing |= _gaps(group, years, last)
+    return missing
+
+
+def _last_reports(
+    cursor: DuckDBPyConnection, indicator: Indicator, codes: list[Code]
+) -> list[dict[Code, int]]:
+    """For each table the indicator reads, each provider in ``codes`` and the
+    last year it has any row."""
+    if not codes:
+        return []
+    by_table = {binding.table: binding for binding in _bindings(indicator)}
+    reports = []
     for table, binding in by_table.items():
         provider = ident(binding.dimensions["provider"])
         year = ident(binding.dimensions["year"])
@@ -660,8 +770,8 @@ def _unreported(
             f"FROM {ident(table)} WHERE {provider} IN ({literals(codes)}) "
             f"GROUP BY {provider}"
         ).fetchall()
-        missing |= _gaps(group, years, dict(last))
-    return missing
+        reports.append(dict(last))
+    return reports
 
 
 def _ratio_gaps(
@@ -675,7 +785,7 @@ def _ratio_gaps(
     denominator (see ``_gaps``).
 
     Each part's own rows set the last year, so this holds ``_dropped``'s
-    rule as well: a member with rows for a part in the year before the
+    rule as well. A member with rows for a part in the year before the
     table's last year and none in it has stopped reporting that part.
     """
     codes = _codes(group, years)
@@ -701,18 +811,30 @@ def _dropped(
     years: list[int],
 ) -> set[int]:
     """The table's last year, when a member has rows for the indicator in the
-    year before and none in it.
-
-    The last year of DAC1 is preliminary: every member reports total ODA, but
-    only a few report detail lines such as in-donor refugee costs, so a total
-    over the reporters reads as the full total. A member with no rows in the
-    year before, such as one that reports debt relief in some years only,
-    counts as zero. Rows are the indicator's rows under the call's filters.
-    """
+    year before and none in it (see ``_dropped_codes``)."""
     last = _last_year(cursor, indicator)
     if last is None or last not in years:
         return set()
     codes = sorted(group.members[last], key=str)
+    return {last} if _dropped_codes(cursor, indicator, call, codes, last) else set()
+
+
+def _dropped_codes(
+    cursor: DuckDBPyConnection,
+    indicator: Indicator,
+    call: ResolvedCall,
+    codes: list[Code],
+    last: int,
+) -> set[Code]:
+    """The providers in ``codes`` with rows for the indicator in the year
+    before ``last``, the table's last year, and none in it.
+
+    The last year of DAC1 is preliminary. Every member reports total ODA, but
+    only a few report detail lines such as in-donor refugee costs, so a total
+    over the reporters reads as the full total. A provider with no rows in the
+    year before, such as one that reports debt relief in some years only,
+    counts as zero. Rows are the indicator's rows under the call's filters.
+    """
     if not codes:
         return set()
     history = _stage1(cursor, indicator, replace(call, years=None))
@@ -724,9 +846,42 @@ def _dropped(
         .distinct()
         .fetchall()
     )
-    if any((code, last - 1) in seen and (code, last) not in seen for code in codes):
-        return {last}
-    return set()
+    return {
+        code for code in codes if (code, last - 1) in seen and (code, last) not in seen
+    }
+
+
+def _partial_sum(
+    cursor: DuckDBPyConnection,
+    indicator: Indicator,
+    call: ResolvedCall,
+    rows: DuckDBPyRelation,
+) -> tuple[int, int] | None:
+    """The table's last year and how many providers summed in it reported
+    the year before and have not reported it, for a result that sums across
+    providers; ``None`` when no such provider exists.
+
+    A provider has not reported when it has no row in the table that year,
+    the rule ``_gaps`` applies to group totals, or no row for the indicator
+    under the call's filters (``_dropped_codes``). Group totals are null in
+    such a year instead, and a result split by provider shows who reported.
+    """
+    if "provider" in call.by:
+        return None
+    codes = sorted(_read_call(indicator, call).members.get("provider", ()), key=str)
+    last = _last_year(cursor, indicator)
+    if len(codes) < 2 or last is None:
+        return None
+    if not rows.filter(f"year = {last}").limit(1).fetchall():
+        return None
+    stopped = {
+        code
+        for reports in _last_reports(cursor, indicator, codes)
+        for code, year in reports.items()
+        if year == last - 1
+    }
+    stopped |= _dropped_codes(cursor, indicator, call, codes, last)
+    return (last, len(stopped)) if stopped else None
 
 
 def _last_year(cursor: DuckDBPyConnection, indicator: Indicator) -> int | None:

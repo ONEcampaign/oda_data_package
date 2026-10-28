@@ -36,6 +36,7 @@ type Dimension = Literal[
     "broad_sector",
     "channel",
     "modality",
+    "finance_type",
     "flow",
     "line",
     "score",

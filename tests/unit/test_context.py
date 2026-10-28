@@ -6,6 +6,7 @@ for any other unit. The registry is a stand-in mapping of the indicators
 defined here.
 """
 
+import dataclasses
 import inspect
 import io
 import threading
@@ -30,11 +31,13 @@ from oda_data._factors import FACTOR_SCHEMA
 from oda_data._groups import Group, total
 from oda_data._model import (
     Binding,
+    Caveat,
     FactorTable,
     Flow,
     Headline,
     In,
     Indicator,
+    NotIn,
     Ratio,
     Sum,
     Value,
@@ -65,11 +68,11 @@ DAC1_ROWS = [
 ]
 
 CRS_ROWS = [
-    # provider, recipient, year, sector, disbursement, project_title
-    (4, 248, 2019, 12220, 3.0, "Clinic"),
-    (918, 248, 2019, 11110, 2.0, "School"),
-    (1601, 248, 2019, 12220, 9.0, "Vaccines"),  # a private donor
-    (20001, 248, 2019, 12220, 50.0, "DAC total"),  # an aggregate
+    # provider, recipient, year, sector, finance_type, disbursement, project_title
+    (4, 248, 2019, 12220, 110, 3.0, "Clinic"),
+    (918, 248, 2019, 11110, 421, 2.0, "School"),
+    (1601, 248, 2019, 12220, 110, 9.0, "Vaccines"),  # a private donor
+    (20001, 248, 2019, 12220, 110, 50.0, "DAC total"),  # an aggregate
 ]
 
 
@@ -88,10 +91,10 @@ class FakeTables:
         self.connection.execute(
             "CREATE TABLE crs (provider BIGINT, recipient BIGINT, year BIGINT,"
             " category BIGINT, bi_multi BIGINT, sector BIGINT,"
-            " disbursement DOUBLE, project_title VARCHAR)"
+            " finance_type BIGINT, disbursement DOUBLE, project_title VARCHAR)"
         )
         self.connection.executemany(
-            "INSERT INTO crs VALUES (?, ?, ?, 10, 1, ?, ?, ?)", CRS_ROWS
+            "INSERT INTO crs VALUES (?, ?, ?, 10, 1, ?, ?, ?, ?)", CRS_ROWS
         )
         self.cursors = 0
         self.closed = False
@@ -156,6 +159,7 @@ CRS = Binding(
         "recipient": "recipient",
         "sector": "sector",
         "broad_sector": "sector",
+        "finance_type": "finance_type",
         "year": "year",
     },
     bases={
@@ -202,7 +206,14 @@ BILATERAL = Indicator(
     description="Bilateral ODA.",
     binding=CRS,
     kind=Sum(),
-    dimensions=("provider", "recipient", "sector", "broad_sector", "year"),
+    dimensions=(
+        "provider",
+        "recipient",
+        "sector",
+        "broad_sector",
+        "finance_type",
+        "year",
+    ),
     default_basis="gross_disbursement",
     default_providers=None,
 )
@@ -215,7 +226,18 @@ BILATERAL_NO_EU = Indicator(
     dimensions=("provider", "recipient", "year"),
     default_basis="gross_disbursement",
     default_providers=None,
-    excluded_providers=frozenset({918}),
+    rows=(NotIn("provider", (918,), reason="its members already count its flows"),),
+    caveats=(Caveat("CRS totals differ from DAC1 totals"),),
+)
+LINES = Indicator(
+    id="oecd.dac1.lines",
+    name="DAC1 lines",
+    description="DAC1 lines.",
+    binding=DAC1,
+    kind=Sum(),
+    dimensions=("provider", "year", "line"),
+    default_basis="net_disbursement",
+    default_providers="dac_countries",
 )
 
 TRIO = Group("trio", [4, 5, 12], label="Trio countries", dimension="provider")
@@ -226,7 +248,7 @@ def registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         _context,
         "INDICATORS",
-        {i.id: i for i in (TOTAL_ODA, GNI, ODA_GNI, BILATERAL, BILATERAL_NO_EU)},
+        {i.id: i for i in (TOTAL_ODA, GNI, ODA_GNI, BILATERAL, BILATERAL_NO_EU, LINES)},
     )
 
 
@@ -384,6 +406,68 @@ def test_naming_an_excluded_provider_raises(ctx: Context) -> None:
         ctx.get("test.crs.bilateral_without_eu", providers=918, by=["provider"])
 
 
+def test_explain_names_excluded_providers_and_unscoped_caveats(ctx: Context) -> None:
+    # The caveat names no basis or years, so it never warns; pytest turns a
+    # warning into an error.
+    text = ctx.query("test.crs.bilateral_without_eu").explain().splitlines()
+
+    assert text[2] == "Leaves out EU Institutions: its members already count its flows."
+    assert text[4] == "Caveat: CRS totals differ from DAC1 totals."
+
+
+def test_provenance_records_the_provider_exclusion(ctx: Context) -> None:
+    q = ctx.query("test.crs.bilateral_without_eu", by=["provider"])
+
+    assert q.provenance.defaults["excluded_providers"] == (
+        "918: its members already count its flows"
+    )
+
+
+def test_a_part_of_a_ratio_leaves_out_its_excluded_provider(
+    ctx: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Named, the provider raises with the part's reason; by default, the
+    # call reads every provider but it.
+    share = dataclasses.replace(
+        BILATERAL_NO_EU,
+        id="test.crs.share",
+        kind=Ratio(BILATERAL_NO_EU, BILATERAL),
+        caveats=(),
+        rows=(),
+    )
+    monkeypatch.setitem(_context.INDICATORS, share.id, share)
+
+    with pytest.raises(UnsupportedQueryError, match="its members already count"):
+        ctx.get("test.crs.share", providers=918, by=["provider"])
+    df = ctx.get("test.crs.share", by=["provider"])
+    assert "918" not in set(df["provider"])
+
+
+# Finance type ----------------------------------------------------------------------
+
+
+def test_finance_types_filter_by_name_and_split(ctx: Context) -> None:
+    q = ctx.query(
+        "oecd.crs.bilateral_oda",
+        finance_types="Standard grant",
+        by=["finance_type"],
+    )
+
+    assert _rows(q.to_pandas(), "finance_type", "finance_type_name", "value") == [
+        ("110", "Standard grant", 3.0)
+    ]
+    assert "Finance types: Standard grant." in q.explain().splitlines()
+
+
+@pytest.mark.parametrize("arguments", [{"finance_types": 110}, {"by": "finance_type"}])
+def test_finance_type_on_dac1_names_flows_before_the_query_runs(
+    ctx: Context, tables: FakeTables, arguments: dict
+) -> None:
+    with pytest.raises(DimensionError, match="flows="):
+        ctx.query("oecd.dac1.total_oda", **arguments)
+    assert tables.cursors == 0
+
+
 # Groups and names -----------------------------------------------------------------
 
 
@@ -452,6 +536,8 @@ def test_records_returns_rows_with_names_and_extra_columns(ctx: Context) -> None
         "sector_name",
         "broad_sector",
         "broad_sector_name",
+        "finance_type",
+        "finance_type_name",
         "year",
         "project_title",
         "indicator",
@@ -471,6 +557,14 @@ def test_records_returns_rows_with_names_and_extra_columns(ctx: Context) -> None
     )
     assert str(df["year"].dtype) == "Int64"
     assert str(df["basis"].dtype) == "category"
+
+
+@pytest.mark.parametrize("column", ["sector_name", "value", "year"])
+def test_records_refuse_a_column_the_result_already_holds(
+    ctx: Context, column: str
+) -> None:
+    with pytest.raises(UnsupportedQueryError, match=column):
+        ctx.records("oecd.crs.bilateral_oda", columns=["project_title", column])
 
 
 def test_records_refuses_a_ratio(ctx: Context) -> None:
@@ -547,6 +641,39 @@ def test_explain_names_net_disbursements_as_each_table_does(
     assert q.explain().splitlines()[0] == first_line
 
 
+@pytest.mark.parametrize(
+    ("years", "expected"),
+    [
+        (None, "headline basis: net flows"),
+        ((2017, 2018), "headline basis: net flows 2017-2018"),
+    ],
+)
+def test_a_headline_of_one_basis_reads_as_one_span(
+    years: tuple[int, ...] | None, expected: str
+) -> None:
+    # DAC2A's headline is net disbursements on both sides of its switch year.
+    binding = Binding(
+        table="dac1",
+        dimensions=DAC1.dimensions,
+        bases={
+            "net_disbursement": Flow(1140),
+            "headline": Headline("net_disbursement", "net_disbursement", year=1960),
+        },
+    )
+    indicator = Indicator(
+        id="test.dac1.one_basis",
+        name="One basis",
+        description="One basis.",
+        binding=binding,
+        kind=Sum(lines={"net_disbursement": 1010}),
+        dimensions=("provider", "year"),
+        default_basis="headline",
+        default_providers=None,
+    )
+
+    assert _context._basis_text(indicator, "headline", years) == expected
+
+
 def test_explain_states_defaults_and_fallback_deflators(tables: FakeTables) -> None:
     ctx = Context._from_parts(tables, FakeFactors(fallback=frozenset({918})))
     q = ctx.query("oecd.crs.bilateral_oda", unit=constant("USD", 2023))
@@ -560,6 +687,11 @@ def test_explain_states_defaults_and_fallback_deflators(tables: FakeTables) -> N
 
 
 # Arguments --------------------------------------------------------------------------
+
+
+def test_a_line_on_a_basis_the_indicator_lacks_raises(ctx: Context) -> None:
+    with pytest.raises(UnsupportedQueryError, match="gross_disbursement"):
+        ctx.get("oecd.dac1.lines", lines=1010, basis="gross_disbursement")
 
 
 def test_unknown_indicator_suggests_near_ids(ctx: Context) -> None:

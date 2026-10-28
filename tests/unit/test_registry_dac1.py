@@ -19,6 +19,7 @@ import pytest
 
 from oda_data import _registry
 from oda_data._context import Context
+from oda_data._discover import describe
 from oda_data._errors import (
     BasisRangeError,
     DimensionError,
@@ -275,7 +276,7 @@ def test_grant_equivalents_before_2018_raise_and_name_a_covering_basis(
 
 
 def test_lines_reach_grant_equivalents_from_2015_with_a_caveat(ctx: Context) -> None:
-    with pytest.warns(OdaDataWarning, match="2015-2017"):
+    with pytest.warns(OdaDataWarning, match="cover only the 25 to 27"):
         df = ctx.get(
             "oecd.dac1.lines",
             years=2017,
@@ -288,6 +289,13 @@ def test_lines_reach_grant_equivalents_from_2015_with_a_caveat(ctx: Context) -> 
     with pytest.raises(BasisRangeError), warnings.catch_warnings():
         warnings.simplefilter("ignore", OdaDataWarning)
         ctx.get("oecd.dac1.lines", years=2014, lines=11010, basis="grant_equivalent")
+
+
+def test_the_grant_equivalent_caveat_states_its_years_once() -> None:
+    # describe() prints the caveat's scope after its text.
+    [caveat] = describe("oecd.dac1.lines").caveats
+
+    assert caveat.count("2015") == 1
 
 
 @pytest.mark.parametrize(
@@ -305,7 +313,7 @@ def test_the_grant_equivalent_caveat_warns_only_on_2015_to_2017_grant_equivalent
 ) -> None:
     # pytest turns any other warning into an error.
     if warns:
-        with pytest.warns(OdaDataWarning, match="2015-2017"):
+        with pytest.warns(OdaDataWarning, match="cover only the 25 to 27"):
             ctx.get("oecd.dac1.lines", years=years, providers=FRANCE, basis=basis)
     else:
         ctx.get("oecd.dac1.lines", years=years, providers=FRANCE, basis=basis)
@@ -469,6 +477,15 @@ def test_eu_institutions_and_non_dac_reporters_answer_when_named(
         ("55", False, 3.0),
         ("918", False, 5.0),
     ]
+
+
+@pytest.mark.parametrize("indicator", ["oecd.dac1.total_oda", "oecd.dac1.lines"])
+def test_eu_institutions_summed_with_a_named_eu_member_raise(
+    ctx: Context, indicator: str
+) -> None:
+    # France's multilateral ODA on DAC1 holds its contribution to the EU.
+    with pytest.raises(UnsupportedQueryError, match="918"):
+        ctx.get(indicator, years=2017, providers=[EU_INSTITUTIONS, FRANCE], by=["year"])
 
 
 # An aggregate code returns its own row and is never summed with members -----------

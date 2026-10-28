@@ -36,6 +36,8 @@ from oda_data._resolve import resolve_entity, resolve_group, resolve_selection
         ("channel", "UNDP", 41114),
         ("channel", "41114", 41114),
         ("modality", "b01", "B01"),
+        ("finance_type", "Standard grant", 110),
+        ("finance_type", "421", 421),
         ("flow", 1140, 1140),
     ],
 )
@@ -75,7 +77,7 @@ def test_a_typo_raises_with_the_match_as_a_suggestion(
         ("provider", "Atlantis", "oecd:provider"),
         ("provider", "Kosovo", "oecd:provider"),  # a recipient, not a provider
         ("provider", 99999, "oecd:provider"),
-        ("sector", 120, "sector"),  # a three-digit DAC5 code, not a purpose code
+        ("sector", 99, "sector"),  # no purpose code
         ("flow", 7, "flow"),
     ],
 )
@@ -185,8 +187,9 @@ def test_eu_institutions_clash_with_the_uk_while_it_was_an_eu_member(
 
 
 def test_eu_institutions_with_eu_members_is_fine_for_recipients() -> None:
-    group = resolve_group(oda.groups.all_recipients, "recipient", years=[2023])
-    assert 918 in group.members[2023]
+    # 918 is EDF and 30 Cyprus as DAC2A recipients.
+    group = resolve_group(oda.Group("mine", [918, 30]), "recipient", years=[2023])
+    assert group.members[2023] == {918, 30}
 
 
 def test_two_groups_with_one_name_raise() -> None:

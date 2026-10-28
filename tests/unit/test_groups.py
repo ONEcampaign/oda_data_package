@@ -10,6 +10,8 @@ import pytest
 import oda_data as oda
 from oda_data._groups import broad_sectors
 from oda_data._names import EU_INSTITUTIONS, is_aggregate, names
+from oda_data._registry.dac2a import MULTILATERAL_RECIPIENTS
+from oda_data._resolve import resolve_group
 
 
 def test_dac_countries_is_the_members_plus_romania_without_eu_institutions() -> None:
@@ -43,6 +45,8 @@ def test_all_recipients_drops_the_dac2a_totals_and_keeps_regional_rows() -> None
     members = set(oda.groups.all_recipients.members)
     assert 10100 not in members  # Developing Countries, Total
     assert {289, 9998, 1027} <= members
+    # Multilateral organisations as DAC2A recipients, such as 905 (IDA).
+    assert not members & set(MULTILATERAL_RECIPIENTS)
 
 
 def test_namespace_reads_by_attribute_and_key_and_suggests_on_typos() -> None:
@@ -123,6 +127,14 @@ def test_dated_needs_membership_by_year() -> None:
 
     # The dated EU list behind the 918 check is no group.
     assert "eu_members" not in str(raised.value)
+
+
+@pytest.mark.parametrize("name", list(oda.sectors))
+def test_every_sector_group_resolves_to_named_purpose_codes(name: str) -> None:
+    group = resolve_group(oda.sectors[name], "sector", years=[2023])
+
+    assert group.members[2023]
+    assert group.members[2023] <= set(names("sector"))
 
 
 def test_broad_sector_holds_its_narrower_sectors() -> None:

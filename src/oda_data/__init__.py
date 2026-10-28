@@ -9,10 +9,7 @@ from importlib.metadata import version
 
 __version__ = version("oda_data")
 
-_UNBUILT = "oda_data._unbuilt"
-
-# Public name -> the private module that defines it. A name that points at
-# ``_unbuilt`` raises NotImplementedError: it has no implementation yet.
+# Public name -> the private module that defines it.
 _LAZY: dict[str, str] = {
     # engine
     "get": "oda_data._context",
@@ -24,11 +21,11 @@ _LAZY: dict[str, str] = {
     "Release": "oda_data._provenance",
     "provenance": "oda_data._provenance",
     # discovery
-    "indicators": _UNBUILT,
-    "search": _UNBUILT,
-    "describe": _UNBUILT,
-    "IndicatorInfo": _UNBUILT,
-    "add_names": _UNBUILT,
+    "indicators": "oda_data._discover",
+    "search": "oda_data._discover",
+    "describe": "oda_data._discover",
+    "IndicatorInfo": "oda_data._discover",
+    "add_names": "oda_data._discover",
     # units
     "Unit": "oda_data._units",
     "current": "oda_data._units",

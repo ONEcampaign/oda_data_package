@@ -4,6 +4,8 @@ Each table here stands in for a view: it carries the logical column names
 from ``_model.VOCABULARY``.
 """
 
+import subprocess
+import sys
 from collections.abc import Iterator
 
 import duckdb
@@ -426,14 +428,10 @@ def test_named_aggregate_returns_its_own_row(con: duckdb.DuckDBPyConnection) -> 
     assert values(result, "provider") == {(20001,): 30.0}
 
 
-def test_excluded_providers_are_dropped_and_refused_by_name(
-    con: duckdb.DuckDBPyConnection,
-) -> None:
-    indicator = total_oda(excluded_providers=frozenset({2}))
+def test_excluded_providers_are_dropped(con: duckdb.DuckDBPyConnection) -> None:
+    indicator = total_oda(rows=(NotIn("provider", (2,), reason="counted twice"),))
 
     assert values(run(con, indicator, call(years=(2016,))), "provider") == {(1,): 10.0}
-    with pytest.raises(UnsupportedQueryError):
-        filtered(con, indicator, call(members={"provider": {1, 2}}))
 
 
 # Dimensions and filters ----------------------------------------------------------
@@ -665,3 +663,13 @@ def test_dac2a_line_basis(con: duckdb.DuckDBPyConnection) -> None:
     assert values(result, "recipient", "year", "basis") == {
         (248, 2019, "headline"): 8.0
     }
+
+
+def test_compile_imports_no_registry_module() -> None:
+    # Labels live on the vocabulary, so the engine never reads the registry.
+    code = (
+        "import sys, oda_data._compile; "
+        "loaded = [m for m in sys.modules if m.startswith('oda_data._registry')]; "
+        "assert not loaded, loaded"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)

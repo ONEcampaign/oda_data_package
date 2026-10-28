@@ -17,8 +17,11 @@ not add up to their total in every row (line 1010 has gross disbursements
 without parts in 69 provider-years), so they are not bases of their own and
 no basis is the sum of its parts.
 
-Every binding reads current USD rows (amount type ``A``) only; the files also
+Every binding reads current USD rows (amount type ``A``) only. The files also
 carry national-currency (``N``) and constant-price (``D``) rows of each value.
+An EU member's multilateral ODA counts its contribution to EU Institutions
+(918), so every binding sets ``members_hold_eu_share`` and a call that sums
+918 with a member it names raises.
 """
 
 from collections.abc import Mapping
@@ -33,6 +36,7 @@ from oda_data._model import (
     NotIn,
     Ratio,
     Sum,
+    line_exclusions,
 )
 from oda_data._types import Dimension
 
@@ -62,12 +66,39 @@ DAC1 = Binding(
         "grant_equivalent": Flow(1160, from_year=2018),
     },
     rows=_CURRENT_USD,
+    members_hold_eu_share=True,
 )
 
 #: DAC1 lines that are not amounts of money: ODA as a percentage of GNI (2 on
 #: net flows, 11002 on grant equivalents), total flows as a percentage of GNI
 #: (3), and population (4). Summing or converting them gives nonsense.
 NON_MONEY_LINES: tuple[int, ...] = (2, 3, 4, 11002)
+
+#: DAC1 money lines published under grant equivalents (flow 1160) alone: the
+#: 11xxx grant-equivalent versions of the totals, the memo lines 1041
+#: and 1045, and the multilateral ODA lines 12000, 12100 and 12110. Net flows
+#: hold none of them, so a call reads them with ``basis="grant_equivalent"``.
+GRANT_EQUIVALENT_ONLY_LINES: tuple[int, ...] = (
+    1041,
+    1045,
+    11010,
+    11015,
+    11016,
+    11017,
+    11018,
+    11019,
+    11020,
+    11021,
+    11022,
+    11026,
+    11040,
+    11041,
+    11042,
+    11044,
+    12000,
+    12100,
+    12110,
+)
 
 #: The binding of ``oecd.dac1.lines``, whose grant equivalents reach back to
 #: 2015, the first year DAC1 holds them, and which leaves out the lines that are
@@ -80,7 +111,9 @@ DAC1_LINES = Binding(
         "net_disbursement": _NET,
         "gross_disbursement": _GROSS,
         "commitment": _COMMITMENT,
-        "grant_equivalent": Flow(1160, from_year=2015),
+        "grant_equivalent": Flow(
+            1160, from_year=2015, only_lines=GRANT_EQUIVALENT_ONLY_LINES
+        ),
     },
     rows=(
         *_CURRENT_USD,
@@ -88,10 +121,11 @@ DAC1_LINES = Binding(
             "line",
             NON_MONEY_LINES,
             reason="lines 2, 3, 4 and 11002 are percentages of GNI and "
-            "population, not money; ODA as a share of GNI is "
+            "population, not money. ODA as a share of GNI is "
             "oecd.dac1.oda_gni_ratio",
         ),
     ),
+    members_hold_eu_share=True,
 )
 
 _DAC_COUNTRIES = "dac_countries"
@@ -130,8 +164,8 @@ def _named(id_: str, name: str, description: str, kind: Sum) -> Indicator:
 TOTAL_ODA = _named(
     "oecd.dac1.total_oda",
     "Total ODA",
-    "Official development assistance from each provider: line 1010 on cash "
-    "bases and line 11010 on grant equivalents.",
+    "Official development assistance from each provider. Read from line 1010 "
+    "on cash bases and line 11010 on grant equivalents.",
     _same_line(1010, grant_equivalent=11010),
 )
 
@@ -139,8 +173,8 @@ BILATERAL_ODA = _named(
     "oecd.dac1.bilateral_oda",
     "Bilateral ODA",
     "ODA a provider gives to developing countries itself, funds earmarked "
-    "through multilateral organisations included: line 1015 on cash bases and "
-    "line 11015 on grant equivalents.",
+    "through multilateral organisations included. Read from line 1015 on cash "
+    "bases and line 11015 on grant equivalents.",
     _same_line(1015, grant_equivalent=11015),
 )
 
@@ -148,7 +182,8 @@ MULTILATERAL_ODA = _named(
     "oecd.dac1.multilateral_oda",
     "Multilateral ODA",
     "Core contributions to multilateral organisations, capital subscriptions "
-    "included: line 2000 on cash bases and line 12000 on grant equivalents.",
+    "included. Read from line 2000 on cash bases and line 12000 on grant "
+    "equivalents.",
     _same_line(2000, grant_equivalent=12000),
 )
 
@@ -156,7 +191,7 @@ IN_DONOR_REFUGEE_COSTS = _named(
     "oecd.dac1.in_donor_refugee_costs",
     "In-donor refugee costs",
     "Spending on refugees and asylum seekers in the provider's own country "
-    "during their first year: line 1820.",
+    "during their first year (line 1820).",
     _same_line(1820),
 )
 
@@ -164,7 +199,7 @@ IN_DONOR_STUDENT_COSTS = _named(
     "oecd.dac1.in_donor_student_costs",
     "Scholarships and student costs in donor countries",
     "Scholarships and imputed costs of students from developing countries "
-    "studying in the provider's country: line 1500.",
+    "studying in the provider's country (line 1500).",
     _same_line(1500),
 )
 
@@ -172,7 +207,7 @@ DEBT_RELIEF = _named(
     "oecd.dac1.debt_relief",
     "Debt relief",
     "Debt forgiveness, rescheduling and other action on debt counted as "
-    "ODA: line 1600.",
+    "ODA (line 1600).",
     _same_line(1600),
 )
 
@@ -180,7 +215,7 @@ ADMINISTRATIVE_COSTS = _named(
     "oecd.dac1.administrative_costs",
     "Administrative costs",
     "Administrative costs of the provider's aid programme not included "
-    "elsewhere: line 1700.",
+    "elsewhere (line 1700).",
     _same_line(1700),
 )
 
@@ -188,21 +223,21 @@ DEVELOPMENT_AWARENESS = _named(
     "oecd.dac1.development_awareness",
     "Development awareness",
     "Spending in the provider's country to raise awareness of development "
-    "co-operation: line 1810.",
+    "co-operation (line 1810).",
     _same_line(1810),
 )
 
 PRIVATE_SECTOR_INSTRUMENTS = _named(
     "oecd.dac1.private_sector_instruments",
     "Private sector instruments",
-    "ODA through private sector instruments, reported from 2018: line 11030.",
+    "ODA through private sector instruments, reported from 2018 (line 11030).",
     _same_line(11030),
 )
 
 GNI = Indicator(
     id="oecd.dac1.gni",
     name="Gross national income",
-    description="The provider's gross national income: line 1 under net flows, "
+    description="The provider's gross national income (line 1) under net flows, "
     "the only flow the OECD's ODA/GNI ratios use.",
     binding=DAC1,
     kind=Sum(lines={"net_disbursement": 1}),
@@ -224,12 +259,28 @@ ODA_GNI_RATIO = Indicator(
     default_providers=_DAC_COUNTRIES,
 )
 
+#: The named indicators that read one line each. ``oecd.dac1.lines`` carries
+#: their row exclusions on their lines, so a line counts what its named
+#: indicator counts.
+_ONE_LINE: tuple[Indicator, ...] = (
+    TOTAL_ODA,
+    BILATERAL_ODA,
+    MULTILATERAL_ODA,
+    IN_DONOR_REFUGEE_COSTS,
+    IN_DONOR_STUDENT_COSTS,
+    DEBT_RELIEF,
+    ADMINISTRATIVE_COSTS,
+    DEVELOPMENT_AWARENESS,
+    PRIVATE_SECTOR_INSTRUMENTS,
+    GNI,
+)
+
 LINES = Indicator(
     id="oecd.dac1.lines",
     name="DAC1 lines",
     description="Any published DAC1 line that is an amount of money, named "
-    "with lines=. Lines nest, so each line is its own row and lines are never "
-    "summed with each other. Net flows by default. A line the basis's flow "
+    "with lines=. Lines nest, so each line is its own row and no two lines are "
+    "summed. Net flows by default. A line the basis's flow "
     "does not publish, such as GNI (line 1) on grant equivalents, raises and "
     "names the bases that hold it.",
     binding=DAC1_LINES,
@@ -237,10 +288,11 @@ LINES = Indicator(
     dimensions=("provider", "year", "line", "flow"),
     default_basis="net_disbursement",
     default_providers=_DAC_COUNTRIES,
+    rows=line_exclusions(_ONE_LINE),
     caveats=(
         Caveat(
-            "grant equivalents for 2015-2017 cover only the 25 to 27 DAC members "
-            "that reported them before they became the headline basis in 2018",
+            "grant equivalents cover only the 25 to 27 DAC members that "
+            "reported them before they became the headline basis in 2018",
             basis="grant_equivalent",
             years=(2015, 2017),
         ),

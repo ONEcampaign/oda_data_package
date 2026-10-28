@@ -7,6 +7,21 @@ edit by hand; a test fails when this file and the registry disagree.
 from typing import Literal
 
 type IndicatorId = Literal[
+    "oecd.crs.bilateral_oda",
+    "oecd.crs.bilateral_oof",
+    "oecd.crs.biodiversity_marker",
+    "oecd.crs.climate_adaptation_marker",
+    "oecd.crs.climate_mitigation_marker",
+    "oecd.crs.desertification_marker",
+    "oecd.crs.dig_marker",
+    "oecd.crs.disability_marker",
+    "oecd.crs.drr_marker",
+    "oecd.crs.environment_marker",
+    "oecd.crs.gender_marker",
+    "oecd.crs.multilateral_oda",
+    "oecd.crs.nutrition_marker",
+    "oecd.crs.rmnch_marker",
+    "oecd.crs.trade_marker",
     "oecd.dac1.administrative_costs",
     "oecd.dac1.bilateral_oda",
     "oecd.dac1.debt_relief",
@@ -19,4 +34,8 @@ type IndicatorId = Literal[
     "oecd.dac1.oda_gni_ratio",
     "oecd.dac1.private_sector_instruments",
     "oecd.dac1.total_oda",
+    "oecd.dac2a.imputed_multilateral_oda",
+    "oecd.dac2a.lines",
+    "oecd.dac2a.recipient_oda",
+    "oecd.dac2a.technical_cooperation",
 ]

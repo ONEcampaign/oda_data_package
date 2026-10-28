@@ -4,8 +4,8 @@ The three stages follow ``FilterStage``, ``ConvertStage`` and
 ``AggregateStage`` in ``_model``:
 
 - ``filtered`` reads one table view and applies the binding's, the
-  indicator's, the basis's and the call's filters. Each output row keeps the
-  table's row grain.
+  indicator's, the basis's and the call's filters, and leaves out rows with
+  no value on the basis. Each output row keeps the table's row grain.
 - ``converted`` joins every filtered row to its provider-year factor, one row
   per unit, before any sum, because each provider has its own deflator.
 - ``aggregated`` sums the converted rows by the call's ``by`` dimensions plus
@@ -21,11 +21,15 @@ Broad sectors come from a relation named ``broad_sectors`` (see
 ``BROAD_SECTORS``) that the caller registers on the cursor, with columns
 ``sector`` (BIGINT) and ``broad_sector`` (VARCHAR). It is read only when a
 call groups or filters by ``broad_sector``.
+
+A dimension whose column has ``labels`` in ``VOCABULARY``, such as a
+policy-marker score, shows the labels in place of the codes. A code with no
+label fails the query with a message holding ``UNLABELLED_CODE``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -38,6 +42,7 @@ from oda_data._errors import (
 )
 from oda_data._factors import FACTOR_SCHEMA
 from oda_data._model import (
+    VOCABULARY,
     AnyOf,
     Between,
     Flow,
@@ -65,7 +70,7 @@ if TYPE_CHECKING:
         Indicator,
         ResolvedCall,
     )
-    from oda_data._types import Basis, Code, Dimension
+    from oda_data._types import Basis, Code, Dimension, TableName
     from oda_data._units import Unit
 
 #: The relation mapping sector codes to broad sectors: ``sector``,
@@ -73,6 +78,10 @@ if TYPE_CHECKING:
 BROAD_SECTORS = "broad_sectors"
 
 UNIT_COLUMNS: tuple[str, ...] = ("currency", "prices", "base_year")
+
+#: The words of the query error a labelled column raises on a code with no
+#: label. ``_context`` turns that error into ``UnknownEntityError``.
+UNLABELLED_CODE = "holds a code with no label"
 
 #: Columns that split every result they appear in, so no row adds one basis,
 #: line, flow or unit to another.
@@ -121,9 +130,8 @@ def filtered(
 
     Raises:
         UnsupportedQueryError: The indicator is not a ``Sum``, lacks the
-            basis, has no line for a basis, the call names a provider the
-            indicator excludes, or it filters a DAC1 flow the basis does not
-            split into.
+            basis, has no line for a basis, or the call filters a DAC1 flow
+            the basis does not split into.
         DimensionError: The call groups or filters by a dimension the
             indicator lacks.
         BasisRangeError: The call asks for years before the basis starts.
@@ -134,7 +142,6 @@ def filtered(
             "the compiler sums Sum indicators only"
         )
     check_dimensions(indicator, call)
-    check_excluded(indicator, call)
     segments = _segments(indicator, call)
 
     selects = [_select(indicator, call, segment, columns) for segment in segments]
@@ -144,8 +151,8 @@ def filtered(
 def check_basis(indicator: Indicator, call: ResolvedCall, /) -> None:
     """Check that the indicator has the call's basis over the call's years.
 
-    ``_combine`` runs this for ``Method`` indicators, whose rows the compiler
-    does not build.
+    ``_combine`` runs this for ``Method`` indicators, whose rows come from the
+    indicator's own function.
 
     Raises:
         UnsupportedQueryError: The binding lacks the basis.
@@ -183,17 +190,6 @@ def check_dimensions(indicator: Indicator, call: ResolvedCall, /) -> None:
             )
 
 
-def check_excluded(indicator: Indicator, call: ResolvedCall, /) -> None:
-    """Raise ``UnsupportedQueryError`` when the call names a provider the
-    indicator excludes."""
-    named = call.members.get("provider", frozenset()) & indicator.excluded_providers
-    if named:
-        raise UnsupportedQueryError(
-            f"{indicator.id} never counts providers {sorted(named, key=str)}, "
-            "because their flows are already attributed to other providers"
-        )
-
-
 def _segments(indicator: Indicator, call: ResolvedCall) -> list[_Segment]:
     """Split the call's basis into concrete rules over spans of years."""
     bases = indicator.binding.bases
@@ -211,6 +207,7 @@ def _segments(indicator: Indicator, call: ResolvedCall) -> list[_Segment]:
         assert not isinstance(concrete, Headline)  # Binding forbids nesting
         _check_range(indicator, call, concrete.from_year, start, stop)
         _check_flows(indicator, call, name, concrete)
+        _check_basis_rows(indicator, call, name, concrete)
         if lines and name not in lines:
             raise UnsupportedQueryError(
                 f"{indicator.id} has no line for the {name!r} basis"
@@ -257,6 +254,50 @@ def _check_flows(
         f"{indicator.id} on the {name!r} basis reads flow {rule.code}, which "
         f"flows {stray} do not split{hint}"
     )
+
+
+def _check_basis_rows(
+    indicator: Indicator, call: ResolvedCall, name: Basis, rule: Value | Flow | Line
+) -> None:
+    """Raise when the call names a code that the basis's own row filters leave
+    out, such as gross line 240 on the net basis of ``oecd.dac2a.lines``.
+
+    The message names the bases that keep the code.
+    """
+    if not isinstance(rule, Value):
+        return
+    dimensions = {column: d for d, column in indicator.binding.dimensions.items()}
+    for item in rule.rows:
+        if not isinstance(item, In | NotIn) or item.column not in dimensions:
+            continue
+        dimension = dimensions[item.column]
+        dropped = sorted(
+            (c for c in call.members.get(dimension, ()) if not _keeps(item, c)),
+            key=str,
+        )
+        if not dropped:
+            continue
+        holders = [
+            repr(other)
+            for other, held in indicator.binding.bases.items()
+            if isinstance(held, Value)
+            and all(
+                _keeps(f, c)
+                for f in held.rows
+                if isinstance(f, In | NotIn) and f.column == item.column
+                for c in dropped
+            )
+        ]
+        hint = f"; the {' and '.join(holders)} basis reads it" if holders else ""
+        listed = ", ".join(map(str, dropped))
+        raise UnsupportedQueryError(
+            f"{indicator.id} on the {name!r} basis reads no {dimension} {listed}{hint}"
+        )
+
+
+def _keeps(item: In | NotIn, code: Code) -> bool:
+    """Whether an ``In`` or an unscoped ``NotIn`` keeps rows holding ``code``."""
+    return (code in item.values) == isinstance(item, In)
 
 
 def _check_range(
@@ -330,7 +371,7 @@ def _select(
         outputs[dimension] = (
             f"{BROAD_SECTORS}.broad_sector"
             if dimension == "broad_sector"
-            else _col(dims[dimension])
+            else _labelled(binding.table, dims[dimension])
         )
     outputs["year"] = _col(dims["year"])
     outputs["basis"] = literal(segment.basis)
@@ -362,20 +403,57 @@ def _select(
     return sql
 
 
+def _labelled(table: TableName, column: str) -> str:
+    """SQL for a column's labels, or its codes when it has none.
+
+    A code the column's labels lack raises when the query runs, so a new
+    code in a release cannot pass as another or as null.
+    """
+    labels = next(
+        (c.labels for c in VOCABULARY[table].columns if c.name == column), None
+    )
+    if labels is None:
+        return _col(column)
+    cases = " ".join(
+        f"WHEN {_col(column)} IS NULL THEN {literal(label)}"
+        if code is None
+        else f"WHEN {_col(column)} = {literal(code)} THEN {literal(label)}"
+        for code, label in labels.items()
+    )
+    unknown = literal(f"{table} column {column} {UNLABELLED_CODE}: ")
+    return f"CASE {cases} ELSE error({unknown} || CAST({_col(column)} AS VARCHAR)) END"
+
+
 def _value(rule: Value | Flow | Line) -> str:
     match rule:
         case Value(column=column, minus=None):
             return _col(column)
         case Value(column=column, minus=minus):
-            return f"{_col(column)} - coalesce({_col(minus)}, 0)"
+            return f"coalesce({_col(column)}, 0) - coalesce({_col(minus)}, 0)"
         case Flow() | Line():
             return _col("value")
+
+
+def _has_value(rule: Value | Flow | Line) -> str:
+    """The condition that a row holds a value on the basis.
+
+    A row with none, such as a CRS commitment row on a disbursement basis,
+    is left out, so a cell with no rows is absent from the result rather than
+    null, which means a member that did not report.
+    """
+    match rule:
+        case Value(column=column, minus=None):
+            return f"{_col(column)} IS NOT NULL"
+        case Value(column=column, minus=minus):
+            return f"coalesce({_col(column)}, {_col(minus)}) IS NOT NULL"
+        case Flow() | Line():
+            return f"{_col('value')} IS NOT NULL"
 
 
 def _basis_conditions(
     call: ResolvedCall, segment: _Segment, line_column: str
 ) -> list[str]:
-    conditions = []
+    conditions = [_has_value(segment.rule)]
     match segment.rule:
         case Value(rows=rows):
             conditions += map(_condition, rows)
@@ -424,13 +502,14 @@ def _member_conditions(
     provider = dims["provider"]
     if "provider" not in call.members:
         conditions.append(f"{_col(provider)} < {PROVIDER_AGGREGATE_FROM}")
-    if indicator.excluded_providers:
-        excluded = tuple(sorted(indicator.excluded_providers))
-        conditions.append(_condition(NotIn(provider, excluded)))
     return conditions
 
 
 def _condition(item: Filter) -> str:
+    if isinstance(item, NotIn) and item.when is not None:
+        # The rule holds outside its scope, or the unscoped rule holds.
+        outside = NotIn(item.when.column, item.when.values)
+        item = AnyOf((outside, replace(item, when=None)))
     match item:
         case In(column=column, values=values):
             return f"{_col(column)} IN ({literals(values)})" if values else "FALSE"

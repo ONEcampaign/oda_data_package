@@ -4,34 +4,37 @@ channel crosswalk.
 Two independent jobs, run via subcommands:
 
 ``refresh-codelist``
-    Rewrites ``src/oda_data/clean_data/crs_channel_mapping.csv`` from a current
+    Rewrites ``src/oda_data/_data/crs_channel_mapping.csv`` from a current
     OECD channel codelist snapshot, and records that snapshot's vintage in a
-    sidecar JSON file (``crs_channel_mapping_vintage.json``) next to it.
+    sidecar JSON file (``crs_channel_mapping_vintage.json``) next to it. The
+    snapshot lists active channels only, so the script adds every channel code
+    that a CRS extract carries and the snapshot lacks (withdrawn codes), named
+    from the live OECD channel codelist, which keeps withdrawn codes, or else
+    from the name the CRS publishes. That step makes one network call to the
+    OECD codelist service.
 
 ``review``
     Reads a CRS extract, aggregates it to (provider_code, agency_code) pairs
     carrying nonzero money, and compares those pairs against the curated
-    ``src/oda_data/clean_data/multilateral_channel_crosswalk.csv``. Writes a
+    ``src/oda_data/_data/multilateral_channel_crosswalk.csv``. Writes a
     review report of pairs that are new, whose provider/agency name changed,
-    or that are still marked ``reviewed=false``. Each such pair gets a
+    or that are marked ``reviewed=false``. Each such pair gets a
     candidate channel code from ResolveKit's ``Resolver``. New pairs are
     appended to the crosswalk as ``method="resolvekit", reviewed=false`` rows,
     which runtime matching ignores until a human sets ``reviewed=true``. A row
-    already marked ``reviewed=true`` is never touched, and an already-present
-    ``reviewed=false`` row is reported again rather than being rewritten (so a
-    reviewer's in-progress edits are never clobbered by a second run).
+    marked ``reviewed=true`` is left as it is. A ``reviewed=false`` row is
+    reported again and not rewritten, so a second run keeps a reviewer's
+    in-progress edits.
 
-This script is deliberately kept outside ``src/oda_data``: ``resolvekit`` is a
-maintenance-time-only tool (see ``[dependency-groups.maintenance]`` in
-pyproject.toml, ``uv sync --group maintenance``, Python >=3.12 required) and
-must never be importable from the package's own runtime code paths. Every
-import of ``resolvekit`` or ``yaml`` in this module is lazy and guarded, so
-``python -c "import scripts.refresh_channel_crosswalk"`` (or any static
-analysis of it) does not itself require either package to be installed.
+This script sits outside ``src/oda_data`` because ``resolvekit`` is a
+maintenance-only tool (the ``maintenance`` dependency group, installed with
+``uv sync --group maintenance``, Python 3.12 or later) and no runtime code
+path may import it. Every import of ``resolvekit`` or ``yaml`` in this module
+is lazy and guarded, so importing the module needs neither package.
 
-Nothing in this script makes a network call unless ``review --download`` is
-passed explicitly; the default ``review`` path reads a local CRS extract via
-``--crs-source``.
+Apart from the codelist fetch in ``refresh-codelist``, only
+``review --download`` makes a network call. The default ``review`` path reads
+a local CRS extract given by ``--crs-source``.
 """
 
 from __future__ import annotations
@@ -48,10 +51,13 @@ from typing import Any
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CLEAN_DATA_DIR = REPO_ROOT / "src" / "oda_data" / "clean_data"
-CRS_CHANNEL_MAPPING_CSV = CLEAN_DATA_DIR / "crs_channel_mapping.csv"
-CRS_CHANNEL_MAPPING_VINTAGE_JSON = CLEAN_DATA_DIR / "crs_channel_mapping_vintage.json"
-CROSSWALK_CSV = CLEAN_DATA_DIR / "multilateral_channel_crosswalk.csv"
+DATA_DIR = REPO_ROOT / "src" / "oda_data" / "_data"
+CRS_CHANNEL_MAPPING_CSV = DATA_DIR / "crs_channel_mapping.csv"
+CRS_CHANNEL_MAPPING_VINTAGE_JSON = DATA_DIR / "crs_channel_mapping_vintage.json"
+CROSSWALK_CSV = DATA_DIR / "multilateral_channel_crosswalk.csv"
+
+#: OECD DAC codelist id of "Channel of delivery".
+CHANNEL_CODELIST_ID = "3"
 
 CROSSWALK_COLUMNS: tuple[str, ...] = (
     "provider_code",
@@ -71,7 +77,10 @@ class MissingMaintenanceDependencyError(ImportError):
 
 
 def _require_resolvekit() -> Any:
-    """Import and return the ``resolvekit`` module, or raise a clear error.
+    """Import and return the ``resolvekit`` module.
+
+    Raises:
+        MissingMaintenanceDependencyError: ``resolvekit`` is not installed.
 
     Guards the only import site of resolvekit in this repository. Nothing in
     ``src/oda_data`` may import it.
@@ -89,7 +98,11 @@ def _require_resolvekit() -> Any:
 
 
 def _require_yaml() -> Any:
-    """Import and return the ``yaml`` module, or raise a clear error."""
+    """Import and return the ``yaml`` module.
+
+    Raises:
+        MissingMaintenanceDependencyError: ``pyyaml`` is not installed.
+    """
     try:
         import yaml
     except ImportError as exc:
@@ -101,18 +114,18 @@ def _require_yaml() -> Any:
 
 
 # ---------------------------------------------------------------------------
-# 1. Channel codelist refresh
+# Channel codelist refresh
 # ---------------------------------------------------------------------------
 
 
 def _dedupe_channel_records(records: list[dict]) -> list[dict]:
     """Collapse duplicate ``code`` entries from the OECD codelist snapshot.
 
-    The snapshot carries more than one record for a subset of codes: most are
-    exact duplicates (re-parsed language rows); a handful genuinely differ
-    (e.g. an old "donor country" phrasing next to the current "provider
-    country" one). Keep, per code, the record with the longest ``name_en``
-    (the more descriptive, typically more current OECD text), breaking ties
+    Some codes have more than one record in the snapshot. Most are exact
+    duplicates (re-parsed language rows) and a handful differ (an old "donor
+    country" phrasing beside the "provider country" one). Keep, per code, the
+    record with the longest ``name_en`` (the more descriptive, typically more
+    recent OECD text), breaking ties
     in favour of a record whose ``name_fr`` is an actual translation rather
     than a copy of ``name_en``.
 
@@ -149,19 +162,18 @@ def load_oecd_channel_codelist(
     """Load the OECD channel codelist from a local ResolveKit source checkout.
 
     Args:
-        resolvekit_source_path: Path to a ResolveKit *git checkout* (the
-            directory containing its ``pyproject.toml``), e.g.
-            ``~/src/resolvekit``. The OECD codelist snapshot
-            ResolveKit's builder uses
-            (``src/resolvekit/builder/data/oecd_dac.yaml``) is source-only:
-            it ships with neither the sdist nor the wheel on PyPI, so an
-            installed ``resolvekit`` package cannot supply it -- a local
-            checkout of the ResolveKit repository is required.
+        resolvekit_source_path: Path to a ResolveKit git checkout (the
+            directory containing its ``pyproject.toml``), such as
+            ``~/src/resolvekit``. The OECD codelist snapshot ResolveKit's
+            builder uses (``src/resolvekit/builder/data/oecd_dac.yaml``) is in
+            the source repository only and ships with neither the sdist nor
+            the wheel on PyPI, so an installed ``resolvekit`` package cannot
+            supply it.
 
     Returns:
-        A tuple of (channel codelist DataFrame with columns ``channel_code``,
-        ``en_acronym``, ``fr_acronym``, ``channel_name``, sorted by
-        ``channel_code``; a vintage metadata dict).
+        The channel codelist DataFrame, with columns ``channel_code``,
+        ``en_acronym``, ``fr_acronym``, and ``channel_name``, sorted by
+        ``channel_code``, and a vintage metadata dict.
 
     Raises:
         FileNotFoundError: If the snapshot file is not found under
@@ -208,38 +220,119 @@ def load_oecd_channel_codelist(
         "resolvekit_snapshot_version": raw.get("version"),
         "oecd_query_date": generated_from.get("oecd_query_date"),
         "oecd_source_url": generated_from.get("source_url"),
-        "resolvekit_source_path": str(resolvekit_source_path),
         "refreshed_at": datetime.now(UTC).isoformat(),
         "channel_count": len(frame),
     }
     return frame, vintage
 
 
+def _withdrawn_channel_names(codelist: pd.DataFrame) -> dict[int, str]:
+    """Return each channel code of the live OECD codelist and its latest label.
+
+    A code can appear under several categories or activation dates with the
+    same label. The label of the latest activation date wins.
+    """
+    channels = codelist[codelist["codelist_id"] == CHANNEL_CODELIST_ID].copy()
+    channels["code"] = channels["code"].astype(int)
+    latest = channels.sort_values(["code", "activation_date"], na_position="first")
+    return dict(zip(latest["code"], latest["label"].str.strip(), strict=True))
+
+
+def _crs_channel_names(crs: pd.DataFrame) -> dict[int, str | None]:
+    """Return each channel code in a CRS extract and the name it publishes, if any."""
+    crs = crs.dropna(subset=["channel_code"]).astype({"channel_code": int})
+    modal = (
+        crs.dropna(subset=["channel_name"])
+        .groupby("channel_code")["channel_name"]
+        .agg(lambda names: names.str.strip().mode().min())
+    )
+    return {int(code): modal.get(code) for code in crs["channel_code"].unique()}
+
+
+def add_withdrawn_channels(
+    frame: pd.DataFrame, *, crs: pd.DataFrame, codelist: pd.DataFrame
+) -> pd.DataFrame:
+    """Add the channel codes a CRS extract carries and ``frame`` lacks.
+
+    The ResolveKit snapshot lists active channels only, but the CRS keeps
+    reporting withdrawn ones. Each added code takes the first name found in the
+    live OECD codelist (which keeps withdrawn codes), then in the CRS
+    ``channel_name`` column, then a placeholder built from its category (the
+    code rounded down to a thousand) and the code itself, because a code with
+    no published name anywhere still needs a unique one.
+
+    Args:
+        frame: Channel codelist as :func:`load_oecd_channel_codelist` returns it.
+        crs: CRS rows with at least ``channel_code`` and ``channel_name``.
+        codelist: Category codelists as ``oda_reader.codelists.fetch_code_categories``
+            returns them, including codelist 3 (channel of delivery).
+
+    Returns:
+        ``frame`` plus one row per missing code, sorted by ``channel_code``.
+    """
+    published = _crs_channel_names(crs)
+    listed = _withdrawn_channel_names(codelist)
+    known = frame.set_index("channel_code")["channel_name"]
+
+    rows = []
+    for code in sorted(set(published) - set(known.index)):
+        name = listed.get(code) or published[code]
+        if not name:
+            category = known.get(code // 1000 * 1000, "Unknown category")
+            name = f"{category} (code {code}, no published name)"
+        rows.append(
+            {
+                "channel_code": code,
+                "en_acronym": None,
+                "fr_acronym": None,
+                "channel_name": name,
+            }
+        )
+    return (
+        pd.concat([frame, pd.DataFrame(rows)], ignore_index=True)
+        .sort_values("channel_code")
+        .reset_index(drop=True)
+    )
+
+
 def refresh_crs_channel_mapping(
     resolvekit_source_path: Path,
+    crs_source: Path,
     output_csv: Path = CRS_CHANNEL_MAPPING_CSV,
     vintage_json: Path = CRS_CHANNEL_MAPPING_VINTAGE_JSON,
 ) -> pd.DataFrame:
     """Rewrite ``crs_channel_mapping.csv`` from the OECD codelist and record
     its vintage in a sidecar JSON file.
 
+    Makes one network call, to the OECD codelist service, for the names of
+    withdrawn channel codes.
+
     Args:
         resolvekit_source_path: ResolveKit git checkout, see
             :func:`load_oecd_channel_codelist`.
+        crs_source: Local CRS extract (parquet) whose channel codes must all
+            have a name, see :func:`add_withdrawn_channels`.
         output_csv: Where to write the refreshed mapping CSV.
         vintage_json: Where to write the vintage sidecar.
 
     Returns:
         The refreshed channel codelist DataFrame that was written.
     """
+    from oda_reader.codelists import fetch_code_categories
+
     frame, vintage = load_oecd_channel_codelist(resolvekit_source_path)
-    frame.to_csv(output_csv, index=False, encoding="utf-8-sig")
+    crs = pd.read_parquet(crs_source, columns=["channel_code", "channel_name"])
+    codelist = fetch_code_categories(codelist_ids=[CHANNEL_CODELIST_ID]).frame
+    full = add_withdrawn_channels(frame, crs=crs, codelist=codelist)
+    vintage["withdrawn_channel_count"] = len(full) - len(frame)
+    vintage["channel_count"] = len(full)
+    full.to_csv(output_csv, index=False, encoding="utf-8-sig")
     vintage_json.write_text(json.dumps(vintage, indent=2) + "\n", encoding="utf-8")
-    return frame
+    return full
 
 
 # ---------------------------------------------------------------------------
-# 2. Crosswalk review: propose codes for new / changed / unresolved pairs
+# Crosswalk review (propose codes for new, changed and unresolved pairs)
 # ---------------------------------------------------------------------------
 
 
@@ -267,9 +360,9 @@ def load_crs_multilateral_pairs(
     Args:
         multilateral_providers: Provider codes to restrict to (normally
             ``oda_data.provider_groupings()["multilateral"]``).
-        crs_source: Path to a local CRS extract (parquet or csv, already in
-            oda_data's cleaned column names -- i.e. what
-            ``CRSData(...).read()`` returns) to read instead of downloading.
+        crs_source: Path to a local CRS extract (parquet or csv) in
+            oda_data's cleaned column names, as ``CRSData(...).read()``
+            returns them, to read instead of downloading.
             When ``None``, downloads via oda_data's own bulk-download path
             (a network call).
         years: Years to filter to. ``None`` reads all years in the source.
@@ -323,10 +416,10 @@ def _dedupe_acronyms_for_resolver(mapping: pd.DataFrame) -> pd.DataFrame:
     UNIQUE-constraint violation whenever a single channel's ``en_acronym``
     and ``fr_acronym`` normalise to the same value (a large share of the
     codelist's acronyms are untranslated and identical in both languages).
-    Blank ``fr_acronym`` whenever it repeats ``en_acronym`` for that row (a
+    Blank ``fr_acronym`` whenever it repeats ``en_acronym`` for that row. A
     near-duplicate that differs only by whitespace collides the same way, so
-    the comparison is on the stripped value); the row's ``channel_name``
-    still resolves it either way.
+    the comparison is on the stripped value. The row's ``channel_name``
+    resolves it either way.
 
     Also blanks a full (en_acronym, fr_acronym) pair for the second and
     later channel that shares an identical pair with an earlier one, as a
@@ -394,10 +487,10 @@ class ProposedMatch:
 def propose_channel_codes(pairs: pd.DataFrame, resolver: Any) -> list[ProposedMatch]:
     """Propose a channel code for each (provider, agency) pair via ResolveKit.
 
-    Never auto-accepts: a ``RESOLVED`` result still returns as a proposal for
-    a human to confirm, since ResolveKit resolving cleanly against the
-    channel codelist is evidence, not the same thing as the money at that
-    provider/agency actually belonging to that channel.
+    Every result is a proposal for a human to confirm, including a
+    ``RESOLVED`` one, since a clean ResolveKit match against the channel
+    codelist is evidence and does not show that the money at that
+    provider/agency belongs to that channel.
 
     Args:
         pairs: DataFrame with ``provider_code``, ``agency_code``,
@@ -459,7 +552,7 @@ def diff_crs_pairs_against_crosswalk(
       differs between the CRS extract and the crosswalk (an OECD rename or a
       stale crosswalk entry).
     - ``unresolved``: present in both, and the crosswalk row is marked
-      ``reviewed=False`` -- still needs a human decision.
+      ``reviewed=False``, so it needs a human decision.
 
     Args:
         crs_pairs: As returned by :func:`load_crs_multilateral_pairs`.
@@ -566,9 +659,9 @@ def upsert_new_pairs(
 ) -> pd.DataFrame:
     """Append newly-seen (provider, agency) pairs to the crosswalk as proposed rows.
 
-    Never mutates an existing row: rows already in ``crosswalk`` (whether
-    ``reviewed=True`` or ``reviewed=False``) pass through unchanged. Only
-    pairs absent from the crosswalk entirely (``new``) are added, each as
+    Rows already in ``crosswalk``, whether ``reviewed=True`` or
+    ``reviewed=False``, pass through unchanged. Only pairs absent from the
+    crosswalk entirely (``new``) are added, each as
     ``method="resolvekit", reviewed=False``. ``add_multilateral_channel_codes``
     ignores unreviewed rows, so a proposal takes effect only once a human sets
     ``reviewed=true``.
@@ -630,6 +723,7 @@ def write_crosswalk(crosswalk: pd.DataFrame, output_csv: Path = CROSSWALK_CSV) -
 def _cmd_refresh_codelist(args: argparse.Namespace) -> None:
     frame = refresh_crs_channel_mapping(
         resolvekit_source_path=Path(args.resolvekit_source),
+        crs_source=Path(args.crs_source),
         output_csv=Path(args.output),
         vintage_json=Path(args.vintage_json),
     )
@@ -689,6 +783,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--resolvekit-source",
         required=True,
         help="Path to a ResolveKit git checkout (contains pyproject.toml).",
+    )
+    refresh_codelist.add_argument(
+        "--crs-source",
+        required=True,
+        help="Path to a CRS parquet file; its channel codes all get a name.",
     )
     refresh_codelist.add_argument("--output", default=str(CRS_CHANNEL_MAPPING_CSV))
     refresh_codelist.add_argument(
