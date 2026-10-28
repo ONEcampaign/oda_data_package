@@ -77,6 +77,8 @@ def test_unknown_code_is_reported_with_its_sources():
         ("recipient", "10001"),  # a recipient aggregate
         ("sector", "100"),  # a DAC5 heading the codelist lacks
         ("recipient", "9998"),  # a DAC2A-only row
+        ("recipient", "68"),  # a DAC2A Part II recipient
+        ("recipient", "905"),  # a multilateral agency DAC2A lists as a recipient
     ],
 )
 def test_codes_no_codelist_holds_are_exempt(dimension, code):
@@ -172,6 +174,7 @@ def test_collect_used_reads_the_bundled_data():
     assert set(used) == set(script.CODELIST_IDS)
     assert "10" in used["provider"] or "1" in used["provider"]
     assert all(code for codes in used.values() for code in codes)
-    assert all("registry" not in " ".join(s) for s in used["recipient"].values())
+    # Czechia (68) is named in names.json alone, outside every recipient group.
+    assert used["recipient"]["68"] == {"names.json"}
     assert labels["channel"]["11000"]
     assert set(script.BUNDLES_NAMES) <= set(labels)

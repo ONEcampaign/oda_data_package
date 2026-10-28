@@ -2,6 +2,7 @@
 
 import json
 import pickle
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pandas as pd
@@ -43,6 +44,8 @@ CALL = Call(
         ),
     ),
     default_providers=None,
+    operation="records",
+    columns=("project_title", "channel_name"),
 )
 
 RECORD = Provenance(
@@ -121,6 +124,20 @@ def test_a_format_1_file_without_call_still_reads(tmp_path):
     assert read.defaults == RECORD.defaults
 
 
+def test_a_format_1_file_without_operation_or_columns_reads_as_get(tmp_path):
+    document = json.loads(to_metadata(RECORD)[PROVENANCE_KEY])
+    del document["call"]["operation"]
+    del document["call"]["columns"]
+    table = pa.table({"value": [1.0]}).replace_schema_metadata(
+        {PROVENANCE_KEY: json.dumps(document).encode()}
+    )
+
+    read = oda_data.provenance(_write(tmp_path, table))
+
+    assert read.call is not None
+    assert (read.call.operation, read.call.columns) == ("get", ())
+
+
 def test_a_format_1_file_without_a_group_label_still_reads(tmp_path):
     document = json.loads(to_metadata(RECORD)[PROVENANCE_KEY])
     del document["call"]["groups"][0]["label"]
@@ -154,7 +171,7 @@ def test_call_record_resolves_groups_and_sorts_codes():
 
     labels = {trio.key: "Trio countries"}
     record = call_record(
-        "x", resolved, filtered=["provider", "modality"], labels=labels
+        "x", resolved, filtered=["provider", "modality"], labels=labels, columns=None
     )
 
     # Only 5 was named outright; 4 and 12 feed the total and sit in groups.
@@ -171,9 +188,45 @@ def test_call_record_resolves_groups_and_sorts_codes():
     )
     assert record.default_providers is None
     # The providers came from a default when the caller filtered none.
-    defaulted = call_record("x", resolved, filtered=["modality"], labels=labels)
+    defaulted = call_record(
+        "x", resolved, filtered=["modality"], labels=labels, columns=None
+    )
     assert defaulted.default_providers == (4, 5, 12)
     assert "provider" not in defaulted.filters
+
+
+def test_call_record_tells_records_from_get_and_keeps_the_column_order():
+    """The columns keep the call's order, which is their order in the
+    result, so each call writes its own JSON."""
+    resolved = ResolvedCall(
+        basis="gross_disbursement", units=(current("USD"),), by=("year",), years=None
+    )
+    cases = {
+        None: ("get", ()),
+        (): ("records", ()),
+        ("project_title", "channel_name"): (
+            "records",
+            ("project_title", "channel_name"),
+        ),
+        ("channel_name", "project_title"): (
+            "records",
+            ("channel_name", "project_title"),
+        ),
+    }
+
+    records = {
+        columns: call_record("x", resolved, filtered=[], labels={}, columns=columns)
+        for columns in cases
+    }
+
+    assert {
+        columns: (call.operation, call.columns) for columns, call in records.items()
+    } == cases
+    written = {
+        to_metadata(replace(RECORD, call=call))[PROVENANCE_KEY]
+        for call in records.values()
+    }
+    assert len(written) == len(cases)
 
 
 def test_an_equal_record_writes_byte_identical_json():

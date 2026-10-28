@@ -402,6 +402,65 @@ def test_a_provider_with_last_year_rows_outside_the_slice_has_reported(
     assert found.incomplete == ()
 
 
+MULTILATERAL = 901
+
+
+@pytest.mark.parametrize(
+    ("lines", "excluded"),
+    [((106,), True), ((106, 206), False)],
+    ids=["excluded-on-every-line-read", "counted-on-another-line"],
+)
+def test_a_provider_the_call_leaves_out_has_no_cell(
+    lines: tuple[int, ...], excluded: bool
+) -> None:
+    """``oecd.dac2a.lines`` leaves multilateral providers out of line 106.
+    A multilateral (901) that reported lines 106 and 206 in 2024 and nothing
+    in 2025 has stopped, but a call on line 106 alone never counts it, so the
+    sum by year holds France's value with no cell and no warning. A call that
+    also reads line 206 counts it there, so the sum warns of its stop."""
+    connection = duckdb.connect()
+    connection.execute(
+        "CREATE TABLE dac2a (provider BIGINT, recipient BIGINT, year BIGINT,"
+        " line BIGINT, amount_type VARCHAR, value DOUBLE)"
+    )
+    rows = [
+        (FRANCE, KENYA, 2024, 106, 6.0),
+        (FRANCE, KENYA, 2025, 106, 7.0),
+        (FRANCE, KENYA, 2024, 206, 6.0),
+        (FRANCE, KENYA, 2025, 206, 8.0),
+        (MULTILATERAL, KENYA, 2024, 106, 2.0),
+        (MULTILATERAL, KENYA, 2024, 206, 3.0),
+    ]
+    connection.executemany("INSERT INTO dac2a VALUES (?, ?, ?, ?, 'A', ?)", rows)
+    call = ResolvedCall(
+        basis="net_disbursement",
+        units=(USD,),
+        by=("year",),
+        years=(2025,),
+        members={
+            "provider": frozenset({FRANCE, MULTILATERAL}),
+            "line": frozenset(lines),
+        },
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        found = combine(connection, dac2a.LINES, call, FakeFactors(), releases=UNCACHED)
+    connection.close()
+
+    partial = [w for w in caught if "is partial" in str(w.message)]
+    if excluded:
+        assert by_line(found.table) == {("106", None): 7.0}
+        assert found.incomplete == ()
+        assert partial == []
+    else:
+        assert by_line(found.table) == {("106", None): 7.0, ("206", None): 8.0}
+        assert found.incomplete == (
+            Incomplete(MULTILATERAL, 2025, frozenset({MULTILATERAL})),
+        )
+        assert len(partial) == 1
+
+
 def grants_call(
     indicator: Indicator,
     *,

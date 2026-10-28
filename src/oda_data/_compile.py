@@ -30,6 +30,7 @@ label fails the query with a message holding ``UNLABELLED_CODE``.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from itertools import product
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -299,6 +300,59 @@ def _check_basis_rows(
 def _keeps(item: In | NotIn, code: Code) -> bool:
     """Whether an ``In`` or an unscoped ``NotIn`` keeps rows holding ``code``."""
     return (code in item.values) == isinstance(item, In)
+
+
+def counted_providers(
+    cursor: DuckDBPyConnection,
+    indicator: Indicator,
+    call: ResolvedCall,
+    codes: Iterable[Code],
+    /,
+) -> frozenset[Code]:
+    """The providers of ``codes`` that the indicator's provider exclusions
+    keep in at least one row the call reads.
+
+    An unscoped exclusion leaves its providers out of every row. A scoped
+    one, such as multilateral providers on DAC2A line 106, leaves them out
+    of every row only when the call names codes of the scope's dimension,
+    each in the scope. A call that names none reads rows outside the scope,
+    which keep every provider. The exclusions are tested with the SQL
+    ``filtered`` applies them with, over each provider paired with each
+    named scope code.
+    """
+    codes = frozenset(codes)
+    binding = indicator.binding
+    dimensions = {column: d for d, column in binding.dimensions.items()}
+    provider = binding.dimensions["provider"]
+    grid: dict[str, list[Code]] = {provider: sorted(codes, key=str)}
+    rules: list[NotIn] = []
+    for rule in indicator.provider_exclusions:
+        if rule.when is not None:
+            dimension = dimensions.get(rule.when.column)
+            if dimension is None or dimension not in call.members:
+                continue
+            grid[rule.when.column] = sorted(call.members[dimension], key=str)
+        rules.append(rule)
+    if not rules:
+        return codes
+    if not all(grid.values()):
+        return frozenset()
+    pairs = list(product(*grid.values()))
+    table = pa.table(
+        {
+            column: pa.array([pair[index] for pair in pairs])
+            for index, column in enumerate(grid)
+        }
+    )
+    kept = (
+        cursor.from_arrow(table)
+        .set_alias("t")
+        .filter(" AND ".join(map(_condition, rules)))
+        .select(ident(provider))
+        .distinct()
+        .fetchall()
+    )
+    return frozenset(code for (code,) in kept)
 
 
 def _check_range(

@@ -1048,6 +1048,7 @@ class Context:
                     for dimension, selection in plan.selections.items()
                     for name, label in selection.labels.items()
                 },
+                columns=request.columns,
             ),
         )
         if request.columns is not None:

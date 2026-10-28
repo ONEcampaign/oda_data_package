@@ -9,7 +9,9 @@ key leaves the format at 1, because a reader of format 1 ignores keys it does
 not know, and ``from_metadata`` reads ``label_release`` as ``None`` when a file
 omits it. ``call`` is such a key, and a file written without it reads with
 ``Provenance.call`` as ``None``. So is a call group's ``label``, which reads as
-``None`` from a file that omits it.
+``None`` from a file that omits it, and the call's ``operation`` and
+``columns``, which read as ``"get"`` and ``()``, since only ``get`` and
+``query`` results reach a file.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from dataclasses import dataclass, fields
 from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from oda_data._units import Unit
 
@@ -29,6 +31,10 @@ if TYPE_CHECKING:
 
     from oda_data._model import GroupKey, ResolvedCall
     from oda_data._types import Basis, Code, Dimension
+
+#: The call that computed a result: ``get`` or ``query``, which share a
+#: result, or ``records``.
+type Operation = Literal["get", "records"]
 
 #: The Parquet schema-metadata key that holds the provenance JSON.
 PROVENANCE_KEY = b"oda_data.provenance"
@@ -126,6 +132,11 @@ class Call:
         default_providers: The providers the call read when it named none,
             sorted, or ``None`` when it named providers or the indicator has
             no provider dimension.
+        operation: ``"get"`` for a ``get`` or ``query`` result, ``"records"``
+            for a ``records`` result.
+        columns: The extra columns a ``records`` call asked for, in the
+            order the call named them, which is their order in the result.
+            Empty for ``get``.
     """
 
     indicator: str
@@ -137,6 +148,8 @@ class Call:
     filters: Mapping[Dimension, tuple[Code, ...]]
     groups: tuple[CallGroup, ...]
     default_providers: tuple[Code, ...] | None
+    operation: Operation
+    columns: tuple[str, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "filters", MappingProxyType(dict(self.filters)))
@@ -156,6 +169,7 @@ def call_record(
     *,
     filtered: Iterable[Dimension],
     labels: Mapping[GroupKey, str],
+    columns: tuple[str, ...] | None,
 ) -> Call:
     """Return the record of a resolved call.
 
@@ -170,6 +184,8 @@ def call_record(
             ``call.members`` holds a default.
         labels: Each group's key and its display label. A group it lacks
             takes its name.
+        columns: ``None`` for a ``get`` or ``query`` call, and the extra
+            columns a ``records`` call asked for, in its order.
     """
     named = set(filtered)
     totals = set(call.totals)
@@ -203,6 +219,8 @@ def call_record(
         default_providers=_sorted_codes(call.members["provider"])
         if defaulted
         else None,
+        operation="get" if columns is None else "records",
+        columns=columns or (),
     )
 
 
@@ -346,6 +364,8 @@ def _call_document(call: Call) -> dict[str, Any]:
         "default_providers": None
         if call.default_providers is None
         else list(call.default_providers),
+        "operation": call.operation,
+        "columns": list(call.columns),
     }
 
 
@@ -372,6 +392,8 @@ def _read_call(document: Mapping[str, Any]) -> Call:
             for group in document["groups"]
         ),
         default_providers=None if defaulted is None else tuple(defaulted),
+        operation=document.get("operation", "get"),
+        columns=tuple(document.get("columns", ())),
     )
 
 

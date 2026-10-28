@@ -20,6 +20,10 @@ them:
   presence of its own rows at provider grain. A binding without ``reporting``
   has no such cells.
 
+Both rules consider only the providers a leaf can count, after the provider
+exclusions the call meets (``_compile.counted_providers``), so a multilateral
+that line 106 leaves out has no cell on a call for that line.
+
 ``reporting_gaps`` also marks the cells of leaves the indicator subtracts.
 
 ``normalised`` drops a keyed cell that a cell for the whole provider-year
@@ -46,7 +50,13 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
-from oda_data._compile import basis_spans, filtered, ident, literals
+from oda_data._compile import (
+    basis_spans,
+    counted_providers,
+    filtered,
+    ident,
+    literals,
+)
 from oda_data._errors import BasisRangeError
 from oda_data._model import (
     Derived,
@@ -101,7 +111,8 @@ def reporting_gaps(
     releases: Releases,
 ) -> Gaps:
     """The cells of every leaf by the engine's two rules (``_stopped`` and
-    ``_dropped``), for the providers the call names, in ``years``, and, when
+    ``_dropped``), for the providers the call names that each leaf can count
+    (``_counted``), in ``years``, and, when
     ``years`` holds the table's last year ``last``, in the year before, so a
     sum can tell a provider that reported then from one that stopped earlier.
 
@@ -115,7 +126,7 @@ def reporting_gaps(
     reads = [
         (leaf, leaf_call, subtracted, codes)
         for leaf, leaf_call, subtracted in _leaf_calls(indicator, call)
-        if (codes := read_call(leaf, leaf_call).members.get("provider"))
+        if (codes := _counted(cursor, leaf, leaf_call))
     ]
     tables: dict[TableName, tuple[Binding, set[Code]]] = {}
     for leaf, _, _, codes in reads:
@@ -136,10 +147,25 @@ def reporting_gaps(
             subtracted_cells |= dropped
     if sums and isinstance(indicator.kind, Ratio):
         for side, side_call in ratio_parts(indicator, call):
-            codes = read_call(side, side_call).members.get("provider")
+            codes = _counted(cursor, side, side_call)
             if isinstance(side.kind, Sum) and codes:
-                cells |= _side_stopped(cursor, side, side_call, checked, releases)
+                cells |= _side_stopped(
+                    cursor, side, side_call, codes, checked, releases
+                )
     return Gaps(frozenset(cells), frozenset(subtracted_cells))
+
+
+def _counted(
+    cursor: DuckDBPyConnection, leaf: Indicator, call: ResolvedCall
+) -> frozenset[Code]:
+    """The providers the call names that the leaf can count: those of its
+    read call that every provider exclusion the call meets keeps, as
+    ``counted_providers`` decides. Empty when the call names none."""
+    read = read_call(leaf, call)
+    codes = read.members.get("provider")
+    if not codes:
+        return frozenset()
+    return counted_providers(cursor, leaf, read, codes)
 
 
 def normalised(cells: Iterable[Incomplete]) -> frozenset[Incomplete]:
@@ -212,23 +238,25 @@ def _side_stopped(
     cursor: DuckDBPyConnection,
     side: Indicator,
     call: ResolvedCall,
+    codes: Iterable[Code],
     years: list[int],
     releases: Releases,
 ) -> set[Incomplete]:
     """The cells of providers whose rows for a ratio's ``Sum`` side have
     stopped while the other side may go on, as GNI without ODA: each of
     ``years`` after the provider's last row for the side under the call's
-    filters.
+    filters, for the providers of ``codes``.
 
-    One query reads each named provider's last year, the side's filters and
-    the call's providers pushed into the scan. A ``Method`` side reports its
+    One query reads each provider's last year, the side's filters and the
+    call's providers pushed into the scan. A ``Method`` side reports its
     own cells, and a provider that has not yet reported a side leaves its
     pair out of a sum.
     """
     every_year = replace(call, years=None, by=("provider", "year"))
     last = (
         stage1(cursor, side, every_year, releases=releases)
-        .rows.aggregate("provider, max(CAST(year AS BIGINT)) AS last", "provider")
+        .rows.filter(f"provider IN ({literals(sorted(codes, key=str))})")
+        .aggregate("provider, max(CAST(year AS BIGINT)) AS last", "provider")
         .fetchall()
     )
     return {

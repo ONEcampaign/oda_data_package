@@ -34,7 +34,7 @@ A release token is the file host's ETag or Last-Modified date, so two machines t
 
 ## Read what the call computed
 
-`record.call` names the indicator, basis, years, split, units, and `allow_partial`, the codes each filter named outright, each group with its members by year, and the default providers when the call named none.
+`record.call` names the indicator, basis, years, split, units, and `allow_partial`, the codes each filter named outright, each group with its members by year, the default providers when the call named none, and whether `get` or `records` computed it, with the columns `records` asked for.
 
 ```text
 oecd.dac1.total_oda ('year',) {'provider': (4,)} None

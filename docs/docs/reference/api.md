@@ -295,6 +295,8 @@ Frozen dataclasses.
 - `Call.filters`: each dimension the call filtered and the codes it named outright, sorted, which show as their own rows. `providers="France"` gives `{"provider": (4,)}`, `providers=oda.total(oda.groups.dac_countries)` gives `{"provider": ()}`, and `providers=[4, oda.total(oda.groups.dac_countries)]` gives `{"provider": (4,)}`.
 - `Call.groups`: each group the call named, as a `CallGroup` with its members by year, sorted by dimension and name.
 - `Call.default_providers`: the provider codes the call read when it named none, sorted, or `None`.
+- `Call.operation`: `"get"` for a `get` or `query` result, `"records"` for a `records` result. A file written before oda-data recorded it reads as `"get"`.
+- `Call.columns`: the extra columns a `records` call asked for, in the order it named them, which is their order in the result. Empty for `get`.
 - `CallGroup.dimension` and `CallGroup.name`: the dimension and the group's name.
 - `CallGroup.label`: the group's display label, which names its total row, or `None` in a file written before oda-data recorded it.
 - `CallGroup.shown` and `CallGroup.total`: whether each member shows as its own rows, and whether the call asked for the total with `oda.total()`.
