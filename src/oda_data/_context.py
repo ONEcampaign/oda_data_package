@@ -34,11 +34,10 @@ import pyarrow as pa
 
 from oda_data import _compat
 from oda_data._combine import (
+    LISTED,
     caveats_for,
     check_left_out,
     combine,
-    nulled_text,
-    partial_text,
     tables_for,
     walk,
 )
@@ -56,7 +55,7 @@ from oda_data._errors import (
     UnknownIndicatorError,
     UnsupportedQueryError,
 )
-from oda_data._factors import pydeflate_currency
+from oda_data._factors import converts, pydeflate_currency
 from oda_data._groups import broad_sectors, groups
 from oda_data._model import Flow, Headline, NotIn, Ratio, ResolvedCall, Sum, Tables
 from oda_data._names import is_aggregate, names
@@ -465,7 +464,7 @@ def _plan(
         years=request.years,
         members=members,
         groups=tuple(group for s in selections.values() for group in s.groups),
-        totals=tuple(name for s in selections.values() for name in s.totals),
+        totals=tuple((d, name) for d, s in selections.items() for name in s.totals),
         allow_partial=request.allow_partial,
         rows={d: s.rows for d, s in selections.items()},
     )
@@ -656,11 +655,6 @@ def _shape_records(rows: pa.Table, indicator: Indicator, plan: _Plan) -> pa.Tabl
 def _dimension_columns(
     rows: pa.Table, dimensions: list[str], indicator: Indicator, plan: _Plan
 ) -> dict[str, pa.ChunkedArray | pa.Array]:
-    labels = {
-        name: label
-        for s in plan.selections.values()
-        for name, label in s.labels.items()
-    }
     columns: dict[str, pa.ChunkedArray | pa.Array] = {}
     for dimension in dimensions:
         if dimension == "year":
@@ -669,7 +663,10 @@ def _dimension_columns(
         codes = rows[dimension].cast(pa.string())
         columns[dimension] = codes
         if dimension not in _UNNAMED:
-            known = _string_names(dimension, indicator.binding.table) | labels
+            known = _string_names(dimension, indicator.binding.table)
+            selection = plan.selections.get(dimension)
+            if selection is not None:
+                known = {**known, **selection.labels}
             columns[f"{dimension}_name"] = pa.array(
                 [known.get(code) for code in codes.to_pylist()], pa.string()
             )
@@ -731,7 +728,8 @@ class Context:
 
     A context holds one DuckDB connection and the conversion factors from its
     DAC1 release, and serves many threads at once. Use it as a context
-    manager, or call ``close()``, to release the connection.
+    manager, or call ``close()``, to release the connection and the leases on
+    the release files it read, which keep oda-reader from deleting them.
 
     Args:
         cache_dir: oda-reader's cache folder, or ``None`` for its default
@@ -781,9 +779,11 @@ class Context:
         self.close()
 
     def close(self) -> None:
-        """Close the context's DuckDB connection and drop its factors.
+        """Close the context's DuckDB connection, release its leases on the
+        release files, and drop its factors.
 
-        A later call opens a new connection and reads the tables again.
+        oda-reader may then delete the files of superseded releases. A later
+        call opens a new connection and reads the tables again.
         """
         with self._lock:
             self._tables.close()
@@ -945,8 +945,9 @@ class Context:
         finally:
             cursor.close()
 
+        # The tables the call read, and DAC1 when a unit took its factors.
         releases: dict[str, Release] = {t: self._tables.release(t) for t in tables}
-        if plan.call.units:
+        if indicator.is_money and any(converts(unit) for unit in plan.call.units):
             releases.setdefault("dac1", factors.release())
         record = Provenance(
             oda_data=version("oda_data"),
@@ -967,8 +968,6 @@ class Context:
             table,
             releases,
             combined.fallback_providers,
-            partial=combined.partial,
-            nulled=combined.nulled,
             notes=combined.notes,
         )
         return _Result(table, schema, record, text)
@@ -1096,9 +1095,6 @@ _PLURALS: Mapping[str, str] = {
     "line": "lines",
 }
 
-#: The most codes explain() names one by one. More are counted.
-_LISTED = 5
-
 
 def explain(
     indicator: Indicator,
@@ -1107,17 +1103,12 @@ def explain(
     releases: Mapping[str, Release],
     fallback: frozenset[int],
     *,
-    partial: tuple[int, int] | None = None,
-    nulled: tuple[int, frozenset[Code]] | None = None,
     notes: tuple[str, ...] = (),
 ) -> str:
     """Describe a result in plain text, one sentence per line.
 
-    ``partial`` is ``Combined.partial``: the table's last year and how many
-    summed providers that reported the year before have not reported it.
-    ``nulled`` is ``Combined.nulled``: the table's last year and the providers
-    whose own row is null in it because a part has a trailing gap.
-    ``notes`` is ``Combined.notes``.
+    ``notes`` is ``Combined.notes``: the sentences on the result's incomplete
+    cells and the notes of its ``Method`` parts.
     """
     table = indicator.binding.table
     years = _result_years(result, plan.call)
@@ -1142,10 +1133,6 @@ def explain(
         f"Caveat: {_sentence(caveat.text)}"
         for caveat in caveats_for(indicator, plan.call)
     )
-    if partial is not None:
-        lines.append(_sentence(partial_text(*partial)))
-    if nulled is not None:
-        lines.append(_sentence(nulled_text(*nulled, listed=_LISTED)))
     lines.extend(_sentence(note) for note in notes)
     lines.append(_unit_text(indicator, plan, fallback))
     downloads = "; ".join(
@@ -1249,14 +1236,15 @@ def _selection_text(
     for group in selection.groups:
         members = _member_union(group.members)
         label = selection.labels.get(group.name, group.name)
-        shown = members <= selection.rows
-        if shown:
+        if group.shown:
             in_groups |= members
         counted = f"{len(members)} {label}"
         if group.name not in selection.totals:
             parts.append(counted)
             continue
-        text = f"{counted}, plus their total" if shown else f"the total of {counted}"
+        text = (
+            f"{counted}, plus their total" if group.shown else f"the total of {counted}"
+        )
         if selection.dimension == "provider":
             text += ", " + _coverage(group.name, group.members, call, result)
         parts.append(text)
@@ -1295,7 +1283,7 @@ def _coverage(
 
 
 def _codes_text(dimension: Dimension, codes: frozenset[Code], table: TableName) -> str:
-    if len(codes) > _LISTED:
+    if len(codes) > LISTED:
         return f"{len(codes)} {_PLURALS[dimension]}"
     known = _string_names(dimension, table)
     listed = [known.get(str(code), str(code)) for code in sorted(codes, key=str)]
@@ -1406,18 +1394,22 @@ def get(
         by: The dimensions the result splits by.
         basis: The basis, or ``None`` for the indicator's default.
         unit: A unit or units. ``None`` is current USD. A ratio takes none.
-        allow_partial: Accept partial sums. Without it a group total is null
-            in a year in which a member has stopped reporting, and a sum
-            across providers warns when the table's last year is partial.
-            A derived indicator's row for one provider, such as core ODA, is
-            null in the table's last year when the provider reported a part
-            the year before and has not reported it yet, and so is EU
-            Institutions' (918) GNI when an EU member stopped reporting GNI.
-            With it the group total sums the members that reported, those
-            rows hold the parts reported, and the sum across providers does
-            not warn; ``explain()`` still names the partial year. A member
-            that has not yet reported, or that skips a year and reports
-            again, counts as zero either way.
+        allow_partial: Accept partial values. Without it a group total is
+            null in a year in which a member has stopped reporting, and a sum
+            across providers warns when providers that reported the year
+            before have not reported the table's last year. A row for one
+            provider is null where a derived indicator, such as core ODA,
+            misses a part in the table's last year that the provider
+            reported the year before. A row is null, alone or summed with
+            other providers, where it holds EU Institutions' (918) GNI after
+            an EU member stopped reporting GNI, or 918's attributed ODA in
+            DAC1's last year before its funders report line 2102. A
+            ratio's group total is null when a member's numerator or
+            denominator is. With it the group total sums the members that
+            reported, those rows hold the parts reported, and the sum across
+            providers does not warn. ``explain()`` still names the
+            incomplete values. A member that has not yet reported, or that
+            skips a year and reports again, counts as zero either way.
 
     Raises:
         UnknownIndicatorError: No indicator has that id. An oda-data 2.x

@@ -4,11 +4,11 @@ EU members, and a few other providers, report their contributions to EU
 Institutions as their own multilateral ODA (DAC1 line 2102). 918's ODA spends
 that money again, so a sum of 918 and its contributors counts it twice.
 
-``EuAttribution`` reads an indicator for every provider in the call and keeps
-in 918's row only the part the call's other providers did not pay for. Its
-weight in each year is ``1 - paid / spent``, where ``spent`` is 918's own value
-and ``paid`` the other providers' line 2102 on the same basis, so 918's row is
-``spent - paid``.
+``EuAttribution`` keeps in 918's row only what no other provider paid: 918's
+own value minus the line 2102 of every provider other than 918 and the
+aggregates, on the same basis and year. The row is the same whichever
+providers the call names beside 918, so 918 sums once with any of them. It
+is negative in a year in which the recorded contributions exceed 918's ODA.
 
 ``EuGni`` reads GNI for every provider in the call and gives 918 the summed
 GNI of the EU's members, either those of each year or today's EU27 in every
@@ -25,10 +25,16 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
-from oda_data._combine import stopped_years
-from oda_data._compile import filtered
-from oda_data._model import ResolvedGroup
-from oda_data._names import EU_INSTITUTIONS, eu27, eu_members, names
+from oda_data._compile import filtered, ident
+from oda_data._errors import BasisRangeError
+from oda_data._model import Incomplete, MethodRows
+from oda_data._names import (
+    EU_INSTITUTIONS,
+    PROVIDER_AGGREGATE_FROM,
+    eu27,
+    eu_members,
+    names,
+)
 
 if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
@@ -41,10 +47,15 @@ _KEYS = "provider, year, basis"
 
 @dataclass(frozen=True, slots=True)
 class EuAttribution:
-    """918's value net of what the call's other providers paid it.
+    """918's value net of what every other provider paid it.
 
     Every other provider's row is ``base`` unchanged. A call without 918
     reads ``base`` alone.
+
+    A provider that paid 918 in the year before the table's last year and has
+    no line 2102 in the last year has not yet reported it, so 918's row in
+    the last year is ``Incomplete``, missing those providers. A provider with
+    no line 2102 in an earlier year paid nothing that year.
 
     Args:
         base: The indicator each provider's row reads, such as total ODA.
@@ -55,27 +66,64 @@ class EuAttribution:
     base: Indicator
     contributions: Indicator
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> pa.Table:
-        """Return ``provider``, ``year``, ``basis`` and ``value`` rows."""
+    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
+        """Return ``provider``, ``year``, ``basis`` and ``value`` rows, and
+        918's row in the table's last year as incomplete while providers that
+        paid it the year before have not reported."""
         providers = call.members.get("provider")
         rows = _summed(filtered(cursor, self.base, _reading(call, providers)))
         if providers is not None and EU_INSTITUTIONS not in providers:
-            return rows.to_arrow_table()
+            return MethodRows(rows.to_arrow_table())
 
-        others = None if providers is None else providers - {EU_INSTITUTIONS}
-        paid = (
-            filtered(cursor, self.contributions, _reading(call, others))
-            .filter(f"provider != {EU_INSTITUTIONS}")
-            .aggregate("year, basis, sum(value) AS paid", "year, basis")
+        paid = self._paid(cursor, call).aggregate(
+            "year, basis, sum(value) AS paid", "year, basis"
         )
         netted = rows.set_alias("r").join(
             paid.set_alias("p"), "r.year = p.year AND r.basis = p.basis", how="left"
         )
-        return netted.select(
-            "r.provider AS provider, r.year AS year, r.basis AS basis, "
-            f"CASE WHEN r.provider = {EU_INSTITUTIONS} "
-            "THEN r.value - coalesce(p.paid, 0) ELSE r.value END AS value"
-        ).to_arrow_table()
+        return MethodRows(
+            netted.select(
+                "r.provider AS provider, r.year AS year, r.basis AS basis, "
+                f"CASE WHEN r.provider = {EU_INSTITUTIONS} "
+                "THEN r.value - coalesce(p.paid, 0) ELSE r.value END AS value"
+            ).to_arrow_table(),
+            incomplete=self._unreported(cursor, call),
+        )
+
+    def _paid(self, cursor: DuckDBPyConnection, call: ResolvedCall) -> DuckDBPyRelation:
+        """Each provider's line 2102 in the call's years, 918 and the
+        aggregates left out."""
+        return _summed(
+            filtered(cursor, self.contributions, _reading(call, None))
+        ).filter(
+            f"provider != {EU_INSTITUTIONS} AND provider < {PROVIDER_AGGREGATE_FROM}"
+        )
+
+    def _unreported(
+        self, cursor: DuckDBPyConnection, call: ResolvedCall
+    ) -> tuple[Incomplete, ...]:
+        """918's cell in the table's last year, missing the providers with
+        line 2102 in the year before and none in it, when the call asks for
+        the last year."""
+        binding = self.contributions.binding
+        [(last,)] = cursor.sql(
+            f"SELECT max(CAST({ident(binding.dimensions['year'])} AS BIGINT)) "
+            f"FROM {ident(binding.table)}"
+        ).fetchall()
+        if last is None or (call.years is not None and last not in call.years):
+            return ()
+        try:
+            paid = self._paid(cursor, replace(call, years=(last - 1, last)))
+        except BasisRangeError:
+            # The basis starts in the last year, so nobody paid the year before.
+            return ()
+        reported: dict[int, set[Code]] = {last - 1: set(), last: set()}
+        for code, year in paid.select("provider, CAST(year AS BIGINT)").fetchall():
+            reported[year].add(code)
+        missing = frozenset(reported[last - 1] - reported[last])
+        if not missing:
+            return ()
+        return (Incomplete(EU_INSTITUTIONS, last, missing, "line 2102"),)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,11 +135,10 @@ class EuGni:
     United Kingdom from 1973 to 2020. With it true, they are today's 27
     members in every year.
 
-    A member's gaps follow ``_combine.stopped_years``, the rule for group
-    totals. A member that has not yet reported GNI, or that skips years and
-    reports again, counts as zero. In a year after a member's last GNI, 918's
-    GNI is null unless the call allows partial sums. ``notes`` names the
-    members behind each gap.
+    A member that has not yet reported GNI, or that skips years and reports
+    again, counts as zero, and a note names it. In a year after a member's
+    last GNI, 918's GNI sums the members that reported and is ``Incomplete``,
+    missing the members that stopped.
 
     Args:
         gni: The indicator each provider's GNI reads.
@@ -101,8 +148,10 @@ class EuGni:
     gni: Indicator
     fixed_eu27: bool = False
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> pa.Table:
-        """Return ``provider``, ``year``, ``basis`` and ``value`` rows."""
+    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
+        """Return ``provider``, ``year``, ``basis`` and ``value`` rows, 918's
+        years after a member's last GNI as incomplete, and a note on each run
+        of years with the same members counted as zero."""
         providers = call.members.get("provider")
         own = None if providers is None else providers - {EU_INSTITUTIONS}
         rows = (
@@ -111,38 +160,29 @@ class EuGni:
             .to_arrow_table()
         )
         if providers is not None and EU_INSTITUTIONS not in providers:
-            return rows
+            return MethodRows(rows)
 
         reports = self._reports(cursor, call)
-        nulled = set() if call.allow_partial else reports.stopped
         years = sorted(reports.values)
         eu = pa.table(
             {
                 "provider": [EU_INSTITUTIONS] * len(years),
                 "year": years,
                 "basis": [reports.basis] * len(years),
-                "value": [
-                    None if year in nulled else reports.values[year] for year in years
-                ],
+                "value": [reports.values[year] for year in years],
             }
         )
-        return pa.concat_tables([rows, eu.select(rows.column_names).cast(rows.schema)])
-
-    def notes(
-        self, cursor: DuckDBPyConnection, call: ResolvedCall, /
-    ) -> tuple[str, ...]:
-        """Name the members behind each gap in 918's GNI, one note per run
-        of years with the same members missing."""
-        providers = call.members.get("provider")
-        if providers is not None and EU_INSTITUTIONS not in providers:
-            return ()
-        reports = self._reports(cursor, call)
-        runs: dict[tuple[frozenset[int], bool], list[int]] = {}
+        runs: dict[frozenset[int], list[int]] = {}
         for year, codes in sorted(reports.missing.items()):
-            runs.setdefault((codes, year in reports.stopped), []).append(year)
-        return tuple(
-            _gap_text(codes, years, nulled=stopped and not call.allow_partial)
-            for (codes, stopped), years in runs.items()
+            if year not in reports.stopped:
+                runs.setdefault(codes, []).append(year)
+        return MethodRows(
+            pa.concat_tables([rows, eu.select(rows.column_names).cast(rows.schema)]),
+            incomplete=tuple(
+                Incomplete(EU_INSTITUTIONS, year, reports.missing[year], "GNI")
+                for year in sorted(reports.stopped)
+            ),
+            notes=tuple(_gap_text(codes, years) for codes, years in runs.items()),
         )
 
     def _members(self, year: int | None) -> frozenset[int]:
@@ -179,7 +219,6 @@ class EuGni:
             for year, codes in members.items()
             if not codes.isdisjoint(reported[year])
         }
-        group = ResolvedGroup(str(EU_INSTITUTIONS), "provider", members)
         return _Reports(
             values={
                 year: sum(reported[year].get(code, 0.0) for code in codes)
@@ -197,7 +236,11 @@ class EuGni:
                     )
                 )
             },
-            stopped=frozenset(stopped_years(group, list(members), last)),
+            stopped=frozenset(
+                year
+                for year, codes in members.items()
+                if any(last.get(code, year) < year for code in codes)
+            ),
         )
 
 
@@ -219,18 +262,12 @@ class _Reports:
     stopped: frozenset[int]
 
 
-def _gap_text(codes: frozenset[int], years: list[int], *, nulled: bool) -> str:
-    """The note on members missing from 918's GNI in ``years``."""
+def _gap_text(codes: frozenset[int], years: list[int]) -> str:
+    """The note on members counted as zero in 918's GNI in ``years``."""
     known = names("provider")
     labels = _joined(sorted(f"{known.get(code, code)} ({code})" for code in codes))
     when = _joined([str(year) for year in years])
     those = "that year" if len(years) == 1 else "those years"
-    if nulled:
-        return (
-            f"EU Institutions (918) GNI is null in {when}, since {labels} "
-            "reported no GNI after an earlier year; allow_partial=True sums the "
-            "members that reported"
-        )
     return (
         f"EU Institutions (918) GNI in {when} sums the members that reported; "
         f"{labels} reported no GNI in {those}"

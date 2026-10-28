@@ -20,8 +20,9 @@ in 1960, the first year of DAC1.
 EU Institutions (918) sit outside every built-in provider group except
 ``multilateral``. On DAC1 and Multisystem, members report their EU
 contributions as their own multilateral ODA, so ``_combine`` refuses a total
-over a group holding 918 and a provider that was an EU member in a year of the
-call (``Binding.members_hold_eu_share``).
+over a group holding 918 and a provider that pays 918 in a year of the call. That
+means an EU member then or, on DAC1, a provider that reports line 2102 that
+year (``Binding.members_hold_eu_share``).
 The dates, the United Kingdom's 1973-2020 included, are under ``eu_members``
 in ``_data/group_membership.json``.
 """

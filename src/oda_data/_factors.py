@@ -146,7 +146,7 @@ class DacFactors:
         parts: list[pa.Table] = []
         fallback: set[int] = set()
         for unit in units:
-            if unit.currency == "USD" and unit.prices == "current":
+            if not converts(unit):
                 factors = pd.Series(1.0, index=keys_frame.index)
             else:
                 matched = keys_frame.merge(
@@ -230,6 +230,11 @@ class DacFactors:
                 f"The DAC1 table gives no {_label(unit)} factors: {error}"
             ) from error
         return result.factors
+
+
+def converts(unit: Unit, /) -> bool:
+    """Whether ``unit`` needs DAC1 factors, which is every unit but current USD."""
+    return not (unit.currency == "USD" and unit.prices == "current")
 
 
 def pydeflate_currency(currency: str) -> str:

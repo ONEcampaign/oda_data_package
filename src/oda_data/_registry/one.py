@@ -112,21 +112,30 @@ TOTAL_ODA_EU_ATTRIBUTED = Indicator(
     id="one.dac1.total_oda_eu_attributed",
     name="Total ODA, EU Institutions net of their funders",
     description="Total ODA, with the row of EU Institutions (918) reduced by "
-    "what the other providers in the call paid them (line 2102 on the same "
-    "basis), so 918 and its funders add up without counting that money twice. "
-    "Every other provider's row is its total ODA. 918's row depends on the "
-    "providers named beside it, so name the providers to sum, as in "
-    "providers=[oda.groups.eu27, 918] with by=['year'].",
+    "what every other provider paid them that year (line 2102 on the same "
+    "basis), so 918 adds up with any of its funders without counting that "
+    "money twice. Every other provider's row is its total ODA. 918's row is "
+    "the same whichever providers the call names; oecd.dac1.total_oda gives "
+    "918's own spending.",
     binding=replace(dac1.DAC1, members_hold_eu_share=False),
     kind=Method(EuAttribution(dac1.TOTAL_ODA, EU_CONTRIBUTIONS), tables=("dac1",)),
+    caveats=(
+        Caveat(
+            "918's row is negative in a year in which its funders' recorded "
+            "contributions exceed the ODA EU Institutions report"
+        ),
+        Caveat(
+            "918's row in DAC1's last year is null until the providers that "
+            "paid it the year before report line 2102; allow_partial=True "
+            "nets the contributions reported so far"
+        ),
+    ),
     dimensions=_GNI_DIMENSIONS,
     default_basis="headline",
     default_providers=None,
 )
 
 _GNI_BINDING = replace(dac1.DAC1, bases={"net_disbursement": Flow(1140)})
-_DATED_EU_GNI = EuGni(dac1.GNI)
-_FIXED_EU_GNI = EuGni(dac1.GNI, fixed_eu27=True)
 _GAPS = (
     "A member with no GNI in a year between two it reported counts as zero, "
     "and explain() names it. In a year after a member's last GNI, 918 has a "
@@ -141,7 +150,7 @@ GNI = Indicator(
     "in each year, the United Kingdom to 2020 included. "
     f"{_GAPS} one.dac1.gni_fixed_eu27 gives 918 today's EU27 in every year.",
     binding=_GNI_BINDING,
-    kind=Method(_DATED_EU_GNI, tables=("dac1",), notes=_DATED_EU_GNI.notes),
+    kind=Method(EuGni(dac1.GNI), tables=("dac1",)),
     dimensions=_GNI_DIMENSIONS,
     default_basis="net_disbursement",
     default_providers="dac_countries",
@@ -155,7 +164,7 @@ GNI_FIXED_EU27 = Indicator(
     "so the United Kingdom is excluded. "
     f"{_GAPS} one.dac1.gni gives 918 the members of each year.",
     binding=_GNI_BINDING,
-    kind=Method(_FIXED_EU_GNI, tables=("dac1",), notes=_FIXED_EU_GNI.notes),
+    kind=Method(EuGni(dac1.GNI, fixed_eu27=True), tables=("dac1",)),
     dimensions=_GNI_DIMENSIONS,
     default_basis="net_disbursement",
     default_providers="dac_countries",

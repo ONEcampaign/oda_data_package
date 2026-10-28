@@ -132,15 +132,15 @@ def register(cache_dir, tmp_path):
 
 @pytest.fixture
 def counted_scans(monkeypatch):
-    """Count oda-reader scans per table."""
+    """Count oda-reader leases per table."""
     calls: list[str] = []
-    real = oda_reader.scan
+    real = oda_reader.lease
 
-    def scan(dataset, **kwargs):
+    def lease(dataset, **kwargs):
         calls.append(dataset)
         return real(dataset, **kwargs)
 
-    monkeypatch.setattr(oda_reader, "scan", scan)
+    monkeypatch.setattr(oda_reader, "lease", lease)
     return calls
 
 
@@ -232,12 +232,14 @@ def test_each_table_is_scanned_once_per_context(register, cache_dir, counted_sca
 
 def test_release_carries_the_scan_label_release(register, cache_dir, monkeypatch):
     register("crs")
-    real = oda_reader.scan
+    real = oda_reader.lease
 
     def labelled(dataset, **kwargs):
-        return replace(real(dataset, **kwargs), label_release="v20260803")
+        held = real(dataset, **kwargs)
+        held.table = replace(held.table, label_release="v20260803")
+        return held
 
-    monkeypatch.setattr(oda_reader, "scan", labelled)
+    monkeypatch.setattr(oda_reader, "lease", labelled)
 
     release = OecdTables(cache_dir=cache_dir, offline=True).release("crs")
 
@@ -268,6 +270,7 @@ def test_pinned_release_mismatch_raises(register, cache_dir):
 
     with pytest.raises(ReleaseMismatchError):
         tables.cursor(("dac1",))
+    assert list(cache_dir.rglob("*.lease")) == []
 
 
 @pytest.mark.parametrize("offline", [True, False])

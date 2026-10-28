@@ -576,6 +576,37 @@ def test_a_group_total_sums_its_members(mixed: Context) -> None:
     }
 
 
+@pytest.mark.parametrize(
+    ("allow_partial", "expected"),
+    [(False, None), (True, 1000.0)],
+    ids=["null", "allow-partial"],
+)
+def test_a_member_missing_from_the_last_year_nulls_the_total(
+    allow_partial: bool, expected: float | None
+) -> None:
+    """Germany contributed in 2021 and has only a commitment in 2022, the
+    Multisystem's last year, so the pair's 2022 total is partial."""
+    multisystem = [
+        core(FRANCE, NDF_CHANNEL, 2021, 1000.0),
+        core(FRANCE, NDF_CHANNEL, 2022, 1000.0),
+        core(GERMANY, NDF_CHANNEL, 2021, 100.0),
+        core(GERMANY, NDF_CHANNEL, 2022, 100.0, flow_type="Commitments"),
+    ]
+    with context(_MIXED_CRS, multisystem) as ctx:
+        df = ctx.get(
+            INDICATOR,
+            years=2022,
+            providers=total(Group("pair", [FRANCE, GERMANY])),
+            allow_partial=allow_partial,
+        )
+
+    [value] = df["value"].tolist()
+    if expected is None:
+        assert pd.isna(value)
+    else:
+        assert value == pytest.approx(expected)
+
+
 def test_records_carry_the_share_window(mixed: Context) -> None:
     found = mixed.records(INDICATOR, years=2022, providers=FRANCE)
 
@@ -594,7 +625,7 @@ def test_method_output_follows_its_schema(mixed: Context) -> None:
     )
     cursor = mixed._tables.cursor(("multisystem", "crs"))
 
-    table = imputation.imputed_rows(cursor, call, core=CORE_CONTRIBUTIONS)
+    table = imputation.imputed_rows(cursor, call, core=CORE_CONTRIBUTIONS).table
 
     assert table.schema == imputation.OUTPUT_SCHEMA
     assert set(table["allocation_status"].to_pylist()) == {"imputed", "unallocated"}

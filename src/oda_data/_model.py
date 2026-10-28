@@ -485,10 +485,54 @@ class Derived:
     minus: tuple[Indicator, ...] = ()
 
 
-class MethodFunction(Protocol):
-    """The function behind a ``Method`` indicator."""
+@dataclass(frozen=True, slots=True)
+class Incomplete:
+    """A provider-year whose value covers only the inputs that reported.
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> pa.Table:
+    Args:
+        provider: The provider whose value is incomplete.
+        year: The year.
+        missing: The inputs that did not report: the provider itself, or the
+            members or funders its value sums, such as the EU members behind
+            EU Institutions' (918) GNI.
+        inputs: What ``missing`` have not reported, for ``explain()``, such
+            as ``"GNI"`` or ``"line 2102"``.
+    """
+
+    provider: Code
+    year: int
+    missing: frozenset[Code]
+    inputs: str = "its inputs"
+
+
+@dataclass(frozen=True, slots=True)
+class MethodRows:
+    """What a ``MethodFunction`` returns.
+
+    Args:
+        table: The rows, as ``MethodFunction`` describes them.
+        incomplete: The provider-years whose value covers only some of its
+            inputs. Their rows hold the partial value. The engine nulls them,
+            and the totals that hold them, unless the call allows partial
+            values, and ``explain()`` names them.
+        notes: Sentences on the rows for ``explain()``, such as the members
+            counted as zero in a year between two they reported.
+    """
+
+    table: pa.Table
+    incomplete: tuple[Incomplete, ...] = ()
+    notes: tuple[str, ...] = ()
+
+
+class MethodFunction(Protocol):
+    """The function behind a ``Method`` indicator.
+
+    A function's rows for a year do not depend on the other years the call
+    asks for, so the engine may read one or two years on their own, as it
+    does to find providers missing from the table's last year.
+    """
+
+    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
         """Compute the indicator's rows.
 
         Args:
@@ -500,23 +544,15 @@ class MethodFunction(Protocol):
             call: The resolved call.
 
         Returns:
-            An Arrow table at provider-year grain or finer, with columns
-            ``provider`` (int64), ``year`` (int64), ``basis`` (string),
-            ``value`` (float64, current USD millions), and one column per
-            indicator dimension. The engine then applies units, ``by``,
-            groups, and provenance. Extra columns reach ``records()`` only.
+            Rows in an Arrow table at provider-year grain or finer, with
+            columns ``provider`` (int64), ``year`` (int64), ``basis``
+            (string), ``value`` (float64, current USD millions), and one
+            column per indicator dimension. The engine then applies units,
+            ``by``, groups, and provenance, and extra columns reach
+            ``records()`` only. A value that misses some inputs holds what
+            the inputs that reported add up to, with its provider-year in
+            ``incomplete``. The function does not read ``allow_partial``.
         """
-        ...
-
-
-class MethodNotes(Protocol):
-    """A function that describes a ``Method``'s rows for ``explain()``."""
-
-    def __call__(
-        self, cursor: DuckDBPyConnection, call: ResolvedCall, /
-    ) -> tuple[str, ...]:
-        """Return notes on the rows the method gives for ``call``, such as
-        the members missing from a sum, one sentence each; empty for none."""
         ...
 
 
@@ -527,13 +563,10 @@ class Method:
     Args:
         function: The function, which follows ``MethodFunction``.
         tables: The tables the function reads.
-        notes: A function that describes the rows for ``explain()``, called
-            with the cursor and call ``function`` takes, or ``None`` for none.
     """
 
     function: MethodFunction
     tables: tuple[TableName, ...]
-    notes: MethodNotes | None = None
 
 
 type Kind = Sum | Ratio | Derived | Method
@@ -773,6 +806,11 @@ def line_exclusions(named: tuple[Indicator, ...], /) -> tuple[NotIn, ...]:
 # Resolved calls --------------------------------------------------------------
 
 
+#: A group's identity in a call: its dimension and its name. Groups of two
+#: dimensions may share a name.
+type GroupKey = tuple[Dimension, str]
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedGroup:
     """A group with its members as codes, per year.
@@ -782,14 +820,23 @@ class ResolvedGroup:
         dimension: The dimension the members belong to.
         members: Each year of the call and the member codes in that year. A
             group with one composition holds the same set in every year.
+        shown: Whether the call passed the group itself, without
+            ``oda.total()``, so each member shows as its own rows in the
+            years it is a member.
     """
 
     name: str
     dimension: Dimension
     members: Mapping[int, frozenset[Code]]
+    shown: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", _frozen(self.members))
+
+    @property
+    def key(self) -> GroupKey:
+        """The group's dimension and name, which identify it in a call."""
+        return (self.dimension, self.name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -808,15 +855,19 @@ class ResolvedCall:
         members: Each filtered dimension and its codes. Group members are
             already expanded here. A dimension absent from the map is not
             filtered, except that providers then exclude aggregate codes.
-        groups: The groups the call named, with per-year members.
-        totals: Names of groups in ``groups`` whose total rows the call asked
+        groups: The groups the call named, with per-year members, at most
+            one for each ``key``.
+        totals: Keys of groups in ``groups`` whose total rows the call asked
             for with ``oda.total()``.
-        allow_partial: Whether the caller accepts partial sums: a group
-            total sums the members that reported when some did not, and a
-            sum across providers over a partial last year does not warn.
+        allow_partial: Whether the caller accepts partial values: a group
+            total sums the members that reported when some did not, a row
+            whose value is ``Incomplete`` holds the partial value, and a sum
+            across providers over a partial last year does not warn.
         rows: Each dimension and the codes the result shows as their own
-            rows. Other codes in ``members`` feed group totals only, so
-            ``providers=oda.total(g7)`` holds the G7 in ``members`` and an
+            rows in every year: the codes the caller named directly. The
+            members of a ``shown`` group show as well, each in the years it
+            is a member. Other codes in ``members`` feed group totals only,
+            so ``providers=oda.total(g7)`` holds the G7 in ``members`` and an
             empty set here. The map holds every dimension the caller
             filtered and no other, so a default, such as the providers an
             indicator reads when the caller names none, is absent and shows
@@ -824,7 +875,8 @@ class ResolvedCall:
             neither in ``by`` nor a group's must equal its ``members``.
 
     Raises:
-        ValueError: If ``totals`` names a group not in ``groups``.
+        ValueError: If two groups share a key, or ``totals`` names a group
+            not in ``groups``.
     """
 
     basis: Basis
@@ -833,14 +885,17 @@ class ResolvedCall:
     years: tuple[int, ...] | None = None
     members: Mapping[Dimension, frozenset[Code]] = field(default_factory=dict)
     groups: tuple[ResolvedGroup, ...] = ()
-    totals: tuple[str, ...] = ()
+    totals: tuple[GroupKey, ...] = ()
     allow_partial: bool = False
     rows: Mapping[Dimension, frozenset[Code]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", _frozen(self.members))
         object.__setattr__(self, "rows", _frozen(self.rows))
-        stray = sorted(set(self.totals) - {group.name for group in self.groups})
+        keys = [group.key for group in self.groups]
+        if len(set(keys)) < len(keys):
+            raise ValueError(f"two groups share a dimension and name: {keys}")
+        stray = sorted(set(self.totals) - set(keys))
         if stray:
             raise ValueError(f"totals name groups the call lacks: {stray}")
 

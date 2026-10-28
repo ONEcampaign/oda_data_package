@@ -36,7 +36,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Run ty
-        run: uv run ty check 'src/oda_data'
+        run: uv run ty check
 
   # The generated files must match what their scripts write. The 2.x map reads
   # the v2.8.2 tag, so this job clones the full history and the tags.

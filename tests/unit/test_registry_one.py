@@ -467,36 +467,42 @@ def test_recipient_oda_with_imputed_multilateral_has_no_gross_basis(
 # EU Institutions beside their funders ------------------------------------------------
 
 
+#: 918's net and grant-equivalent ODA in 2019 less every other provider's line
+#: 2102: France, Germany and Norway on net flows, France alone on grant
+#: equivalents.
+EU_NET_2019 = {
+    "net_disbursement": 50.0 - 10.0 - 20.0 - 1.0,
+    "grant_equivalent": 40.0 - 9.0,
+}
+
+
 @pytest.mark.parametrize(
-    ("providers", "basis", "eu_value"),
+    ("providers", "basis"),
     [
         pytest.param(
-            [FRANCE, GERMANY, EU_INSTITUTIONS],
-            "net_disbursement",
-            50.0 - 10.0 - 20.0,
-            id="members",
+            [FRANCE, GERMANY, EU_INSTITUTIONS], "net_disbursement", id="members"
         ),
+        pytest.param([FRANCE, EU_INSTITUTIONS], "net_disbursement", id="a-member"),
         pytest.param(
             [FRANCE, GERMANY, NORWAY, EU_INSTITUTIONS],
             "net_disbursement",
-            50.0 - 10.0 - 20.0 - 1.0,
             id="a-non-member-that-pays",
         ),
-        pytest.param([EU_INSTITUTIONS], "net_disbursement", 50.0, id="alone"),
-        pytest.param(
-            [FRANCE, EU_INSTITUTIONS], "grant_equivalent", 40.0 - 9.0, id="ge"
-        ),
+        pytest.param([EU_INSTITUTIONS], "net_disbursement", id="alone"),
+        pytest.param([FRANCE, EU_INSTITUTIONS], "grant_equivalent", id="ge"),
     ],
 )
-def test_eu_institutions_keep_what_the_named_providers_did_not_pay(
-    eu: Context, providers: list[int], basis: str, eu_value: float
+def test_eu_institutions_keep_what_no_other_provider_paid(
+    eu: Context, providers: list[int], basis: str
 ) -> None:
+    """918's row nets every provider's line 2102, Norway's included, whichever
+    providers the call names."""
     df = eu.get(
         "one.dac1.total_oda_eu_attributed", years=2019, providers=providers, basis=basis
     )
     found = _values(df, "provider")
 
-    assert found[(str(EU_INSTITUTIONS),)] == pytest.approx(eu_value)
+    assert found[(str(EU_INSTITUTIONS),)] == pytest.approx(EU_NET_2019[basis])
     if FRANCE in providers:
         assert found[(str(FRANCE),)] == (
             300.0 if basis == "net_disbursement" else 310.0
@@ -523,7 +529,7 @@ def test_eu_institutions_sum_with_their_funders(eu: Context) -> None:
         basis="net_disbursement",
     )
 
-    assert df["value"].tolist() == [pytest.approx(300.0 + 400.0 + 20.0)]
+    assert df["value"].tolist() == [pytest.approx(300.0 + 400.0 + 19.0)]
     with pytest.raises(UnsupportedQueryError, match="EU Institutions"):
         eu.get("oecd.dac1.total_oda", years=2019, providers=providers, by=["year"])
 
@@ -539,9 +545,91 @@ def test_eu_institutions_total_with_their_funders(eu: Context) -> None:
         basis="net_disbursement",
     )
 
-    assert df["value"].tolist() == [pytest.approx(300.0 + 400.0 + 20.0)]
+    assert df["value"].tolist() == [pytest.approx(300.0 + 400.0 + 19.0)]
     with pytest.raises(UnsupportedQueryError, match="group 'eu' holds EU"):
         eu.get("oecd.dac1.total_oda", years=2019, providers=total(eu_group))
+
+
+def test_a_subtotal_with_eu_institutions_keeps_its_value_beside_another_funder(
+    eu: Context,
+) -> None:
+    """France and 918 are worth the same with Germany in the call or not, and
+    with Germany add up to the total of all three."""
+    pair = total(Group("fr_eu", [FRANCE, EU_INSTITUTIONS]))
+    kwargs = {"years": 2019, "basis": "net_disbursement"}
+    alone = eu.get("one.dac1.total_oda_eu_attributed", providers=pair, **kwargs)
+    beside = _values(
+        eu.get("one.dac1.total_oda_eu_attributed", providers=[pair, GERMANY], **kwargs),
+        "provider",
+    )
+    everything = eu.get(
+        "one.dac1.total_oda_eu_attributed",
+        providers=total(Group("all", [FRANCE, GERMANY, EU_INSTITUTIONS])),
+        **kwargs,
+    )
+
+    assert alone["value"].tolist() == [pytest.approx(300.0 + 19.0)]
+    assert beside[("fr_eu",)] == pytest.approx(300.0 + 19.0)
+    assert beside[("fr_eu",)] + beside[(str(GERMANY),)] == pytest.approx(
+        everything["value"].iloc[0]
+    )
+
+
+#: 2024 is the table's last year. France paid 918 in 2023 and has not reported
+#: line 2102 in 2024; Germany pays in both years, more than 918 spent in 2023.
+_UNREPORTED_ROWS = [
+    (FRANCE, 2023, 11010, 1160, "A", 100.0),
+    (FRANCE, 2024, 11010, 1160, "A", 100.0),
+    (EU_INSTITUTIONS, 2023, 11010, 1160, "A", 30.0),
+    (EU_INSTITUTIONS, 2024, 11010, 1160, "A", 30.0),
+    (FRANCE, 2023, 2102, 1160, "A", 10.0),
+    (GERMANY, 2023, 2102, 1160, "A", 25.0),
+    (GERMANY, 2024, 2102, 1160, "A", 25.0),
+]
+
+
+@pytest.mark.parametrize(
+    ("allow_partial", "expected_2024"),
+    [(False, None), (True, 30.0 - 25.0)],
+    ids=["null", "allow-partial"],
+)
+@pytest.mark.parametrize("shape", ["rows", "total", "by-year"])
+def test_eu_institutions_are_incomplete_while_a_funder_has_not_reported(
+    allow_partial: bool, expected_2024: float | None, shape: str
+) -> None:
+    """France's 2023 payment has no 2024 counterpart yet, so 918's 2024 row,
+    and a sum that holds it, covers only Germany's payment. 918's 2023 row
+    is negative, as computed."""
+    pair = [FRANCE, EU_INSTITUTIONS]
+    call = {
+        "rows": {"providers": pair},
+        "total": {"providers": total(Group("pair", pair))},
+        "by-year": {"providers": pair, "by": ["year"]},
+    }[shape]
+    with Context._from_parts(FakeTables(dac1=_UNREPORTED_ROWS), FakeFactors()) as ctx:
+        query = ctx.query(
+            "one.dac1.total_oda_eu_attributed",
+            years=[2023, 2024],
+            allow_partial=allow_partial,
+            **call,
+        )
+        frame = query.to_pandas()
+        explained = query.explain()
+
+    eu_2023 = 30.0 - 10.0 - 25.0
+    offset = 0.0 if shape == "rows" else 100.0
+    key = {"rows": (str(EU_INSTITUTIONS),), "total": ("pair",), "by-year": ()}[shape]
+    found = _values(frame, *(("provider",) if key else ()), "year")
+    assert found[(*key, 2023)] == pytest.approx(offset + eu_2023)
+    if expected_2024 is None:
+        assert pd.isna(found[(*key, 2024)])
+    else:
+        assert found[(*key, 2024)] == pytest.approx(offset + expected_2024)
+    assert (
+        "EU Institutions (918) in 2024 is incomplete: France (4) has not "
+        "reported line 2102" in explained
+    )
+    assert "Germany (5)" not in explained
 
 
 def test_a_group_total_of_eu_institutions_and_a_member_sums_on_dac2a(
@@ -585,7 +673,7 @@ def _eu_gni(year: int, members: frozenset[int] | None = None) -> float:
 def test_eu_institutions_gni_is_the_gni_of_each_years_members(eu: Context) -> None:
     """The United Kingdom counts in 2019 and not in 2021. Cyprus skips 2021,
     so it counts as zero there. Germany stops after 2021, so 918's 2022 GNI is
-    null unless the call allows partial sums."""
+    incomplete: null unless the call allows partial values."""
     query = eu.query("one.dac1.gni", years=[2019, 2021, 2022], providers=918)
     strict = query.to_pandas()
     partial = eu.get(
@@ -605,8 +693,89 @@ def test_eu_institutions_gni_is_the_gni_of_each_years_members(eu: Context) -> No
         explained
     )
     assert "Cyprus (30)" in explained
-    assert "EU Institutions (918) GNI is null in 2022" in explained
+    assert (
+        "EU Institutions (918) in 2022 is incomplete: Germany (5) has not "
+        "reported GNI" in explained
+    )
     assert "Germany (5)" in explained
+
+
+@pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
+@pytest.mark.parametrize(
+    "indicator",
+    ["one.dac1.gni", "one.dac1.gni_fixed_eu27", "one.dac1.total_oda_eu_attributed"],
+)
+def test_a_method_gives_each_year_what_a_call_for_that_year_gives(
+    eu: Context, indicator: str, allow_partial: bool
+) -> None:
+    """A Method's rows for a year do not depend on the other years asked."""
+    kwargs = {
+        "providers": [FRANCE, EU_INSTITUTIONS],
+        "basis": "net_disbursement",
+        "allow_partial": allow_partial,
+    }
+    years = [2019, 2021, 2022]
+    together = _values(eu.get(indicator, years=years, **kwargs), "provider", "year")
+    alone = {
+        key: value
+        for year in years
+        for key, value in _values(
+            eu.get(indicator, years=year, **kwargs), "provider", "year"
+        ).items()
+    }
+
+    assert together == pytest.approx(alone, nan_ok=True)
+
+
+#: France stops reporting GNI after 2023, so 918's 2024 GNI holds Germany's
+#: alone. Norway reports ODA and GNI in both years.
+_RATIO_ROWS = [
+    (FRANCE, 2023, 1, 1140, "A", 1000.0),
+    (FRANCE, 2024, 11010, 1160, "A", 1.0),
+    (GERMANY, 2023, 1, 1140, "A", 2000.0),
+    (GERMANY, 2024, 1, 1140, "A", 2000.0),
+    (EU_INSTITUTIONS, 2023, 11010, 1160, "A", 30.0),
+    (EU_INSTITUTIONS, 2024, 11010, 1160, "A", 30.0),
+    (NORWAY, 2023, 1, 1140, "A", 100.0),
+    (NORWAY, 2024, 1, 1140, "A", 100.0),
+    (NORWAY, 2023, 11010, 1160, "A", 10.0),
+    (NORWAY, 2024, 11010, 1160, "A", 10.0),
+]
+
+
+@pytest.mark.parametrize("shape", ["total", "by-year"])
+@pytest.mark.parametrize(
+    ("allow_partial", "expected_2024"),
+    [(False, None), (True, 100 * (30.0 + 10.0) / (2000.0 + 100.0))],
+    ids=["null", "allow-partial"],
+)
+def test_a_group_ratio_is_null_when_a_members_denominator_is_incomplete(
+    allow_partial: bool, expected_2024: float | None, shape: str
+) -> None:
+    pair = [EU_INSTITUTIONS, NORWAY]
+    call = {
+        "total": {"providers": total(Group("pair", pair))},
+        "by-year": {"providers": pair, "by": ["year"]},
+    }[shape]
+    with Context._from_parts(FakeTables(dac1=_RATIO_ROWS), FakeFactors()) as ctx:
+        query = ctx.query(
+            "one.dac1.oda_gni_ratio",
+            years=[2023, 2024],
+            allow_partial=allow_partial,
+            **call,
+        )
+        found = _values(query.to_pandas(), "year")
+        explained = query.explain()
+
+    assert found[(2023,)] == pytest.approx(100 * (30.0 + 10.0) / (3000.0 + 100.0))
+    if expected_2024 is None:
+        assert pd.isna(found[(2024,)])
+    else:
+        assert found[(2024,)] == pytest.approx(expected_2024)
+    assert (
+        "EU Institutions (918) in 2024 is incomplete: France (4) has not "
+        "reported GNI" in explained
+    )
 
 
 def test_eu_institutions_fixed_eu27_gni_leaves_the_united_kingdom_out(

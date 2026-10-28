@@ -621,54 +621,9 @@
         "dac1"
       ],
       "source": {
-        "kind": "oda-data 2.8.2",
-        "request": {
-          "function": "eu_attributed",
-          "code": "DAC1.10.1010",
-          "arguments": {
-            "years": [
-              2019,
-              2023
-            ],
-            "providers": [
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              9,
-              10,
-              18,
-              21,
-              22,
-              30,
-              40,
-              45,
-              50,
-              61,
-              62,
-              68,
-              69,
-              72,
-              75,
-              76,
-              77,
-              82,
-              83,
-              84,
-              918
-            ],
-            "measure": [
-              "net_disbursement"
-            ]
-          },
-          "by": [
-            "provider",
-            "year"
-          ]
-        }
+        "kind": "OECD",
+        "detail": "DAC1 line 1010 (total ODA, net disbursements), flow 1140, of each EU27 member; for EU Institutions (918), its line 1010 less the line 2102 (contributions to EU Institutions), flow 1140, of every provider other than 918 and the aggregates (codes from 20000), the United Kingdom included",
+        "sql": "SELECT donor_code, year, value FROM {dac1} WHERE donor_code IN (1, 2, 3, 4, 5, 6, 7, 9, 10, 18, 21, 22, 30, 40, 45, 50, 61, 62, 68, 69, 72, 75, 76, 77, 82, 83, 84) AND aidtype_code = 1010 AND flows_code = 1140 AND amounttype_code = 'A' AND year IN (2019, 2023) UNION ALL SELECT 918, year, sum(CASE WHEN donor_code = 918 AND aidtype_code = 1010 THEN value WHEN donor_code <> 918 AND donor_code < 20000 AND aidtype_code = 2102 THEN -value ELSE 0 END) FROM {dac1} WHERE aidtype_code IN (1010, 2102) AND flows_code = 1140 AND amounttype_code = 'A' AND year IN (2019, 2023) GROUP BY year"
       },
       "tolerance": {
         "rel": 1e-09,
@@ -727,8 +682,8 @@
         "83|2023": 140.930705,
         "84|2019": 67.67,
         "84|2023": 213.42,
-        "918|2019": 1738.7084800000005,
-        "918|2023": 19463.369791000005,
+        "918|2019": -599.0515200000019,
+        "918|2023": 18801.33144200001,
         "9|2019": 381.0,
         "9|2023": 454.87
       },

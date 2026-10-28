@@ -45,7 +45,7 @@ from oda_data._compile import filtered, literal, literals
 from oda_data._errors import ImputationConservationError, UnmappedChannelError
 from oda_data._groups import broad_sectors
 from oda_data._methods import channels
-from oda_data._model import ResolvedCall
+from oda_data._model import MethodRows, ResolvedCall
 from oda_data._names import load_json
 
 if TYPE_CHECKING:
@@ -101,7 +101,7 @@ _BROAD = "_imputation_broad_sectors"
 
 def imputed_rows(
     cursor: DuckDBPyConnection, call: ResolvedCall, /, *, core: Indicator
-) -> pa.Table:
+) -> MethodRows:
     """Spread core contributions over their channels' spending.
 
     Follows ``_model.MethodFunction`` once ``core`` is bound.
@@ -114,7 +114,8 @@ def imputed_rows(
         core: The indicator whose rows are the core contributions.
 
     Returns:
-        Rows in ``OUTPUT_SCHEMA``.
+        Rows in ``OUTPUT_SCHEMA``. A contribution is spread whole, so no row
+        is incomplete.
 
     Raises:
         UnmappedChannelError: A multilateral reporter with spending in the
@@ -124,7 +125,7 @@ def imputed_rows(
     """
     contributions = core_contributions(cursor, call, core)
     if contributions.num_rows == 0:
-        return OUTPUT_SCHEMA.empty_table()
+        return MethodRows(OUTPUT_SCHEMA.empty_table())
 
     years = sorted(set(contributions["year"].to_pylist()))
     proxy_channels = channels.proxies()["proxy_channel"].drop_null().to_pylist()
@@ -144,7 +145,7 @@ def imputed_rows(
         }
     )
     with _views(cursor, {_ROWS: rows, _BROAD: sectors}):
-        return _read(
+        table = _read(
             cursor,
             f"""
             SELECT r.provider, r.year, r.channel, r.recipient, r.sector,
@@ -154,6 +155,7 @@ def imputed_rows(
             """,
             OUTPUT_SCHEMA,
         )
+    return MethodRows(table)
 
 
 def core_contributions(

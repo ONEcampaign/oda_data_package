@@ -99,7 +99,7 @@ The first block is 2.x code. On 3.0 its import raises `RemovedIn3Error`, whose m
 | `measure=`                                 | `basis=`                                                               |
 | `currency=`, `base_year=`                  | `unit=oda.current(currency)` or `unit=oda.constant(currency, year)`    |
 | `currency="LCU"`                           | each provider's currency as its own unit, such as `oda.current("JPY")` |
-| `use_bulk_download=True`                   | nothing: 3.0 always reads the bulk files                               |
+| `use_bulk_download=True`                   | nothing, since 3.0 always reads the bulk files                         |
 | `set_data_path(path)`                      | `oda.Context(cache_dir=path)`                                          |
 | columns `donor_code`, `donor_name`         | `provider`, `provider_name`                                            |
 | columns `recipient_code`, `recipient_name` | `recipient`, `recipient_name`                                          |
@@ -111,21 +111,21 @@ Two defaults also differ. A 2.x call without `providers=` read every provider in
 
 Each 2.x top-level name raises `RemovedIn3Error`, an `ImportError`, whose message gives its replacement.
 
-| 2.x name                                                                  | In 3.0                                                                                                                                        |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OECDClient`                                                              | `oda.get(indicator, years=..., providers=..., basis=..., unit=...)`                                                                           |
-| `ODAData`                                                                 | `oda.get()`; `oda.indicators()` lists the indicators                                                                                          |
-| `DAC1Data`, `DAC2AData`, `CRSData`, `MultiSystemData`                     | `oda_reader.download_dac1()` and its siblings, or `oda_reader.scan("dac1")`, for the raw tables; `oda.records()` for the rows behind a number |
-| `AidDataData`                                                             | `oda_reader.download_aiddata()`                                                                                                               |
-| `add_names_columns`                                                       | `oda.add_names(df)`; every result already has its name columns                                                                                |
-| `add_sectors`, `add_broad_sectors`                                        | `by=["sector"]` or `by=["broad_sector"]` on a CRS indicator                                                                                   |
-| `add_gni_share_column`                                                    | `oecd.dac1.oda_gni_ratio`; `one.dac1.oda_gni_ratio_fixed_eu27` for EU Institutions as 2.x computed them                                       |
-| `bilateral_policy_marker`                                                 | one indicator per marker, such as `oecd.crs.gender_marker`, with `by=["score"]`                                                               |
-| `provider_groupings`, `recipient_groupings`                               | `oda.groups`, and `oda.total(group)` for a total                                                                                              |
-| `sector_imputations`                                                      | `one.crs.imputed_multilateral_oda` with `by=["sector"]`                                                                                       |
-| `imputation_quality_report`                                               | `oda.records("one.crs.imputed_multilateral_oda", ...)`, grouped by `allocation_status`                                                        |
-| `cache`, `clear_cache`, `disable_cache`, `enable_cache`, `set_cache_root` | `oda.Context(cache_dir=...)`, and `oda_reader.cache_info()` and its siblings to manage the cache                                              |
-| `set_data_path`                                                           | `oda.Context(cache_dir=...)`; `Query.to_parquet(path)` writes a result                                                                        |
+| 2.x name                                                                  | In 3.0                                                                                                                                            |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OECDClient`                                                              | `oda.get(indicator, years=..., providers=..., basis=..., unit=...)`                                                                               |
+| `ODAData`                                                                 | `oda.get()`, and `oda.indicators()` lists the indicators                                                                                          |
+| `DAC1Data`, `DAC2AData`, `CRSData`, `MultiSystemData`                     | `oda_reader.download_dac1()` and its siblings, or `oda_reader.scan("dac1")`, for the raw tables, and `oda.records()` for the rows behind a number |
+| `AidDataData`                                                             | `oda_reader.download_aiddata()`                                                                                                                   |
+| `add_names_columns`                                                       | `oda.add_names(df)`, though every result already has its name columns                                                                             |
+| `add_sectors`, `add_broad_sectors`                                        | `by=["sector"]` or `by=["broad_sector"]` on a CRS indicator                                                                                       |
+| `add_gni_share_column`                                                    | `oecd.dac1.oda_gni_ratio`, and `one.dac1.oda_gni_ratio_fixed_eu27` for EU Institutions as 2.x computed them                                       |
+| `bilateral_policy_marker`                                                 | one indicator per marker, such as `oecd.crs.gender_marker`, with `by=["score"]`                                                                   |
+| `provider_groupings`, `recipient_groupings`                               | `oda.groups`, and `oda.total(group)` for a total                                                                                                  |
+| `sector_imputations`                                                      | `one.crs.imputed_multilateral_oda` with `by=["sector"]`                                                                                           |
+| `imputation_quality_report`                                               | `oda.records("one.crs.imputed_multilateral_oda", ...)`, grouped by `allocation_status`                                                            |
+| `cache`, `clear_cache`, `disable_cache`, `enable_cache`, `set_cache_root` | `oda.Context(cache_dir=...)`, and `oda_reader.cache_info()` and its siblings to manage the cache                                                  |
+| `set_data_path`                                                           | `oda.Context(cache_dir=...)`, and `Query.to_parquet(path)` writes a result                                                                        |
 
 The 2.x groups `dac_members`, `eu27_total`, `all_official`, and `dac1_aggregates` have no 3.0 group. Pass 918 or the OECD aggregate code itself, since a group holding 918 and EU members would count EU money twice.
 
@@ -157,6 +157,7 @@ A `changes` entry gives a different number from 2.x for one or more of these rea
 
 - 3 codes: 2.x returned no rows on today's DAC1 (`DAC1.40.3`, `DAC1.40.4`, `DAC1.40.11002`). 3.0 gives line 3 as a per cent of GNI, population in millions of people through `oecd.dac1.population`, and ODA/GNI computed from ODA and GNI, which differs from the published per cent by up to 0.005 points of rounding.
 - `ONE.40.1010_11010_1` and `ONE.40.1010_1`: ODA/GNI is in per cent, where 2.x gave a fraction, and EU Institutions' ratio divides by the GNI of today's EU27 in every year, as 2.x's `add_gni_share_column` did. 2.x shipped no function for the second code.
+- `get_eui_plus_bilateral_providers_indicator`: 2.x netted EU Institutions' (918) row of the line 2102 of today's EU27 only. `one.dac1.total_oda_eu_attributed` nets the line 2102 of every provider other than 918, so no dollar is counted twice when 918 is shown beside any provider, including the United Kingdom before 2021 and Türkiye. 918's row is lower wherever a provider outside the EU27 paid it, and negative in 21 years from 1971 to 2019.
 - `ONE.P.40.T.T.S_M`: 2.x gave three-year rolling shares of ODA and other official flows by channel. The 3.0 call gives single-year shares of ODA, and `one.crs.imputed_multilateral_oda` applies the three-year shares itself.
 
 The 15 `no_data` entries are COVID-19 slugs that read DAC1 lines 8852 to 8856, which the OECD publishes in no year. `one.crs.covid_oda` counts bilateral ODA the CRS tags `#COVID-19`.
@@ -165,20 +166,21 @@ The 15 `no_data` entries are COVID-19 slugs that read DAC1 lines 8852 to 8856, w
 
 Each row runs one call in oda-data 2.8.2 and in 3.0 on the same OECD releases, so a difference comes from a counting rule. Values are current USD millions, and ODA/GNI is in per cent.
 
-| Call                                                                  | 2.x code                  | Year |     2.8.2 |       3.0 | Why it moves                                                                                    |
-| --------------------------------------------------------------------- | ------------------------- | ---: | --------: | --------: | ----------------------------------------------------------------------------------------------- |
-| Headline total ODA, France                                            | `ONE.10.1010_11010`       | 2022 | 16,016.25 | 16,016.25 | Same number                                                                                     |
-| ODA/GNI, EU Institutions                                              | `ONE.40.1010_11010_1`     | 2022 |      null |    0.1355 | 3.0 divides by the EU27's GNI                                                                   |
-| DAC2A bilateral ODA, France, summed over recipients                   | `DAC2A.10.206`            | 2022 | 99,704.52 | 10,535.47 | 2.x's rows held recipient totals and multilateral recipients                                    |
-| DAC2A imputed multilateral ODA, France, summed over recipients        | `DAC2A.10.106`            | 2022 | 50,586.66 |  6,504.19 | 2.x's rows held recipient totals                                                                |
-| CRS bilateral ODA, IDA                                                | `CRS.P.10`                | 2022 | 23,610.30 |   no rows | IDA's rows are its own outflows (`bi_multi` 4), which 3.0 counts in `oecd.crs.multilateral_oda` |
-| CRS bilateral ODA, grant equivalents, France                          | `CRS.P.10`                | 2023 |  8,268.05 |  8,488.86 | 3.0 adds France's private sector instruments (category 60), USD 220.81 million                  |
-| CRS ODA and other official flows to education, every category, France | `CRS.P.T.T.T.110`         | 2022 |     79.77 |  1,600.22 | 2.x read only the rows reported at heading level, in every category                             |
-| CRS private development finance, all recipients                       | `CRS.R.30`                | 2022 | 11,279.10 | 10,735.08 | 3.0 leaves out the category 30 rows of official providers                                       |
-| CRS bilateral ODA grants to education projects, France                | `CRS.P.10.100.C.110`      | 2022 |   no rows |    190.00 | 2.x sector codes returned nothing                                                               |
-| CRS bilateral ODA grants to health projects, France                   | `CRS.P.10.100.C.120`      | 2022 |   no rows |    472.12 | 2.x sector codes returned nothing                                                               |
-| Gender marker, principal, Norway                                      | `bilateral_policy_marker` | 2022 |    190.74 |    190.74 | Same number, as in every marker sample                                                          |
-| Core ODA, 3.0 headline basis against 2.x net flows, France            | `ONE.10.1010C`            | 2022 | 14,999.35 | 13,495.02 | The default basis is grant equivalents from 2018                                                |
+| Call                                                                  | 2.x code                                     | Year |     2.8.2 |       3.0 | Why it moves                                                                                                        |
+| --------------------------------------------------------------------- | -------------------------------------------- | ---: | --------: | --------: | ------------------------------------------------------------------------------------------------------------------- |
+| Headline total ODA, France                                            | `ONE.10.1010_11010`                          | 2022 | 16,016.25 | 16,016.25 | Same number                                                                                                         |
+| ODA/GNI, EU Institutions                                              | `ONE.40.1010_11010_1`                        | 2022 |      null |    0.1355 | 3.0 divides by the EU27's GNI                                                                                       |
+| EU Institutions' attributed ODA, net flows                            | `get_eui_plus_bilateral_providers_indicator` | 2019 |  1,738.71 |   -599.05 | 2.x netted the line 2102 of today's EU27 only; 3.0 nets every provider that reports it, which leaves 918 below zero |
+| DAC2A bilateral ODA, France, summed over recipients                   | `DAC2A.10.206`                               | 2022 | 99,704.52 | 10,535.47 | 2.x's rows held recipient totals and multilateral recipients                                                        |
+| DAC2A imputed multilateral ODA, France, summed over recipients        | `DAC2A.10.106`                               | 2022 | 50,586.66 |  6,504.19 | 2.x's rows held recipient totals                                                                                    |
+| CRS bilateral ODA, IDA                                                | `CRS.P.10`                                   | 2022 | 23,610.30 |   no rows | IDA's rows are its own outflows (`bi_multi` 4), which 3.0 counts in `oecd.crs.multilateral_oda`                     |
+| CRS bilateral ODA, grant equivalents, France                          | `CRS.P.10`                                   | 2023 |  8,268.05 |  8,488.86 | 3.0 adds France's private sector instruments (category 60), USD 220.81 million                                      |
+| CRS ODA and other official flows to education, every category, France | `CRS.P.T.T.T.110`                            | 2022 |     79.77 |  1,600.22 | 2.x read only the rows reported at heading level, in every category                                                 |
+| CRS private development finance, all recipients                       | `CRS.R.30`                                   | 2022 | 11,279.10 | 10,735.08 | 3.0 leaves out the category 30 rows of official providers                                                           |
+| CRS bilateral ODA grants to education projects, France                | `CRS.P.10.100.C.110`                         | 2022 |   no rows |    190.00 | 2.x sector codes returned nothing                                                                                   |
+| CRS bilateral ODA grants to health projects, France                   | `CRS.P.10.100.C.120`                         | 2022 |   no rows |    472.12 | 2.x sector codes returned nothing                                                                                   |
+| Gender marker, principal, Norway                                      | `bilateral_policy_marker`                    | 2022 |    190.74 |    190.74 | Same number, as in every marker sample                                                                              |
+| Core ODA, 3.0 headline basis against 2.x net flows, France            | `ONE.10.1010C`                               | 2022 | 14,999.35 | 13,495.02 | The default basis is grant equivalents from 2018                                                                    |
 
 Releases: dac1 `0x8DF2539D20A32DF`, dac2a `0x8DF2539E5D52F9D`, crs `0x8DF2533665E7CB7`, multisystem `0x8DF2522071A444B`. oda-data 2.8.2 against 3.0.0.
 

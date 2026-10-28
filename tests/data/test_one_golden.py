@@ -10,12 +10,14 @@ Institutions ratios and the Cyprus GNI gaps to a DAC1 release.
 """
 
 import math
+import warnings
 from collections.abc import Iterator
 
 import pytest
 
 import oda_data as oda
-from oda_data._errors import OfflineCacheMissError
+from oda_data._errors import OfflineCacheMissError, UnsupportedQueryError
+from oda_data._groups import Group
 from oda_data._names import eu_members
 from oda_data._resolve import resolve_group
 from oda_data._tables import OecdTables
@@ -157,17 +159,27 @@ def test_recipient_oda_with_imputed_multilateral_is_its_two_parts(
         assert value == pytest.approx(expected, rel=1e-9), key
 
 
+def _paid_918(tables: OecdTables, *, flow: int) -> dict[int, float]:
+    """Each year's line 2102 under one flow, summed over every provider but
+    918 and the aggregates (codes from 20000)."""
+    paid: dict[int, float] = {}
+    for (code, year), value in _line(tables, line=2102, flow=flow).items():
+        if code != EU_INSTITUTIONS and code < 20000:
+            paid[year] = paid.get(year, 0.0) + value
+    return paid
+
+
 @pytest.mark.parametrize(
     ("basis", "line", "flow"),
     [("net_disbursement", 1010, 1140), ("grant_equivalent", 11010, 1160)],
 )
 @pytest.mark.parametrize("year", [2019, 2023])
-def test_eu_institutions_keep_what_eu27_did_not_pay(
+def test_eu_institutions_keep_what_no_other_provider_paid(
     tables: OecdTables, basis: str, line: int, flow: int, year: int
 ) -> None:
-    """Expected: 918's total ODA times 1 - (EU27's line 2102 / 918's total ODA),
-    the weight 2.8.1's ``research.eu.get_eui_oda_weights`` gives for the EU27
-    on the same flow."""
+    """Expected: 918's total ODA less the line 2102 of every provider but 918
+    and the aggregates on the same flow, the United Kingdom included; each
+    EU27 member's row is its total ODA."""
     eu27 = resolve_group(oda.groups.eu27, "provider", years=[year]).members[year]
     df = oda.get(
         "one.dac1.total_oda_eu_attributed",
@@ -176,17 +188,110 @@ def test_eu_institutions_keep_what_eu27_did_not_pay(
         basis=basis,
     )
     found = _by_provider_year(df)
-    spent = _line(tables, line=line, flow=flow)[(EU_INSTITUTIONS, year)]
-    contributions = _line(tables, line=2102, flow=flow)
-    paid = sum(contributions.get((code, year), 0.0) for code in eu27)
-    weight = 1 - paid / spent
-
-    assert 0 < weight < 1
-    assert found[(EU_INSTITUTIONS, year)] == pytest.approx(spent * weight, rel=1e-9)
     total_oda = _line(tables, line=line, flow=flow)
+    expected = total_oda[(EU_INSTITUTIONS, year)] - _paid_918(tables, flow=flow)[year]
+
+    assert found[(EU_INSTITUTIONS, year)] == pytest.approx(expected, rel=1e-9)
     for code in eu27:
         if (code, year) in total_oda:
             assert found[(code, year)] == pytest.approx(total_oda[(code, year)])
+
+
+def test_eu_institutions_are_negative_in_2019_on_grant_equivalents() -> None:
+    """Providers recorded more line 2102 (15,866m) than the 14,937m of ODA 918
+    reported in 2019; the row shows the difference."""
+    df = oda.get(
+        "one.dac1.total_oda_eu_attributed", years=2019, providers=EU_INSTITUTIONS
+    )
+
+    assert df["value"].iloc[0] < 0
+
+
+def test_eu_institutions_are_null_in_dac1s_last_year(tables: OecdTables) -> None:
+    """In DAC1's last year, a preliminary one, most providers that paid 918 the
+    year before have not reported line 2102, so 918's row is null unless the
+    call allows partial values, which net the payments reported so far."""
+    [(last,)] = tables.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+    contributions = _line(tables, line=2102, flow=1160)
+    paid_before = {
+        code
+        for code, year in contributions
+        if year == last - 1 and code != EU_INSTITUTIONS and code < 20000
+    }
+    unreported = {code for code in paid_before if (code, last) not in contributions}
+    query = oda.query(
+        "one.dac1.total_oda_eu_attributed", years=last, providers=EU_INSTITUTIONS
+    )
+    partial = oda.get(
+        "one.dac1.total_oda_eu_attributed",
+        years=last,
+        providers=EU_INSTITUTIONS,
+        allow_partial=True,
+    )
+    spent = _line(tables, line=11010, flow=1160)[(EU_INSTITUTIONS, last)]
+
+    assert len(unreported) > len(paid_before) / 2
+    assert math.isnan(query.to_pandas()["value"].iloc[0])
+    assert partial["value"].tolist() == [
+        pytest.approx(spent - _paid_918(tables, flow=1160).get(last, 0.0), rel=1e-9)
+    ]
+    assert "EU Institutions (918) in" in query.explain()
+
+
+def test_eu_members_summed_with_eu_institutions_are_null_in_dac1s_last_year(
+    tables: OecdTables,
+) -> None:
+    """918's row in DAC1's last year nets only the line 2102 reported so far,
+    so a sum of the EU27 and 918 by year would count the rest twice. The sum
+    is null unless the call allows partial values."""
+    [(last,)] = tables.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+    call = {
+        "years": [last - 1, last],
+        "providers": [oda.groups.eu27, EU_INSTITUTIONS],
+        "by": ["year"],
+    }
+    with warnings.catch_warnings():
+        # Members missing from the preliminary year warn, as the data has it.
+        warnings.simplefilter("ignore", oda.OdaDataWarning)
+        df = oda.get("one.dac1.total_oda_eu_attributed", **call)
+    found = dict(zip(df["year"], df["value"], strict=True))
+    partial = oda.get("one.dac1.total_oda_eu_attributed", allow_partial=True, **call)
+
+    assert found[last - 1] > 0
+    assert math.isnan(found[last])
+    assert partial["value"].iloc[-1] > 0
+
+
+def test_a_raw_total_refuses_eu_institutions_beside_a_payer_outside_the_eu() -> None:
+    """The United Kingdom left the EU in 2020 and reports line 2102 after it."""
+    with pytest.raises(UnsupportedQueryError, match=r"918\) and \[12\]"):
+        oda.get("oecd.dac1.total_oda", years=2022, providers=[12, 918], by=["year"])
+
+
+def test_a_recipient_total_is_null_where_its_provider_row_is(
+    tables: OecdTables,
+) -> None:
+    """Austria (1) gave Türkiye (55) a part of its imputed ODA the year before
+    DAC2A's last year and has not reported it in the last, so its row is null,
+    and so is a recipient total that holds it. allow_partial=True returns the
+    same partial value for both."""
+    [(last,)] = tables.cursor(("dac2a",)).sql("SELECT max(year) FROM dac2a").fetchall()
+    call = {
+        "years": last,
+        "providers": 1,
+        "recipients": [55, oda.total(Group("mine", [55]))],
+        "by": ["provider", "recipient", "year"],
+    }
+    strict = oda.get("one.dac2a.recipient_oda_with_imputed_multilateral", **call)
+    partial = oda.get(
+        "one.dac2a.recipient_oda_with_imputed_multilateral", allow_partial=True, **call
+    )
+
+    assert strict["recipient"].tolist() == ["55", "mine"]
+    assert strict["value"].isna().all()
+    [row, total] = partial["value"].tolist()
+    assert row == pytest.approx(total)
+    assert row > 0
 
 
 @pytest.mark.parametrize("year", [2019, 2023])

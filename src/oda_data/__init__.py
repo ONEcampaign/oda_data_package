@@ -6,8 +6,48 @@ pandas, DuckDB, pyarrow, resolvekit, oda-reader, or pydeflate.
 
 import importlib
 from importlib.metadata import version
+from typing import TYPE_CHECKING
 
 __version__ = version("oda_data")
+
+# Type checkers read these imports. At run time ``__getattr__`` serves the names.
+if TYPE_CHECKING:
+    from oda_data._context import Context, Query, get, query, records
+    from oda_data._discover import (
+        IndicatorInfo,
+        add_names,
+        describe,
+        indicators,
+        search,
+    )
+    from oda_data._errors import (
+        AmbiguousEntityError,
+        BasisRangeError,
+        DataUnavailableError,
+        DimensionError,
+        ImputationConservationError,
+        MissingFactorError,
+        OdaDataError,
+        OdaDataWarning,
+        OfflineCacheMissError,
+        ReleaseMismatchError,
+        RemovedIn3Error,
+        UnknownEntityError,
+        UnknownIndicatorError,
+        UnmappedChannelError,
+        UnsupportedQueryError,
+    )
+    from oda_data._groups import (
+        Group,
+        GroupTotal,
+        ReportedAt,
+        SectorGroup,
+        groups,
+        sectors,
+        total,
+    )
+    from oda_data._provenance import Provenance, Release, provenance
+    from oda_data._units import Unit, constant, current
 
 # Public name -> the private module that defines it.
 _LAZY: dict[str, str] = {

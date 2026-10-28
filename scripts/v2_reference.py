@@ -1,7 +1,7 @@
 """Run oda-data 2.x on the OECD tables oda-data 3.0 reads, and print its sums.
 
-Run as a script, it needs an environment with oda-data 2.x installed, never
-3.0. ``run_in_2x``, which ``scripts/refresh_goldens.py`` and
+Run as a script, it needs an environment with oda-data 2.x installed and 3.0
+absent. ``run_in_2x``, which ``scripts/refresh_goldens.py`` and
 ``scripts/imputation_delta.py`` call from the 3.0 environment, starts it as
 
     uv run --no-project --python 3.12 --with oda-data==2.8.2 python -I \
@@ -113,13 +113,16 @@ def _gni_share(call: dict) -> pd.DataFrame:
 
 
 def _eu_attributed(call: dict) -> pd.DataFrame:
+    """EU Institutions' (918) row of ``get_eui_plus_bilateral_providers_indicator``,
+    which nets the line 2102 of the call's providers and also returns their rows."""
     from oda_data.indicators.research.eu import (
         get_eui_plus_bilateral_providers_indicator,
     )
 
-    return get_eui_plus_bilateral_providers_indicator(
+    found = get_eui_plus_bilateral_providers_indicator(
         _client(call["arguments"]), call["code"]
     )
+    return found.loc[found["donor_code"] == 918]
 
 
 def _research(name: str) -> Callable[[dict], pd.DataFrame]:

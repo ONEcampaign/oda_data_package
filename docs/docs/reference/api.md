@@ -29,22 +29,22 @@ def get(
 
 Computes an indicator and returns a DataFrame in the [result schema](#result-columns).
 
-| Argument        | Takes                                                                                               | Default                                                |
-| --------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `indicator`     | An indicator id, such as `"oecd.dac1.total_oda"`. Required                                          |                                                        |
-| `years`         | A year or an iterable of years                                                                      | every year in the table                                |
-| `providers`     | DAC codes, three-letter codes, exact names, groups, and `oda.total(group)`                          | the indicator's default providers                      |
-| `recipients`    | As `providers`                                                                                      | every recipient, regional rows included                |
-| `sectors`       | CRS purpose codes, purpose names, `oda.sectors.reported_at(code)`, and `oda.sectors` groups         | every sector                                           |
-| `channels`      | Channel codes or names                                                                              | every channel                                          |
-| `modalities`    | CRS aid type codes, such as `"B01"`                                                                 | every modality                                         |
-| `finance_types` | CRS type of finance codes or names, such as `110` or `"Standard grant"`. CRS indicators only        | every finance type                                     |
-| `flows`         | Flow codes or names                                                                                 | the basis's flow                                       |
-| `lines`         | DAC1 or DAC2A line codes or names, on `oecd.dac1.lines` and `oecd.dac2a.lines`                      | every money line the basis publishes, each its own row |
-| `by`            | The dimensions the result splits by                                                                 | `("provider", "year")`                                 |
-| `basis`         | `"headline"`, `"net_disbursement"`, `"gross_disbursement"`, `"commitment"`, or `"grant_equivalent"` | the indicator's default basis                          |
-| `unit`          | A `Unit` or several. Ratios take none                                                               | current USD                                            |
-| `allow_partial` | `True` sums a group whose members did not all report, and silences the partial-year warning         | `False`                                                |
+| Argument        | Takes                                                                                                                                                                    | Default                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `indicator`     | An indicator id, such as `"oecd.dac1.total_oda"`. Required                                                                                                               |                                                        |
+| `years`         | A year or an iterable of years                                                                                                                                           | every year in the table                                |
+| `providers`     | DAC codes, three-letter codes, exact names, groups, and `oda.total(group)`                                                                                               | the indicator's default providers                      |
+| `recipients`    | As `providers`                                                                                                                                                           | every recipient, regional rows included                |
+| `sectors`       | CRS purpose codes, purpose names, `oda.sectors.reported_at(code)`, and `oda.sectors` groups                                                                              | every sector                                           |
+| `channels`      | Channel codes or names                                                                                                                                                   | every channel                                          |
+| `modalities`    | CRS aid type codes, such as `"B01"`                                                                                                                                      | every modality                                         |
+| `finance_types` | CRS type of finance codes or names, such as `110` or `"Standard grant"`. CRS indicators only                                                                             | every finance type                                     |
+| `flows`         | Flow codes or names                                                                                                                                                      | the basis's flow                                       |
+| `lines`         | DAC1 or DAC2A line codes or names, on `oecd.dac1.lines` and `oecd.dac2a.lines`                                                                                           | every money line the basis publishes, each its own row |
+| `by`            | The dimensions the result splits by                                                                                                                                      | `("provider", "year")`                                 |
+| `basis`         | `"headline"`, `"net_disbursement"`, `"gross_disbursement"`, `"commitment"`, or `"grant_equivalent"`                                                                      | the indicator's default basis                          |
+| `unit`          | A `Unit` or several. Ratios take none                                                                                                                                    | current USD                                            |
+| `allow_partial` | `True` returns partial values where it would return null: a group whose members did not all report, a row with a missing part. It also silences the partial-year warning | `False`                                                |
 
 A filter value that is a bare string is one value. Filters are sets, so a provider named twice, or in two groups, counts once. Basis, unit, and line always split the result.
 
