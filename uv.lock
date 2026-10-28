@@ -1056,7 +1056,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
-    { name = "oda-reader", specifier = ">=1.15.0rc1" },
+    { name = "oda-reader", specifier = ">=1.15.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "polars", marker = "extra == 'polars'", specifier = ">=1.0.0" },
     { name = "pyarrow", specifier = ">=17.0.0" },
@@ -1083,7 +1083,7 @@ test = [
 
 [[package]]
 name = "oda-reader"
-version = "1.15.0rc1"
+version = "1.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -1096,9 +1096,9 @@ dependencies = [
     { name = "requests" },
     { name = "requests-cache" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/ba/82f806880d165a2f9760138f1dbc6d1d89f0afc9587e35119cd83e238f0a/oda_reader-1.15.0rc1.tar.gz", hash = "sha256:2e3f5444649e553124478a4aadf617f9e8e58665b5748858c7737410fb9f6866", size = 155126, upload-time = "2026-10-27T22:47:33.993Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/10/251574e326775bae721cc7da347de54bb1a1c2a8bd2f3d762038a7892158/oda_reader-1.15.0.tar.gz", hash = "sha256:92f6bc5cc7d9147960c6c876d3c6e45ba53596d3b7363acddeba7dd855955123", size = 155400, upload-time = "2026-10-28T10:08:19.282Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/34/8892e74e91cbbf8e3041fa027e8a913a0c7d651a38064ef05ae286e85dc5/oda_reader-1.15.0rc1-py3-none-any.whl", hash = "sha256:34cb9ae716dc60d2bd3f4d337dae6ce01c8e5723eb221e8e379c8ecb733c48d8", size = 176865, upload-time = "2026-10-27T22:47:32.933Z" },
+    { url = "https://files.pythonhosted.org/packages/21/1d/cbaad26803cb103a0332a1aafeb8c219b9e200903175bbeb9c68feeba4b7/oda_reader-1.15.0-py3-none-any.whl", hash = "sha256:e96b617c3729300978d76cab607cb49a30d362d28337c484a1bfe3249a89b306", size = 177070, upload-time = "2026-10-28T10:08:17.828Z" },
 ]
 
 [[package]]

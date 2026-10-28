@@ -18,7 +18,7 @@ oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oec
 - Results have the columns `provider`, `provider_name`, `recipient`, `recipient_name`, and the other `by` dimensions, then `indicator`, `indicator_version`, `basis`, `currency`, `prices`, `base_year`, `scale`, `is_aggregate`, and `value`. 2.x's `donor_code` and `ODASchema` constants are gone.
 - DAC1 indicators default to `oda.groups.dac_countries`, and DAC2A and CRS indicators to every official provider with aggregates and private donors left out. 2.x read every provider in the table. OECD aggregate rows appear only when a filter names them.
 - Python 3.12 or later is required.
-- Downloading, caching, and cleaning the OECD tables moved to oda-reader 1.14. `oda.Context(cache_dir=..., offline=..., releases=...)` sets the cache folder, offline mode, and release pins.
+- Downloading, caching, and cleaning the OECD tables moved to oda-reader 1.15. `oda.Context(cache_dir=..., offline=..., releases=...)` sets the cache folder, offline mode, and release pins.
 
 ### Added
 
