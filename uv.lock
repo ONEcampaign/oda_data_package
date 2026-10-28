@@ -525,7 +525,7 @@ wheels = [
 
 [[package]]
 name = "imf-reader"
-version = "2.2.0"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -534,9 +534,9 @@ dependencies = [
     { name = "readerkit" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/26/f6ed424490fb49798c86eb5990448a4bba1ad7d5821c34857b9053e46ed5/imf_reader-2.2.0.tar.gz", hash = "sha256:3f725d5759b0d78875833ee9a5c66cd27d61c31bd8a553ff71eee05b5e628b57", size = 51023, upload-time = "2026-08-14T17:42:33.462Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/3b/67edd08e13c35886a0fcc56f3bd58f904286ec5e7dc5a7f6f05ed7d70c23/imf_reader-2.3.0.tar.gz", hash = "sha256:9cab989a4fd93f311b97439531f2e67797bd6b401a80182650029aff4c7e6afd", size = 52467, upload-time = "2026-10-28T10:53:05.227Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/0b/f039227891003395030935c2efeba61f72048fd6cbc7c38f678024964f68/imf_reader-2.2.0-py3-none-any.whl", hash = "sha256:b7decf529540b0d923e5fc39e5afaf899ce46d7e199b7163d1ad346bde954a4a", size = 59523, upload-time = "2026-08-14T17:42:32.392Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/11/6a2908720eeec1d946d010d5631f7dbf4fcf1ee473ae24e7faf1bf2bfef5/imf_reader-2.3.0-py3-none-any.whl", hash = "sha256:e0d56ad284ff79d0f2602384fab1281ca83d7524fcd34bf4441651b33edd19e5", size = 59490, upload-time = "2026-10-28T10:53:03.671Z" },
 ]
 
 [[package]]
@@ -1056,11 +1056,11 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
-    { name = "oda-reader", specifier = ">=1.15.0rc1" },
+    { name = "oda-reader", specifier = ">=1.15.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "polars", marker = "extra == 'polars'", specifier = ">=1.0.0" },
     { name = "pyarrow", specifier = ">=17.0.0" },
-    { name = "pydeflate", specifier = ">=2.7.0rc1" },
+    { name = "pydeflate", specifier = ">=2.7.0" },
     { name = "readerkit", specifier = ">=0.1.0" },
     { name = "resolvekit", specifier = ">=0.1.13" },
 ]
@@ -1083,7 +1083,7 @@ test = [
 
 [[package]]
 name = "oda-reader"
-version = "1.15.0rc1"
+version = "1.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -1096,9 +1096,9 @@ dependencies = [
     { name = "requests" },
     { name = "requests-cache" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/ba/82f806880d165a2f9760138f1dbc6d1d89f0afc9587e35119cd83e238f0a/oda_reader-1.15.0rc1.tar.gz", hash = "sha256:2e3f5444649e553124478a4aadf617f9e8e58665b5748858c7737410fb9f6866", size = 155126, upload-time = "2026-10-27T22:47:33.993Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/10/251574e326775bae721cc7da347de54bb1a1c2a8bd2f3d762038a7892158/oda_reader-1.15.0.tar.gz", hash = "sha256:92f6bc5cc7d9147960c6c876d3c6e45ba53596d3b7363acddeba7dd855955123", size = 155400, upload-time = "2026-10-28T10:08:19.282Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/34/8892e74e91cbbf8e3041fa027e8a913a0c7d651a38064ef05ae286e85dc5/oda_reader-1.15.0rc1-py3-none-any.whl", hash = "sha256:34cb9ae716dc60d2bd3f4d337dae6ce01c8e5723eb221e8e379c8ecb733c48d8", size = 176865, upload-time = "2026-10-27T22:47:32.933Z" },
+    { url = "https://files.pythonhosted.org/packages/21/1d/cbaad26803cb103a0332a1aafeb8c219b9e200903175bbeb9c68feeba4b7/oda_reader-1.15.0-py3-none-any.whl", hash = "sha256:e96b617c3729300978d76cab607cb49a30d362d28337c484a1bfe3249a89b306", size = 177070, upload-time = "2026-10-28T10:08:17.828Z" },
 ]
 
 [[package]]
@@ -1495,7 +1495,7 @@ wheels = [
 
 [[package]]
 name = "pydeflate"
-version = "2.7.0rc1"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -1510,9 +1510,9 @@ dependencies = [
     { name = "resolvekit" },
     { name = "wbgapi" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/16/4c632ce2e48ac7432e030df93e2e1a976bd3b2cf7f49aac963665ada8a97/pydeflate-2.7.0rc1.tar.gz", hash = "sha256:224fefb065242badedcab9d5444596bcfacb87b5b5b5210110e72d04e4fb8c6a", size = 60752, upload-time = "2026-10-27T19:56:08.346Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/7e/5cbeb6becf597037cd9b19095044fff4eb5e02f995ef149045f52610583d/pydeflate-2.7.0.tar.gz", hash = "sha256:874ea993a64a1cfe08a6bc4b4e646fff248c88b3c8d83a499c53b52b9476d2f1", size = 60842, upload-time = "2026-10-28T11:17:35.158Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/89/770b76038eb96cdb8523988464926c686368a7dc19e776b97df01b7d5744/pydeflate-2.7.0rc1-py3-none-any.whl", hash = "sha256:90fc61c3966f032adb1f3a196a7a14051028df83a378c12c4abd81170403d5c6", size = 80844, upload-time = "2026-10-27T19:56:07.274Z" },
+    { url = "https://files.pythonhosted.org/packages/46/82/65826cd657b8f85af50156e4f4689aad21b74fd975aad476fc3cca3bd0e6/pydeflate-2.7.0-py3-none-any.whl", hash = "sha256:c4d86200a13316221e8123b371f9064529e9814ddb08d2923e8824854295628c", size = 81002, upload-time = "2026-10-28T11:17:33.992Z" },
 ]
 
 [[package]]

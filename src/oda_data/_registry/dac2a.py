@@ -84,6 +84,9 @@ _DIMENSIONS: Mapping[Dimension, str] = {
     "year": "year",
 }
 _NAMED_DIMENSIONS: tuple[Dimension, ...] = ("provider", "recipient", "year")
+#: A provider reports DAC2A's last year line by line. A recipient with no row
+#: in a reporting provider's last year counts as zero, as in earlier years.
+_REPORTING: tuple[Dimension, ...] = ("line",)
 
 #: Net disbursements in every year. The switch year is DAC2A's first, so no
 #: year reads the ``before`` side.
@@ -98,7 +101,13 @@ def _binding(*, net: int, gross: int | None = None) -> Binding:
     }
     if gross is not None:
         bases["gross_disbursement"] = Line(gross)
-    return Binding(table="dac2a", dimensions=_DIMENSIONS, bases=bases, rows=_ROWS)
+    return Binding(
+        table="dac2a",
+        dimensions=_DIMENSIONS,
+        bases=bases,
+        rows=_ROWS,
+        reporting=_REPORTING,
+    )
 
 
 def _named(
@@ -242,6 +251,7 @@ DAC2A_LINES = Binding(
             "recipient's GNI and ODA per capita, not money",
         ),
     ),
+    reporting=_REPORTING,
 )
 
 LINES = Indicator(

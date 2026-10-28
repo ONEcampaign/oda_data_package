@@ -176,7 +176,7 @@ print(oda.search("DAC1.10.1010").to_string())
 def describe(indicator: IndicatorId | str, /) -> IndicatorInfo: ...
 ```
 
-Returns an indicator's definition, which prints as text. `IndicatorInfo` is a frozen dataclass with `id`, `name`, `description`, `table`, `kind`, `version`, `dimensions`, `bases` (pairs of basis and first year), `default_basis`, `default_providers` (a group name, or `None` for every official provider), `caveats`, `example`, and `measure` (`"money"` or `"people"`).
+Returns an indicator's definition, which prints as text. `IndicatorInfo` is a frozen dataclass with `id`, `name`, `description`, `table`, `kind`, `version`, `dimensions`, `bases` (pairs of basis and first year), `default_basis`, `default_providers` (a group name, or `None` for every official provider), `caveats`, `example`, `measure` (`"money"` or `"people"`), and `leaves_out_eu_institutions`, which says whether a call that names no providers leaves EU Institutions (918) out of a sum across providers and shows its row when split by provider.
 
 ```text
 oecd.dac1.total_oda  (version 1, table DAC1)
@@ -275,7 +275,7 @@ def provenance(path: str | Path) -> Provenance: ...
 
 Reads the provenance record from a Parquet file that `Query.to_parquet` wrote. Raises `ValueError` if the file holds no record, or one in a newer format.
 
-### `Provenance` and `Release`
+### `Provenance`, `Release`, `Call`, and `CallGroup`
 
 Frozen dataclasses.
 
@@ -285,9 +285,24 @@ Frozen dataclasses.
 - `Provenance.pydeflate` and `Provenance.resolvekit`: their versions.
 - `Provenance.reference_data`: a hash of the bundled groups, sector groups, and channel crosswalk.
 - `Provenance.defaults`: each default the call relied on and its value, such as `{"basis": "headline"}`.
+- `Provenance.call`: the `Call` the result computed, or `None` for a file written before oda-data recorded it.
 - `Release.token`: the file host's ETag or Last-Modified date, or `sha256:...` for a registered file the host sent no token for.
 - `Release.downloaded`: when the file was downloaded, in UTC.
 - `Release.label_release`: the readable release id, such as `v20261006` for the CRS, or `None`.
+- `Call.indicator`, `Call.basis`, `Call.by`, and `Call.allow_partial`: the indicator id, the basis it read (the default when the call named none), the dimensions the result splits by, and whether the call accepted partial values.
+- `Call.years`: the years asked for, sorted, or `None` for every year.
+- `Call.units`: each `Unit`, current USD when the call named none. Empty for a ratio.
+- `Call.filters`: each dimension the call filtered and the codes it named outright, sorted, which show as their own rows. `providers="France"` gives `{"provider": (4,)}`, `providers=oda.total(oda.groups.dac_countries)` gives `{"provider": ()}`, and `providers=[4, oda.total(oda.groups.dac_countries)]` gives `{"provider": (4,)}`.
+- `Call.groups`: each group the call named, as a `CallGroup` with its members by year, sorted by dimension and name.
+- `Call.default_providers`: the provider codes the call read when it named none, sorted, or `None`.
+- `Call.operation`: `"get"` for a `get` or `query` result, `"records"` for a `records` result. A file written before oda-data recorded it reads as `"get"`.
+- `Call.columns`: the extra columns a `records` call asked for, in the order it named them, which is their order in the result. Empty for `get`.
+- `CallGroup.dimension` and `CallGroup.name`: the dimension and the group's name.
+- `CallGroup.label`: the group's display label, which names its total row, or `None` in a file written before oda-data recorded it.
+- `CallGroup.shown` and `CallGroup.total`: whether each member shows as its own rows, and whether the call asked for the total with `oda.total()`.
+- `CallGroup.members`: each year the call read and the member codes in that year, sorted.
+
+Two calls that differ in any of these hold different records, so the record tells apart two results that look alike, such as France and Germany split by year alone. The same call writes the same JSON byte for byte.
 
 ## Result columns
 

@@ -227,6 +227,74 @@ def test_a_total_over_a_preliminary_year_is_null_where_members_drop_a_line(
     assert oda_total["value"].notna().all() and len(oda_total) == 1
 
 
+@pytest.mark.parametrize("allow_partial", [False, True], ids=["null", "allow-partial"])
+def test_a_line_named_beside_another_gives_what_it_gives_alone(
+    dac1: OecdTables, allow_partial: bool
+) -> None:
+    """In DAC1's last year some DAC countries report total ODA (line 11010)
+    and not yet in-donor refugee costs (1820). Expected: the 1820 total over
+    ``dac_countries`` is null, or the reporters' sum with allow_partial,
+    whether 11010 is named beside it or not, and the 11010 total is the
+    same in both calls and not null."""
+    [(last,)] = dac1.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+
+    def by_line(lines: int | list[int]) -> dict[str, float]:
+        df = oda.get(
+            "oecd.dac1.lines",
+            years=last,
+            basis="grant_equivalent",
+            lines=lines,
+            providers=oda.total(oda.groups.dac_countries),
+            by=["provider", "year"],
+            allow_partial=allow_partial,
+        )
+        return dict(zip(df["line"], df["value"], strict=True))
+
+    bundled = by_line([11010, 1820])
+    alone = by_line(1820) | by_line(11010)
+
+    assert sorted(bundled) == sorted(alone) == ["11010", "1820"]
+    assert math.isnan(bundled["1820"]) is math.isnan(alone["1820"]) is not allow_partial
+    if allow_partial:
+        assert bundled["1820"] == pytest.approx(alone["1820"], rel=1e-9)
+    assert bundled["11010"] == pytest.approx(alone["11010"], rel=1e-9)
+    assert not math.isnan(bundled["11010"])
+
+
+@pytest.mark.parametrize("flow", [1121, 1122], ids=["grants", "non-grants"])
+def test_a_flow_part_total_over_a_preliminary_year_is_null(
+    dac1: OecdTables, flow: int
+) -> None:
+    """In DAC1's last year few DAC countries split gross disbursements into
+    grants (1121) and non-grants (1122). Expected: the part's total over
+    ``dac_countries`` is null in the last year, its members' sum of line
+    1010 under the part with allow_partial, and the same whether the call
+    names one part or both."""
+    [(last,)] = dac1.cursor(("dac1",)).sql("SELECT max(year) FROM dac1").fetchall()
+    dac = oda.groups.dac_countries
+    members = resolve_group(dac, "provider", years=(last,)).members[last]
+
+    def total(flows: int | list[int], *, allow_partial: bool) -> dict[str, float]:
+        df = oda.get(
+            "oecd.dac1.total_oda",
+            years=last,
+            basis="gross_disbursement",
+            flows=flows,
+            providers=oda.total(dac),
+            by=["provider", "year"],
+            allow_partial=allow_partial,
+        )
+        return dict(zip(df["flow"], df["value"], strict=True))
+
+    reported = _lines(dac1, line=1010, flow=flow)
+    expected = sum(reported.get((code, last), 0.0) for code in members)
+
+    assert math.isnan(total(flow, allow_partial=False)[str(flow)])
+    assert math.isnan(total([1121, 1122], allow_partial=False)[str(flow)])
+    assert total(flow, allow_partial=True)[str(flow)] == pytest.approx(expected)
+    assert total([1121, 1122], allow_partial=True)[str(flow)] == pytest.approx(expected)
+
+
 @pytest.mark.parametrize(
     ("provider", "year", "raises"),
     [(UK, 2015, True), (UK, 2022, True), (NORWAY, 1992, True), (NORWAY, 2022, False)],

@@ -22,6 +22,12 @@ carry national-currency (``N``) and constant-price (``D``) rows of each value.
 An EU member's multilateral ODA counts its contribution to EU Institutions
 (918), so every binding sets ``members_hold_eu_share`` and a call that sums
 918 with a member it names raises.
+
+A provider reports DAC1's last year, a preliminary one, line by line and
+flow by flow. Most report total ODA and few report in-donor refugee costs, and
+in 2025 only Austria and Ireland report the grant and non-grant parts (1121
+and 1122) of gross disbursements, against 47 providers in 2024. So every
+binding reports by ``line`` and ``flow``.
 """
 
 from collections.abc import Mapping
@@ -67,6 +73,7 @@ DAC1 = Binding(
     },
     rows=_CURRENT_USD,
     members_hold_eu_share=True,
+    reporting=("line", "flow"),
 )
 
 #: DAC1 lines that are not amounts of money: ODA as a percentage of GNI (2 on
@@ -126,6 +133,7 @@ DAC1_LINES = Binding(
         ),
     ),
     members_hold_eu_share=True,
+    reporting=("line", "flow"),
 )
 
 _DAC_COUNTRIES = "dac_countries"

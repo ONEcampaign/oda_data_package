@@ -4,6 +4,7 @@ Each table here stands in for a view: it carries the logical column names
 from ``_model.VOCABULARY``.
 """
 
+import re
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -614,9 +615,41 @@ def test_missing_factor_raises(con: duckdb.DuckDBPyConnection) -> None:
     assert raised.value.code == "missing_factor"
 
 
+def test_missing_factor_names_the_first_unit_a_key_lacks(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    resolved = call(years=(2016,), units=(USD, EUR, USD_2023), by=("year",))
+    factors = FakeFactors({(1, EUR): 0.9, (2, EUR): 0.9, (2, USD_2023): 3.0})
+    rows = filtered(con, total_oda(), resolved).filter("provider = 1")
+
+    message = "no constant 2023 USD factor for provider 1 in 2016"
+    with pytest.raises(MissingFactorError, match=re.escape(message)):
+        converted(con, rows, resolved, factors)
+
+
+def test_current_usd_skips_the_factor_source(con: duckdb.DuckDBPyConnection) -> None:
+    alone = call(years=(2016, 2019), by=("provider", "year"))
+    # A second unit sends current USD through the factor join.
+    joined = call(years=(2016, 2019), by=("provider", "year"), units=(USD, EUR))
+    factors = FakeFactors({(1, EUR): 0.9, (2, EUR): 0.8})
+
+    fast, fast_fallback = converted(
+        con, filtered(con, total_oda(), alone), alone, factors
+    )
+    assert factors.calls == []
+    slow, _ = converted(con, filtered(con, total_oda(), joined), joined, factors)
+    slow = slow.filter("currency = 'USD'")
+
+    assert fast.columns == slow.columns
+    assert fast.types == slow.types
+    order = ", ".join(fast.columns)
+    assert fast.order(order).fetchall() == slow.order(order).fetchall()
+    assert fast_fallback == frozenset()
+
+
 def test_fallback_providers_are_reported(con: duckdb.DuckDBPyConnection) -> None:
-    resolved = call(years=(2016,))
-    factors = FakeFactors(fallback=frozenset({2}))
+    resolved = call(years=(2016,), units=(USD_2023,))
+    factors = FakeFactors({(1, USD_2023): 2.0, (2, USD_2023): 3.0}, frozenset({2}))
 
     _, fallback = converted(
         con, filtered(con, total_oda(), resolved), resolved, factors

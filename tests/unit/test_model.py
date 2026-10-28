@@ -106,6 +106,28 @@ def test_vocabulary_names_and_sources_are_unique(table: str) -> None:
     assert len(set(sources)) == len(sources)
 
 
+def test_columns_that_tables_number_differently_name_their_code_domain() -> None:
+    domains = {
+        (table, column.name): column.domain
+        for table, spec in VOCABULARY.items()
+        for column in spec.columns
+        if column.name in ("line", "flow")
+    }
+    assert domains == {
+        ("dac1", "line"): "dac1",
+        ("dac1", "flow"): "dac1",
+        ("dac2a", "line"): "dac2a",
+        ("crs", "flow"): "crs",
+        ("multisystem", "flow"): "crs",
+    }
+    assert all(
+        column.domain is None
+        for spec in VOCABULARY.values()
+        for column in spec.columns
+        if column.name not in ("line", "flow")
+    )
+
+
 @pytest.mark.parametrize("marker", CRS_MARKERS)
 def test_crs_marker_columns_label_their_scores(marker: str) -> None:
     [column] = [c for c in VOCABULARY["crs"].columns if c.name == marker]
@@ -161,6 +183,36 @@ def test_line_needs_a_line_column() -> None:
         Binding(table="crs", dimensions={}, bases={"headline": Line(206)})
 
 
+@pytest.mark.parametrize(
+    ("dimensions", "bases", "refused"),
+    [
+        ({"provider": "provider"}, {"net_disbursement": Flow(1140)}, True),
+        (
+            {"provider": "provider", "line": "line"},
+            {"net_disbursement": Flow(1140)},
+            False,
+        ),
+        ({"provider": "provider"}, {"net_disbursement": Line(206)}, False),
+    ],
+    ids=["dimension-it-lacks", "its-dimension", "line-fixed-by-its-bases"],
+)
+def test_binding_reports_by_its_dimensions_or_a_fixed_line(
+    dimensions: dict, bases: dict, refused: bool
+) -> None:
+    table = "dac2a" if isinstance(bases["net_disbursement"], Line) else "dac1"
+
+    def build() -> Binding:
+        return Binding(
+            table=table, dimensions=dimensions, bases=bases, reporting=("line",)
+        )
+
+    if refused:
+        with pytest.raises(ValueError, match="reports by dimensions it lacks"):
+            build()
+    else:
+        assert build().reporting == ("line",)
+
+
 def test_binding_is_frozen_and_detached_from_its_inputs() -> None:
     dimensions = {"provider": "provider", "year": "year"}
     binding = Binding(
@@ -206,7 +258,7 @@ def test_indicator_refuses_inconsistent_definition(overrides: dict, match: str) 
 
 
 def test_method_may_declare_dimensions_outside_its_binding() -> None:
-    def run(cursor: object, call: object, /) -> object:
+    def run(cursor: object, call: object, /, *, memo: object) -> object:
         raise NotImplementedError
 
     indicator = Indicator(

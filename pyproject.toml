@@ -27,10 +27,10 @@ classifiers = [
 
 dependencies = [
     "duckdb>=1.1.0",
-    "oda-reader>=1.15.0rc1",
+    "oda-reader>=1.15.0",
     "pandas>=2.2.0",
     "pyarrow>=17.0.0",
-    "pydeflate>=2.7.0rc1",
+    "pydeflate>=2.7.0",
     "readerkit>=0.1.0",
     "resolvekit>=0.1.13",
 ]

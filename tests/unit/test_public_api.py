@@ -37,6 +37,8 @@ PUBLIC_NAMES = sorted(
         "Query",
         "Context",
         "Provenance",
+        "Call",
+        "CallGroup",
         "Release",
         "provenance",
         "indicators",

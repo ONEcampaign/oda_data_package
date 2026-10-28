@@ -834,7 +834,7 @@ Each provider's core contributions to multilateral organisations, spread across 
 - Version: 1
 - Dimensions: `provider`, `recipient`, `sector`, `broad_sector`, `channel`, `allocation_status`, `year`
 - Bases: `gross_disbursement` (default), `commitment`
-- Default providers: every official provider in the table, aggregates excluded
+- Default providers: every official provider in the table, aggregates excluded; EU Institutions (918) are left out of a sum across providers and shown when split by provider
 - Values: USD millions unless `unit=` says otherwise
 - Caveat: Shares come from each organisation's CRS gross disbursements of ODA and other official flows. Unallocated amounts and fixed-purpose proxies have no recipient, so a filter on recipients leaves them out.
 

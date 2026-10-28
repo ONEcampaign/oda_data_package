@@ -45,6 +45,7 @@ MULTISYSTEM = Binding(
     },
     rows=CORE_ROWS,
     members_hold_eu_share=True,
+    reporting=(),
 )
 
 CORE_CONTRIBUTIONS = Indicator(

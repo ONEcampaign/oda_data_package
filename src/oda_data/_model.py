@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
     from oda_data._provenance import Release
+    from oda_data._store import Releases
     from oda_data._units import Unit
 
 
@@ -68,12 +69,20 @@ class Column:
             that groups or filters by the column shows the labels in place of
             the codes, and a code with no label raises when the query runs.
             ``None`` when the column shows its codes.
+        domain: The code list the column draws on, when the same logical
+            name numbers its codes differently from table to table: DAC1 and
+            DAC2A number ``line`` separately, and DAC1 ``flow`` (1140 is net
+            disbursements) is not the CRS flow type (11 is ODA grants), which
+            the CRS and Multisystem share. Columns of one name hold the same
+            codes only if their domains are equal. ``None`` when the codes are
+            the same wherever the name appears.
     """
 
     name: str
     source: str
     type: ColumnType
     labels: Mapping[Code | None, str] | None = None
+    domain: str | None = None
 
     def __post_init__(self) -> None:
         if self.labels is not None:
@@ -105,8 +114,10 @@ class TableSpec:
         return frozenset(column.name for column in self.columns)
 
 
-def _c(name: str, source: str, type_: ColumnType = "BIGINT") -> Column:
-    return Column(name, source, type_)
+def _c(
+    name: str, source: str, type_: ColumnType = "BIGINT", *, domain: str | None = None
+) -> Column:
+    return Column(name, source, type_, domain=domain)
 
 
 #: CRS policy-marker columns. Each holds 0, 1, 2 or null (not screened), and
@@ -158,8 +169,8 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
             (
                 _c("provider", "donor_code"),
                 _c("year", "year"),
-                _c("line", "aidtype_code"),
-                _c("flow", "flows_code"),
+                _c("line", "aidtype_code", domain="dac1"),
+                _c("flow", "flows_code", domain="dac1"),
                 _c("amount_type", "amounttype_code", "VARCHAR"),
                 _c("value", "value", "DOUBLE"),
             ),
@@ -170,7 +181,7 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
                 _c("provider", "donor_code"),
                 _c("recipient", "recipient_code"),
                 _c("year", "year"),
-                _c("line", "aidtype_code"),
+                _c("line", "aidtype_code", domain="dac2a"),
                 _c("part", "part_code"),
                 _c("amount_type", "data_type_code", "VARCHAR"),
                 _c("value", "value", "DOUBLE"),
@@ -182,7 +193,7 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
                 _c("provider", "donor_code"),
                 _c("recipient", "recipient_code"),
                 _c("year", "year"),
-                _c("flow", "flow_code"),
+                _c("flow", "flow_code", domain="crs"),
                 _c("bi_multi", "bi_multi"),
                 _c("category", "category"),
                 _c("finance_type", "finance_t"),
@@ -204,7 +215,7 @@ VOCABULARY: Mapping[TableName, TableSpec] = _frozen(
                 _c("provider", "donor_code"),
                 _c("recipient", "recipient_code"),
                 _c("year", "year"),
-                _c("flow", "flow_code"),
+                _c("flow", "flow_code", domain="crs"),
                 _c("modality", "aid_t", "VARCHAR"),
                 _c("sector", "purpose_code"),
                 _c("channel", "channel_code"),
@@ -402,10 +413,21 @@ class Binding:
             contribution to EU Institutions (918), as on DAC1, whose
             multilateral ODA counts it. A call on such a table that sums 918
             with a member it names counts that money twice, so it raises.
+        reporting: The dimensions at which a provider reports the table's
+            last year, a preliminary one, in parts. A provider with rows for
+            a ``Sum`` leaf in the year before, at a key of these dimensions,
+            and none at it in the last year, has not yet reported that key.
+            DAC1 reports by ``line`` and ``flow``: a provider can report total
+            ODA (line 11010) and not yet in-donor refugee costs (1820). Empty where
+            providers report the whole year at once, as on the CRS. Other
+            dimensions, such as recipient, are activity slices, so a slice
+            with no rows in the last year is a zero. ``line`` may be named
+            on a binding whose ``Line`` bases fix it, as on DAC2A.
 
     Raises:
-        ValueError: If a column is not in the table's vocabulary, or a
-            ``Headline`` names a basis the binding lacks or another headline.
+        ValueError: If a column is not in the table's vocabulary, a
+            ``Headline`` names a basis the binding lacks or another headline,
+            or ``reporting`` names a dimension the binding lacks.
     """
 
     table: TableName
@@ -413,6 +435,7 @@ class Binding:
     bases: Mapping[Basis, BasisRule]
     rows: tuple[Filter, ...] = ()
     members_hold_eu_share: bool = False
+    reporting: tuple[Dimension, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "dimensions", _frozen(self.dimensions))
@@ -441,6 +464,15 @@ class Binding:
         unknown = sorted(set(used) - VOCABULARY[self.table].names)
         if unknown:
             raise ValueError(f"columns not in the {self.table} vocabulary: {unknown}")
+
+        fixed = (
+            {"line"} if any(isinstance(r, Line) for r in self.bases.values()) else set()
+        )
+        stray = sorted(set(self.reporting) - set(self.dimensions) - fixed)
+        if stray:
+            raise ValueError(
+                f"the {self.table} binding reports by dimensions it lacks: {stray}"
+            )
 
 
 # Kinds -----------------------------------------------------------------------
@@ -487,7 +519,8 @@ class Derived:
 
 @dataclass(frozen=True, slots=True)
 class Incomplete:
-    """A provider-year whose value covers only the inputs that reported.
+    """A provider-year, or part of one, whose value covers only the inputs
+    that reported.
 
     Args:
         provider: The provider whose value is incomplete.
@@ -497,12 +530,19 @@ class Incomplete:
             EU Institutions' (918) GNI.
         inputs: What ``missing`` have not reported, for ``explain()``, such
             as ``"GNI"`` or ``"line 2102"``.
+        keys: The codes of public dimensions the cell covers, such as
+            ``(("line", 1820),)`` for refugee costs a provider has not yet
+            reported. Empty for the whole provider-year. A row holds the
+            cell when its provider and year match and each key whose
+            dimension the row carries matches. A row without the dimension,
+            such as one that sums lines, holds it whatever the code.
     """
 
     provider: Code
     year: int
     missing: frozenset[Code]
     inputs: str = "its inputs"
+    keys: tuple[tuple[Dimension, Code], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -532,7 +572,9 @@ class MethodFunction(Protocol):
     does to find providers missing from the table's last year.
     """
 
-    def __call__(self, cursor: DuckDBPyConnection, call: ResolvedCall, /) -> MethodRows:
+    def __call__(
+        self, cursor: DuckDBPyConnection, call: ResolvedCall, /, *, memo: Releases
+    ) -> MethodRows:
         """Compute the indicator's rows.
 
         Args:
@@ -542,6 +584,10 @@ class MethodFunction(Protocol):
                 need every provider's rows (imputation needs every channel's
                 CRS spending when the call asks for one provider).
             call: The resolved call.
+            memo: The Context's store under the releases the call holds, for
+                intermediates that depend on a table's release alone, such as
+                imputation's channel shares. ``_store.UNCACHED`` outside a
+                Context. The rows the function returns are its own call's.
 
         Returns:
             Rows in an Arrow table at provider-year grain or finer, with
@@ -726,6 +772,23 @@ def basis_lines(indicator: Indicator, /) -> Mapping[Basis, int]:
         if isinstance(rule, Line):
             found[basis] = rule.code
     return found
+
+
+def offered_bases(indicator: Indicator, /) -> Mapping[Basis, BasisRule]:
+    """Each basis a ``Sum`` or ``Method`` offers a call, with its rule.
+
+    The bases of its binding, except that a ``Sum`` with a line per basis
+    offers only the bases it has a line for, and a headline only when it has a
+    line for both of the bases it reads.
+    """
+    kind = indicator.kind
+    offered: dict[Basis, BasisRule] = {}
+    for basis, rule in indicator.binding.bases.items():
+        used = (rule.before, rule.after) if isinstance(rule, Headline) else (basis,)
+        if isinstance(kind, Sum) and kind.lines and not set(used) <= set(kind.lines):
+            continue
+        offered[basis] = rule
+    return offered
 
 
 def line_basis(indicator: Indicator, code: Code, /) -> Basis:

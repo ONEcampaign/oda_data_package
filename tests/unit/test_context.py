@@ -10,6 +10,7 @@ import dataclasses
 import inspect
 import io
 import threading
+from collections import Counter
 from collections.abc import Iterator
 from datetime import datetime
 
@@ -22,6 +23,7 @@ import pytest
 import oda_data as oda
 from oda_data import _context
 from oda_data._context import Context
+from oda_data._discover import _info
 from oda_data._errors import (
     DimensionError,
     OfflineCacheMissError,
@@ -43,7 +45,10 @@ from oda_data._model import (
     Sum,
     Value,
 )
-from oda_data._provenance import Release
+from oda_data._provenance import Release, to_metadata
+from oda_data._registry import INDICATORS as REGISTRY
+from oda_data._store import UNCACHED
+from oda_data._tables import TABLES
 from oda_data._units import Unit, constant, current
 
 USD = current("USD")
@@ -444,6 +449,30 @@ def test_a_part_of_a_ratio_leaves_out_its_excluded_provider(
     assert "918" not in set(df["provider"])
 
 
+def test_describe_and_a_default_call_agree_on_918_for_every_indicator() -> None:
+    """On every registered indicator with providers, ``describe()`` says a sum
+    across providers leaves 918 out exactly when a call that names none drops
+    918 from a sum and keeps it in a split by provider, and only then do the
+    two sets differ."""
+    con = duckdb.connect()
+    for table in TABLES:
+        con.execute(f"CREATE TABLE {table} AS FROM (VALUES (4), (918)) t(provider)")
+    with_providers = [i for i in REGISTRY.values() if "provider" in i.dimensions]
+
+    assert any(_info(i).leaves_out_eu_institutions for i in with_providers)
+    for indicator in with_providers:
+        tables = _context.tables_for(indicator)
+        summed, _ = _context._default_providers(
+            con, indicator, tables, (2023,), by=("year",), releases=UNCACHED
+        )
+        split, _ = _context._default_providers(
+            con, indicator, tables, (2023,), by=("provider",), releases=UNCACHED
+        )
+        left_out = 918 in split and 918 not in summed
+        assert _info(indicator).leaves_out_eu_institutions == left_out, indicator.id
+        assert split - summed <= {918}, indicator.id
+
+
 # Finance type ----------------------------------------------------------------------
 
 
@@ -688,6 +717,76 @@ def test_to_parquet_writes_the_provenance(ctx: Context, tmp_path) -> None:
     assert pq.read_table(io.BytesIO(buffer.getvalue())).num_rows == 3
     assert q.provenance.tables == {"dac1": DAC1_RELEASE}
     assert q.provenance.indicators == {"oecd.dac1.total_oda": 1}
+    assert oda.provenance(path).call == q.provenance.call is not None
+
+
+FRANCE_2017 = {"years": 2017, "providers": "France", "by": ["year"]}
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"providers": "Germany"},
+        {"providers": ["France", "Germany"]},
+        {"providers": None},
+        {"providers": TRIO},
+        {"years": 2018},
+        {"by": ["provider", "year"]},
+        {"unit": constant("EUR", 2023)},
+        {"allow_partial": True},
+    ],
+)
+def test_calls_that_differ_record_different_calls(ctx: Context, change) -> None:
+    # France and Germany collapsed by year differ only in their values.
+    base = ctx.query("oecd.dac1.total_oda", **FRANCE_2017).provenance
+    other = ctx.query("oecd.dac1.total_oda", **FRANCE_2017 | change).provenance
+
+    assert other.call != base.call
+    assert to_metadata(other) != to_metadata(base)
+
+
+def test_a_code_shown_beside_a_group_total_records_a_different_call(
+    ctx: Context,
+) -> None:
+    # France sits in the trio either way; only the second call shows its row.
+    summed = ctx.query("oecd.dac1.total_oda", years=2017, providers=total(TRIO))
+    shown = ctx.query("oecd.dac1.total_oda", years=2017, providers=[4, total(TRIO)])
+    assert summed.provenance.call is not None and shown.provenance.call is not None
+
+    assert summed.provenance.call.filters == {"provider": ()}
+    assert shown.provenance.call.filters == {"provider": (4,)}
+    assert to_metadata(summed.provenance) != to_metadata(shown.provenance)
+
+
+def test_the_call_record_names_codes_groups_and_default_providers(
+    ctx: Context,
+) -> None:
+    named = ctx.query("oecd.dac1.total_oda", **FRANCE_2017).provenance.call
+    grouped = ctx.query(
+        "oecd.dac1.total_oda", years=2017, providers=total(TRIO), by=["provider"]
+    ).provenance.call
+    defaulted = ctx.query("oecd.dac1.total_oda", years=2017).provenance.call
+    assert named is not None and grouped is not None and defaulted is not None
+
+    assert dict(named.filters) == {"provider": (4,)}
+    assert named.default_providers is None
+    assert (named.basis, named.years, named.by) == ("headline", (2017,), ("year",))
+    assert named.units == (USD,)
+    assert grouped.groups == (
+        oda.CallGroup(
+            "provider", "trio", "Trio countries", False, True, {2017: (4, 5, 12)}
+        ),
+    )
+    assert defaulted.filters == {}
+    providers = defaulted.default_providers or ()
+    assert {4, 5, 12} <= set(providers) and list(providers) == sorted(providers)
+
+
+def test_the_same_call_writes_byte_identical_provenance(ctx: Context) -> None:
+    first = ctx.query("oecd.dac1.total_oda", years=[2018, 2017], providers=TRIO)
+    second = ctx.query("oecd.dac1.total_oda", years=[2017, 2018], providers=TRIO)
+
+    assert to_metadata(first.provenance) == to_metadata(second.provenance)
 
 
 def test_to_polars_holds_the_same_rows(ctx: Context) -> None:
@@ -840,6 +939,62 @@ def test_leaving_the_block_closes_the_tables_and_drops_factors(
 
     assert tables.closed
     assert len(built) == 2
+
+
+class _LoggedCursor:
+    """A DuckDB cursor that records the SQL text of each ``sql`` call."""
+
+    def __init__(self, cursor: duckdb.DuckDBPyConnection, log: list[str]) -> None:
+        self._cursor = cursor
+        self._log = log
+
+    def sql(self, query: str, *args: object, **kwargs: object) -> object:
+        self._log.append(query)
+        return self._cursor.sql(query, *args, **kwargs)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._cursor, name)
+
+
+def test_table_scans_run_once_per_held_release(
+    tables: FakeTables, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The distinct years and providers of a table and its last year are read
+    once per release across calls, again for a new release, and again after
+    ``close()``."""
+    log: list[str] = []
+    cursor = tables.cursor
+    monkeypatch.setattr(
+        tables, "cursor", lambda names: _LoggedCursor(cursor(names), log)
+    )
+    held = {"crs": CRS_RELEASE}
+    monkeypatch.setattr(tables, "release", held.__getitem__)
+
+    def scans() -> Counter[str]:
+        kinds = {
+            'DISTINCT "year"': "years",
+            'DISTINCT "provider"': "providers",
+            'SELECT max(CAST("year" AS BIGINT)) FROM "crs"': "last year",
+        }
+        return Counter(
+            kind
+            for query in log
+            for text, kind in kinds.items()
+            if text in query and "GROUP BY" not in query
+        )
+
+    ctx = Context._from_parts(tables, FakeFactors())
+    for _ in range(2):
+        ctx.get("oecd.crs.bilateral_oda", by=["year"])
+    assert scans() == {"years": 1, "providers": 1, "last year": 1}
+
+    held["crs"] = Release("v20261001", datetime(2026, 10, 1))
+    ctx.get("oecd.crs.bilateral_oda", by=["year"])
+    assert scans() == {"years": 2, "providers": 2, "last year": 2}
+
+    ctx.close()
+    ctx.get("oecd.crs.bilateral_oda", by=["year"])
+    assert scans() == {"years": 3, "providers": 3, "last year": 3}
 
 
 def test_the_default_context_is_built_once_across_threads(

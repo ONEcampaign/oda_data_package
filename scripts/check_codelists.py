@@ -20,7 +20,8 @@ older data still carries them.
 
 Codes the OECD codelists never held, such as the DAC2A-only recipient codes
 and the sector headings 100 to 700, sit in ``UNLISTED``. Provider and recipient
-aggregates are exempt by rule. ``names.json`` names flows and DAC lines
+aggregates, and the multilateral agencies DAC2A lists as recipients, are
+exempt by rule. ``names.json`` names flows and DAC lines
 with the package's own wording, so those two dimensions are not checked, and
 neither are the modality names, which group the OECD's modalities.
 
@@ -43,7 +44,7 @@ import pandas as pd
 
 from oda_data._model import AnyOf, Filter, In, NotIn, Value
 from oda_data._names import is_aggregate, normalise
-from oda_data._registry import INDICATORS
+from oda_data._registry import INDICATORS, dac2a
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "src" / "oda_data" / "_data"
 
@@ -68,8 +69,16 @@ UNLISTED: Mapping[str, frozenset[str]] = {
     # The European Investment Bank reports as a provider in DAC2A only.
     "provider": frozenset({"919"}),
     # DAC2A rows for regions, historical recipients and unspecified totals.
+    # From 68 to 102 and 752 are DAC2A Part II rows (1990-2004): the central
+    # and eastern European and former Soviet recipients of official aid, their
+    # unspecified totals, and the Mekong Delta Project. The recipient
+    # codelist lists the developing countries alone.
     "recipient": frozenset(
-        {"237", "650", "6790", "8600", "9998", "10280", "10330", "10350"}
+        {
+            *("68", "69", "72", "75", "76", "77", "79", "82", "83", "84", "87"),
+            *("101", "102", "237", "650", "752", "6790", "8600", "9998"),
+            *("10280", "10330", "10350"),
+        }
     ),
 }
 
@@ -87,9 +96,10 @@ NAMED_FROM_CODELIST = ("channel", "finance_type", "provider", "recipient", "sect
 #: Provider and recipient groups made of aggregates, which no codelist holds.
 AGGREGATE_GROUPS = frozenset({"dac1_aggregates", "dac2a_aggregates"})
 
-#: The registry's recipient filters exclude DAC2A rows for multilateral agencies
-#: and historical recipients, which the recipient codelist does not hold.
-DAC2A_ONLY_ROWS = frozenset({"recipient"})
+#: DAC2A lists multilateral agencies as recipients of core contributions,
+#: such as 905 (IDA), which the recipient codelist does not hold. The
+#: registry leaves these rows out, and ``names.json`` names them.
+MULTILATERAL_RECIPIENTS = frozenset(map(str, dac2a.MULTILATERAL_RECIPIENTS))
 
 #: Sector names from this code up are the OECD purpose labels; the three-digit
 #: names are DAC5 headings the package numbers itself.
@@ -142,7 +152,7 @@ def _registry_codes(used: Used) -> None:
                 filters.extend(rule.rows)
         for column, values in _filter_codes(filters):
             dimension = dimension_of.get(column)
-            if dimension in CODELIST_IDS and dimension not in DAC2A_ONLY_ROWS:
+            if dimension in CODELIST_IDS:
                 _add(used, dimension, values, f"registry {indicator.id}")
 
 
@@ -167,7 +177,7 @@ def collect_used() -> tuple[Used, dict[str, dict[str, str]]]:
     _registry_codes(used)
 
     names = _read_json("names.json")
-    for dimension in ("provider", "sector", "modality", "finance_type"):
+    for dimension in ("provider", "recipient", "sector", "modality", "finance_type"):
         _add(used, dimension, names[dimension], "names.json")
     labels = {
         dimension: dict(names[dimension])
@@ -207,6 +217,8 @@ def _is_exempt(dimension: str, code: str, aggregates: Mapping[str, set[str]]) ->
         return True
     if dimension == "provider":
         return is_aggregate("provider", int(code))
+    if dimension == "recipient" and code in MULTILATERAL_RECIPIENTS:
+        return True
     return code in aggregates.get(dimension, ())
 
 

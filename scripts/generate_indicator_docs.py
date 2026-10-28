@@ -17,7 +17,7 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-from oda_data._discover import IndicatorInfo, _info
+from oda_data._discover import IndicatorInfo, _eu_institutions_clause, _info
 from oda_data._groups import groups
 from oda_data._registry import INDICATORS
 
@@ -84,9 +84,11 @@ def _bases(info: IndicatorInfo) -> str:
 
 def _providers(info: IndicatorInfo) -> str:
     if info.default_providers is None:
-        return "every official provider in the table, aggregates excluded"
-    group = groups[info.default_providers]
-    return f"{group.label} (`oda.groups.{info.default_providers}`)"
+        text = "every official provider in the table, aggregates excluded"
+    else:
+        group = groups[info.default_providers]
+        text = f"{group.label} (`oda.groups.{info.default_providers}`)"
+    return text + _eu_institutions_clause(info)
 
 
 def _values(info: IndicatorInfo) -> str:

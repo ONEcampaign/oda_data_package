@@ -105,8 +105,10 @@ _ODA_BASES: dict[Basis, Value] = {
     ),
 }
 
-#: The binding of the CRS ODA indicators.
-CRS = Binding(table="crs", dimensions=_DIMENSIONS, bases=_ODA_BASES)
+#: The binding of the CRS ODA indicators. A provider reports a CRS year whole,
+#: so no binding reports by a dimension, and a recipient, sector or channel
+#: with no row in a reporting provider's year counts as zero.
+CRS = Binding(table="crs", dimensions=_DIMENSIONS, bases=_ODA_BASES, reporting=())
 
 #: The binding of other official flows, which have no grant equivalent.
 CRS_OOF = Binding(table="crs", dimensions=_DIMENSIONS, bases=_cash_bases(OOF_ROWS))

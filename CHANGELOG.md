@@ -5,7 +5,7 @@ All notable changes to the oda_data package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - Unreleased
+## [3.0.0] - 2026-10-28
 
 oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oecd.dac1.total_oda", years=..., providers=..., unit=...)`, returns one table with fixed columns, and `oda.search()` gives the 3.0 call for any 2.x indicator code. [Migrating from 2.x](docs/docs/migration.md) maps every 2.x code and lists the numbers that change.
 
@@ -18,12 +18,12 @@ oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oec
 - Results have the columns `provider`, `provider_name`, `recipient`, `recipient_name`, and the other `by` dimensions, then `indicator`, `indicator_version`, `basis`, `currency`, `prices`, `base_year`, `scale`, `is_aggregate`, and `value`. 2.x's `donor_code` and `ODASchema` constants are gone.
 - DAC1 indicators default to `oda.groups.dac_countries`, and DAC2A and CRS indicators to every official provider with aggregates and private donors left out. 2.x read every provider in the table. OECD aggregate rows appear only when a filter names them.
 - Python 3.12 or later is required.
-- Downloading, caching, and cleaning the OECD tables moved to oda-reader 1.14. `oda.Context(cache_dir=..., offline=..., releases=...)` sets the cache folder, offline mode, and release pins.
+- Downloading, caching, and cleaning the OECD tables moved to oda-reader 1.15. `oda.Context(cache_dir=..., offline=..., releases=...)` sets the cache folder, offline mode, and release pins.
 
 ### Added
 
 - 46 indicators over DAC1, DAC2A, the CRS, and the Multisystem table, among them `oecd.dac1.lines` and `oecd.dac2a.lines` for any published line, one indicator per CRS policy marker with a `score` dimension, `oecd.crs.bilateral_oof`, `oecd.crs.multilateral_oof`, `oecd.crs.private_development_finance`, `oecd.multisystem.core_contributions`, `oecd.dac1.population`, and ONE's `one.dac1.core_oda`, `one.dac1.total_oda_eu_attributed`, `one.crs.imputed_multilateral_oda`, and `one.crs.covid_oda`.
-- `oda.query()` returns a `Query` with `explain()`, `provenance`, `to_pandas()`, `to_arrow()`, `to_polars()`, and `to_parquet()`. `oda.provenance(path)` reads the record back from a Parquet file.
+- `oda.query()` returns a `Query` with `explain()`, `provenance`, `to_pandas()`, `to_arrow()`, `to_polars()`, and `to_parquet()`. `oda.provenance(path)` reads the record back from a Parquet file. `Provenance.call`, an `oda.Call`, records the call: the indicator, basis, years, `by`, units, `allow_partial`, the codes each filter names outright, each group as an `oda.CallGroup` with its members by year, the default providers when the call names none, and whether `get` or `records` computed it, with the columns `records` asked for in their order. Two calls that differ in any of these hold different records.
 - `oda.records()` returns the rows behind a summed indicator, with extra table columns through `columns=`.
 - `oda.groups`, `oda.sectors`, `oda.Group`, and `oda.total()` for groups and their totals, and `group.dated()` for membership by year.
 - `oda.search()`, `oda.describe()`, `oda.indicators()`, and `oda.add_names()`.
@@ -38,10 +38,11 @@ oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oec
 - 2.x CRS sector codes compared five-digit purpose codes with three-digit headings. On today's CRS, 2.8.2 returns no rows for 2,290 of the 2,740 codes and raises an error for 286 more. In 3.0 a three-digit code is a DAC5 heading in `sectors=` and in every group, and reads every purpose code under it, so `sectors=151` and `oda.SectorGroup("x", [151])` read the same rows. The built-in `oda.sectors` groups list their heading-level codes as `reported_at(151)`, so a group built from their printed members reads the same rows.
 - Channels 11000 and 11004 carry the OECD's current names, "Donor Government" and "Other public entities in donor country". Their former names, "Provider Government" and "Other public entities in provider country", still resolve.
 - DAC2A indicators leave out multilateral organisations as recipients (98, 816, 878, and 900 to 996) and recipient totals that no filter names, so a sum over recipients counts each flow once.
-- A sum of EU Institutions (918) with a provider that pays it raises `UnsupportedQueryError`, since the payment already sits in that provider's multilateral ODA. On DAC1, a payer is an EU member or any provider that reports line 2102 that year, such as the United Kingdom after 2020, Norway, and Türkiye. On Multisystem, which has no line 2102, a payer is an EU member.
-- A group total is null in a year in which a member that reported before has stopped reporting, unless the call passes `allow_partial=True`.
+- A sum of EU Institutions (918) with a provider that pays it raises `UnsupportedQueryError`, since the payment already sits in that provider's multilateral ODA. On DAC1, a payer is an EU member or any provider that reports line 2102 that year, such as the United Kingdom after 2020, Norway, and Türkiye. On Multisystem, which has no line 2102, a payer is an EU member. The check covers the providers a sum holds, named or default. The default providers of `one.crs.imputed_multilateral_oda` leave 918 out of a sum across providers and show it when the call splits by provider, so its provider rows add up to more than the sum, by 918's value. `IndicatorInfo.leaves_out_eu_institutions` says which indicators do this, and `explain()` says whether a call left 918 out.
+- A group total is null in a year in which a member that reported before has stopped reporting, unless the call passes `allow_partial=True`. The last year of each table is preliminary and providers report it in parts, so the same rule applies to a part a provider reported the year before and has not yet reported. The part is a DAC1 line and flow or a DAC2A line. A CRS or Multisystem provider with any row in the last year has reported it, so an empty recipient, sector, or channel slice counts as zero. A sum across providers is null too when it holds a member's partial value that overstates the total, as `one.dac1.core_oda` does for a provider whose subtracted line is not yet reported. `explain()` names the parts not yet reported. A provider that an exclusion leaves out of every row the call reads, such as a multilateral provider on DAC2A line 106, has no such gap.
 - `one.dac1.total_oda_eu_attributed` nets EU Institutions' (918) row of the line 2102 of every provider other than 918, whichever providers the call names. 2.x's `get_eui_plus_bilateral_providers_indicator` netted today's EU27 only, so its 918 row still held the United Kingdom's, Norway's, and Türkiye's payments. 918's row is negative in a year in which providers recorded more contributions than it reported, and null in DAC1's last year while providers that paid it the year before have not reported, unless the call passes `allow_partial=True`. A sum that holds that row, an `oda.total()` group or a sum across providers outside `by`, is null too.
-- Money converts with each provider's own DAC deflator, read from the same DAC1 release as the ODA figures, before any sum.
+- Money converts with each provider's own DAC deflator, read from the same DAC1 release as the ODA figures, before any sum. A call in current USD skips the conversion step.
+- A `Context` keeps the providers, last year, and imputation shares of each table release it holds, so a repeated call skips those scans. `close()` drops them.
 
 ### Removed
 

@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 import oda_data as oda
-from oda_data import _context, _discover
+from oda_data import _context, _discover, _registry
 from oda_data._model import Binding, Caveat, Indicator, Ratio, Sum, Value, basis_lines
 from oda_data._registry import dac1, dac2a, multisystem
 
@@ -87,9 +87,81 @@ def test_describe_names_the_default_provider_group_and_the_headline_basis() -> N
     assert "Bases: headline (default), net_disbursement," in text
 
 
+def test_describe_says_when_a_sum_across_providers_leaves_out_eu_institutions() -> None:
+    clause = "EU Institutions (918) are left out of a sum across providers"
+    imputed = repr(_discover._info(multisystem.IMPUTED_MULTILATERAL_ODA))
+    assert f"aggregates excluded; {clause} and shown when split by provider" in imputed
+    # dac_countries holds no 918, so the clause stays out on a flagged binding.
+    total = oda.describe("oecd.dac1.total_oda")
+    assert total.leaves_out_eu_institutions is False
+    assert clause not in repr(total)
+
+
 def test_describe_offers_only_the_bases_an_indicator_has_a_line_for() -> None:
     gni = oda.describe("oecd.dac1.gni")
     assert gni.bases == (("net_disbursement", None),)
+
+
+#: Each indicator's bases in `indicators()` order, the default first, with the first
+#: year of a basis that starts late as `@year`.
+_BASES: Mapping[str, str] = {
+    "oecd.dac1.total_oda": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.bilateral_oda": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.multilateral_oda": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.in_donor_refugee_costs": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.in_donor_student_costs": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.debt_relief": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.administrative_costs": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.development_awareness": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.private_sector_instruments": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.gni": "net_disbursement",
+    "oecd.dac1.population": "net_disbursement",
+    "oecd.dac1.oda_gni_ratio": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "oecd.dac1.lines": "net_disbursement, headline, gross_disbursement, commitment, grant_equivalent@2015",
+    "oecd.dac2a.recipient_oda": "headline, net_disbursement, gross_disbursement",
+    "oecd.dac2a.imputed_multilateral_oda": "headline, net_disbursement",
+    "oecd.dac2a.technical_cooperation": "headline, net_disbursement",
+    "oecd.dac2a.lines": "net_disbursement, gross_disbursement",
+    "oecd.crs.bilateral_oda": "gross_disbursement, commitment, net_disbursement, grant_equivalent@2018",
+    "oecd.crs.multilateral_oda": "gross_disbursement, commitment, net_disbursement",
+    "oecd.crs.bilateral_oof": "gross_disbursement, commitment, net_disbursement",
+    "oecd.crs.multilateral_oof": "gross_disbursement, commitment, net_disbursement",
+    "oecd.crs.private_development_finance": "gross_disbursement, commitment, net_disbursement",
+    "oecd.crs.gender_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.environment_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.dig_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.trade_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.rmnch_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.drr_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.nutrition_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.disability_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.biodiversity_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.climate_mitigation_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.climate_adaptation_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.crs.desertification_marker": "gross_disbursement@2010, commitment@2010, net_disbursement@2010, grant_equivalent@2018",
+    "oecd.multisystem.core_contributions": "gross_disbursement, commitment",
+    "one.crs.imputed_multilateral_oda": "gross_disbursement, commitment",
+    "one.dac1.core_oda": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "one.dac1.non_core_oda": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "one.dac2a.recipient_oda_with_imputed_multilateral": "headline, net_disbursement",
+    "one.dac1.total_oda_eu_attributed": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "one.dac1.gni": "net_disbursement",
+    "one.dac1.gni_fixed_eu27": "net_disbursement",
+    "one.dac1.oda_gni_ratio": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "one.dac1.oda_gni_ratio_fixed_eu27": "headline, net_disbursement, gross_disbursement, commitment, grant_equivalent@2018",
+    "one.crs.covid_oda": "gross_disbursement, commitment, net_disbursement, grant_equivalent@2018",
+    "one.crs.bilateral_plus_multilateral_oda": "gross_disbursement, commitment",
+}
+
+
+def test_describe_offers_the_same_bases_for_every_shipped_indicator() -> None:
+    found = {
+        info.id: ", ".join(
+            basis if year is None else f"{basis}@{year}" for basis, year in info.bases
+        )
+        for info in map(_discover._info, _registry.INDICATORS.values())
+    }
+    assert found == _BASES
 
 
 def test_describe_gives_a_ratio_its_numerators_bases_and_per_cent_values() -> None:

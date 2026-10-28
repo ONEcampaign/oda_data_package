@@ -84,6 +84,30 @@ IDA's Multilateral Debt Relief Initiative (channel 44007) reports no spending of
 Unallocated amounts and fixed-purpose proxies have no recipient. A call with `recipients=` leaves them out, so its total is smaller than the provider's core contributions.
 ///
 
+## Sum across providers
+
+EU members count what they pay EU Institutions (918) as their own core contributions, so 918's contributions on top would count that money twice. A call that sums providers, with `provider` outside `by`, leaves 918 out of the default providers. A call split by provider keeps 918's row.
+
+```text
+   year    value
+0  2023  62500.0
+   provider  value
+48      918   88.1
+```
+
+```python
+import oda_data as oda
+
+summed = oda.get("one.crs.imputed_multilateral_oda", years=2023, by=["year"])
+split = oda.get("one.crs.imputed_multilateral_oda", years=2023, by=["provider", "year"])
+print(summed[["year", "value"]].round(1))
+print(split[split.provider == "918"][["provider", "value"]].round(1))
+```
+
+/// note | Good to know
+The provider rows add up to USD 62,588 million in 2023, which is 918's USD 88 million more than the sum. `explain()` says whether a call left 918 out. Naming 918 with an EU member and summing them raises `UnsupportedQueryError`.
+///
+
 ## Troubleshooting
 
 - `UnmappedChannelError` means a multilateral provider and agency pair in the CRS has no channel in the bundled crosswalk, usually a new OECD agency. The message names the pair and the money at stake. Report it on the issue tracker, since the crosswalk is reviewed by hand.
