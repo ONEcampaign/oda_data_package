@@ -36,6 +36,7 @@ CALL = Call(
         CallGroup(
             dimension="provider",
             name="trio",
+            label="Trio countries",
             shown=False,
             total=True,
             members={2022: (4, 5), 2023: (4, 5, 12)},
@@ -120,6 +121,20 @@ def test_a_format_1_file_without_call_still_reads(tmp_path):
     assert read.defaults == RECORD.defaults
 
 
+def test_a_format_1_file_without_a_group_label_still_reads(tmp_path):
+    document = json.loads(to_metadata(RECORD)[PROVENANCE_KEY])
+    del document["call"]["groups"][0]["label"]
+    table = pa.table({"value": [1.0]}).replace_schema_metadata(
+        {PROVENANCE_KEY: json.dumps(document).encode()}
+    )
+
+    read = oda_data.provenance(_write(tmp_path, table))
+
+    assert read.call is not None
+    assert read.call.groups[0].label is None
+    assert read.call.groups[0].name == "trio"
+
+
 def test_call_record_resolves_groups_and_sorts_codes():
     trio = ResolvedGroup(
         name="trio",
@@ -137,16 +152,26 @@ def test_call_record_resolves_groups_and_sorts_codes():
         rows={"provider": frozenset({5}), "modality": frozenset({"C01"})},
     )
 
-    record = call_record("x", resolved, filtered=["provider", "modality"])
+    labels = {trio.key: "Trio countries"}
+    record = call_record(
+        "x", resolved, filtered=["provider", "modality"], labels=labels
+    )
 
     # Only 5 was named outright; 4 and 12 feed the total and sit in groups.
     assert dict(record.filters) == {"modality": ("C01",), "provider": (5,)}
     assert record.groups == (
-        CallGroup("provider", "trio", False, True, {2022: (4, 5), 2023: (4, 12)}),
+        CallGroup(
+            "provider",
+            "trio",
+            "Trio countries",
+            False,
+            True,
+            {2022: (4, 5), 2023: (4, 12)},
+        ),
     )
     assert record.default_providers is None
     # The providers came from a default when the caller filtered none.
-    defaulted = call_record("x", resolved, filtered=["modality"])
+    defaulted = call_record("x", resolved, filtered=["modality"], labels=labels)
     assert defaulted.default_providers == (4, 5, 12)
     assert "provider" not in defaulted.filters
 

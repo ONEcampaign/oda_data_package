@@ -296,6 +296,7 @@ Frozen dataclasses.
 - `Call.groups`: each group the call named, as a `CallGroup` with its members by year, sorted by dimension and name.
 - `Call.default_providers`: the provider codes the call read when it named none, sorted, or `None`.
 - `CallGroup.dimension` and `CallGroup.name`: the dimension and the group's name.
+- `CallGroup.label`: the group's display label, which names its total row, or `None` in a file written before oda-data recorded it.
 - `CallGroup.shown` and `CallGroup.total`: whether each member shows as its own rows, and whether the call asked for the total with `oda.total()`.
 - `CallGroup.members`: each year the call read and the member codes in that year, sorted.
 

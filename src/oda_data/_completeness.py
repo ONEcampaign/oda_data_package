@@ -12,11 +12,13 @@ them:
   year before at a key of the binding's ``reporting`` dimensions, and none at
   it in the last year, has not yet reported that key (``_dropped``), as when a
   preliminary DAC1 year holds a provider's total ODA and not yet its refugee
-  costs. Presence reads the leaf's own rules and the call's codes on the
-  provider and reporting dimensions alone, so a recipient, sector or channel
-  slice with no rows in the last year is a zero. A ``Method`` leaf on such a
-  binding tests presence of its own rows at provider grain. A binding without
-  ``reporting`` has no such cells.
+  costs. Presence reads the leaf's basis and the rules and call codes on the
+  provider and reporting dimensions alone (``_reported_rows``), so a recipient,
+  sector or channel slice with no rows in the last year is a zero, and a
+  provider whose last-year rows for a line go only to a recipient total or an
+  excluded recipient has reported it. A ``Method`` leaf on such a binding tests
+  presence of its own rows at provider grain. A binding without ``reporting``
+  has no such cells.
 
 ``reporting_gaps`` also marks the cells of leaves the indicator subtracts.
 
@@ -44,7 +46,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
-from oda_data._compile import basis_spans, ident, literals
+from oda_data._compile import basis_spans, filtered, ident, literals
 from oda_data._errors import BasisRangeError
 from oda_data._model import (
     Derived,
@@ -54,6 +56,7 @@ from oda_data._model import (
     Ratio,
     Sum,
     basis_lines,
+    filter_columns,
 )
 from oda_data._rows import (
     bindings,
@@ -69,7 +72,7 @@ if TYPE_CHECKING:
 
     from duckdb import DuckDBPyConnection, DuckDBPyRelation
 
-    from oda_data._model import Binding, Indicator, ResolvedCall
+    from oda_data._model import Binding, Filter, Indicator, ResolvedCall
     from oda_data._store import Releases
     from oda_data._types import Code, Dimension, TableName
 
@@ -255,8 +258,8 @@ def _dropped(
     counts as zero.
 
     A ``Sum`` reads presence by provider, year and each reporting dimension
-    the basis does not fix, under its own rules and the call's codes on
-    those dimensions alone, so ``flows=1121`` reads the grants part. The
+    the basis does not fix, through ``_reported_rows``, with the call's codes
+    on those dimensions alone, so ``flows=1121`` reads the grants part. The
     basis fixes the line of a named DAC1 indicator, and the flow of a DAC1
     basis when the call names no flows; the cell's keys name those codes
     too. A ``Method`` reads its own rows under the call at provider grain
@@ -291,7 +294,11 @@ def _dropped(
             rows={},
         )
     try:
-        rows = stage1(cursor, leaf, presence, releases=releases).rows
+        rows = (
+            _reported_rows(cursor, leaf, presence)
+            if isinstance(leaf.kind, Sum)
+            else stage1(cursor, leaf, presence, releases=releases).rows
+        )
     except BasisRangeError:
         # The basis starts in the last year, so no provider has its rows the
         # year before.
@@ -312,6 +319,38 @@ def _dropped(
         keys = tuple((d, codes_at[d]) for d in binding.reporting if d in codes_at)
         cells.add(Incomplete(key[0], last, frozenset({key[0]}), keys=keys))
     return cells
+
+
+def _reported_rows(
+    cursor: DuckDBPyConnection, leaf: Indicator, call: ResolvedCall
+) -> DuckDBPyRelation:
+    """The rows that show which keys a provider has reported to a ``Sum``
+    leaf's table.
+
+    A provider reports by provider, year and the binding's ``reporting``
+    dimensions, so presence reads the leaf's basis and each row filter of
+    the binding and the leaf that names no column of another dimension:
+    fixed rows such as current USD, and rules on provider, line or flow.
+    Rules on an activity dimension (recipient, sector, channel) do not
+    apply, nor does the screen of recipient totals, so a provider whose
+    last-year rows for a line go only to 10100 (developing countries, total)
+    or to a recipient the leaf leaves out has reported the line.
+    """
+    binding = leaf.binding
+    kept = {"provider", "year", *binding.reporting}
+    activity = {column for d, column in binding.dimensions.items() if d not in kept}
+
+    def applies(rules: tuple[Filter, ...]) -> tuple[Filter, ...]:
+        return tuple(
+            rule for rule in rules if activity.isdisjoint(filter_columns((rule,)))
+        )
+
+    presence = replace(
+        leaf,
+        binding=replace(binding, rows=applies(binding.rows)),
+        rows=applies(leaf.rows),
+    )
+    return filtered(cursor, presence, call)
 
 
 def _fixed_codes(

@@ -29,7 +29,7 @@ from oda_data._model import (
     Sum,
     Value,
 )
-from oda_data._registry import dac1, one
+from oda_data._registry import dac1, dac2a, one
 from oda_data._store import UNCACHED
 from oda_data._units import current
 
@@ -340,6 +340,66 @@ def test_an_activity_slice_with_no_rows_in_the_last_year_counts_as_zero(
     found = combine(con, indicator, call, FakeFactors(), releases=UNCACHED)
 
     assert found.table.column("value").to_pylist() == [expected]
+
+
+DEVELOPING_COUNTRIES, IDA = 10100, 905
+
+
+@pytest.mark.parametrize(
+    ("rows_2025", "recipient", "expected"),
+    [
+        (
+            [(FRANCE, DEVELOPING_COUNTRIES, 11.0), (GERMANY, KENYA, 5.0)],
+            DEVELOPING_COUNTRIES,
+            [11.0],
+        ),
+        ([(FRANCE, IDA, 2.0), (GERMANY, KENYA, 5.0)], KENYA, [5.0]),
+    ],
+    ids=["only-a-recipient-total", "only-an-excluded-recipient"],
+)
+def test_a_provider_with_last_year_rows_outside_the_slice_has_reported(
+    rows_2025: list[tuple[int, int, float]],
+    recipient: int,
+    expected: list[float],
+) -> None:
+    """France reported line 206 by recipient and in total in 2024. Its 2025
+    rows go only to the developing-countries total (10100), which the screen
+    of recipient totals leaves out of a sum, or only to IDA (905), which
+    DAC2A leaves out as a recipient. Either way France has reported line 206
+    for 2025, so the pair's total holds its value, and a Kenya slice without
+    it is a zero."""
+    connection = duckdb.connect()
+    connection.execute(
+        "CREATE TABLE dac2a (provider BIGINT, recipient BIGINT, year BIGINT,"
+        " line BIGINT, amount_type VARCHAR, value DOUBLE)"
+    )
+    rows = [
+        (FRANCE, KENYA, 2024, 6.0),
+        (FRANCE, DEVELOPING_COUNTRIES, 2024, 10.0),
+        (GERMANY, KENYA, 2024, 4.0),
+        *((provider, code, 2025, value) for provider, code, value in rows_2025),
+    ]
+    connection.executemany("INSERT INTO dac2a VALUES (?, ?, ?, 206, 'A', ?)", rows)
+    providers = frozenset({FRANCE, GERMANY})
+    group = ResolvedGroup("pair", "provider", {2025: providers})
+    call = ResolvedCall(
+        basis="net_disbursement",
+        units=(USD,),
+        by=("provider",),
+        years=(2025,),
+        members={"provider": providers, "recipient": frozenset({recipient})},
+        groups=(group,),
+        totals=(group.key,),
+        rows={"provider": frozenset()},
+    )
+
+    found = combine(
+        connection, dac2a.RECIPIENT_ODA, call, FakeFactors(), releases=UNCACHED
+    )
+    connection.close()
+
+    assert found.table.column("value").to_pylist() == expected
+    assert found.incomplete == ()
 
 
 def grants_call(

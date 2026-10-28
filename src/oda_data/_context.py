@@ -1039,7 +1039,16 @@ class Context:
             resolvekit=version("resolvekit"),
             reference_data=_reference_data(),
             defaults=plan.defaults,
-            call=call_record(indicator.id, plan.call, filtered=request.filters),
+            call=call_record(
+                indicator.id,
+                plan.call,
+                filtered=request.filters,
+                labels={
+                    (dimension, name): label
+                    for dimension, selection in plan.selections.items()
+                    for name, label in selection.labels.items()
+                },
+            ),
         )
         if request.columns is not None:
             table = _shape_records(combined.table, indicator, plan)

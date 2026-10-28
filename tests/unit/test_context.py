@@ -773,7 +773,9 @@ def test_the_call_record_names_codes_groups_and_default_providers(
     assert (named.basis, named.years, named.by) == ("headline", (2017,), ("year",))
     assert named.units == (USD,)
     assert grouped.groups == (
-        oda.CallGroup("provider", "trio", False, True, {2017: (4, 5, 12)}),
+        oda.CallGroup(
+            "provider", "trio", "Trio countries", False, True, {2017: (4, 5, 12)}
+        ),
     )
     assert defaulted.filters == {}
     providers = defaulted.default_providers or ()

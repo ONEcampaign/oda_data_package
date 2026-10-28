@@ -8,7 +8,8 @@ release can change the layout and still read older files. Adding an optional
 key leaves the format at 1, because a reader of format 1 ignores keys it does
 not know, and ``from_metadata`` reads ``label_release`` as ``None`` when a file
 omits it. ``call`` is such a key, and a file written without it reads with
-``Provenance.call`` as ``None``.
+``Provenance.call`` as ``None``. So is a call group's ``label``, which reads as
+``None`` from a file that omits it.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from oda_data._units import Unit
 if TYPE_CHECKING:
     import pyarrow as pa
 
-    from oda_data._model import ResolvedCall
+    from oda_data._model import GroupKey, ResolvedCall
     from oda_data._types import Basis, Code, Dimension
 
 #: The Parquet schema-metadata key that holds the provenance JSON.
@@ -76,7 +77,9 @@ class CallGroup:
     Args:
         dimension: The dimension the members belong to, such as
             ``"provider"``.
-        name: The group's name, which labels its total row.
+        name: The group's name, which identifies it in the call.
+        label: The group's display label, which names its total row, or
+            ``None`` in a file written before oda-data recorded it.
         shown: Whether each member shows as its own rows, in the years it is
             a member.
         total: Whether the call asked for the group's total row with
@@ -87,6 +90,7 @@ class CallGroup:
 
     dimension: Dimension
     name: str
+    label: str | None
     shown: bool
     total: bool
     members: Mapping[int, tuple[Code, ...]]
@@ -147,7 +151,11 @@ def _sorted_codes(codes: Iterable[Code]) -> tuple[Code, ...]:
 
 
 def call_record(
-    indicator: str, call: ResolvedCall, *, filtered: Iterable[Dimension]
+    indicator: str,
+    call: ResolvedCall,
+    *,
+    filtered: Iterable[Dimension],
+    labels: Mapping[GroupKey, str],
 ) -> Call:
     """Return the record of a resolved call.
 
@@ -160,6 +168,8 @@ def call_record(
         call: The resolved call.
         filtered: The dimensions the caller filtered. Any other dimension in
             ``call.members`` holds a default.
+        labels: Each group's key and its display label. A group it lacks
+            takes its name.
     """
     named = set(filtered)
     totals = set(call.totals)
@@ -180,6 +190,7 @@ def call_record(
             CallGroup(
                 dimension=group.dimension,
                 name=group.name,
+                label=labels.get(group.key, group.name),
                 shown=group.shown,
                 total=group.key in totals,
                 members={
@@ -325,6 +336,7 @@ def _call_document(call: Call) -> dict[str, Any]:
             {
                 "dimension": group.dimension,
                 "name": group.name,
+                "label": group.label,
                 "shown": group.shown,
                 "total": group.total,
                 "members": {str(y): list(c) for y, c in group.members.items()},
@@ -352,6 +364,7 @@ def _read_call(document: Mapping[str, Any]) -> Call:
             CallGroup(
                 dimension=group["dimension"],
                 name=group["name"],
+                label=group.get("label"),
                 shown=group["shown"],
                 total=group["total"],
                 members={int(y): tuple(c) for y, c in group["members"].items()},
