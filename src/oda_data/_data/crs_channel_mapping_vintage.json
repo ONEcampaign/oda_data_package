@@ -1,9 +1,9 @@
 {
-  "source": "resolvekit_bundled_snapshot",
+  "source": "oecd_codelist_3_names_resolvekit_snapshot_acronyms",
   "resolvekit_snapshot_version": 1,
   "oecd_query_date": "2026-06-15",
   "oecd_source_url": "https://development-finance-codelists.oecd.org/CodesList.aspx",
-  "refreshed_at": "2026-10-27T13:46:14.908155+00:00",
+  "refreshed_at": "2026-10-27T18:26:14.848417+00:00",
   "channel_count": 456,
   "withdrawn_channel_count": 10
 }

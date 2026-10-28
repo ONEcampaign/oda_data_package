@@ -1,10 +1,11 @@
 [project]
 name = "oda_data"
-version = "3.0.0.dev0"
+version = "3.0.0"
 description = "A python package to work with Official Development Assistance data from the OECD DAC."
 requires-python = ">=3.12"
 
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 authors = [
     {name = "Jorge Rivera", email = "jorge.rivera@one.org"},
@@ -12,13 +13,13 @@ authors = [
 ]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -40,10 +41,10 @@ polars = ["polars>=1.0.0"]
 [project.urls]
 Homepage = "https://github.com/ONEcampaign/oda_data_package"
 Repository = "https://github.com/ONEcampaign/oda_data_package"
-Documentation = "https://github.com/ONEcampaign/oda_data_package"
+Documentation = "https://github.com/ONEcampaign/oda_data_package/blob/main/docs/docs/index.md"
 
 [build-system]
-requires = ["uv_build>=0.11.8,<0.12"]
+requires = ["uv_build>=0.12.0,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -57,6 +58,8 @@ test = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
     "polars>=1.0.0",
+    # The tutorial's chart example, which tests/docs runs.
+    "matplotlib>=3.8.0",
 ]
 # Maintenance-only tooling for scripts/refresh_channel_crosswalk.py.
 maintenance = [
@@ -154,6 +157,21 @@ markers = [
     "data: reads the real OECD tables through the oda-reader cache (needs a warm cache; ODA_DATA_REQUIRE_DATA=1 turns a skip into a failure)",
 ]
 norecursedirs = [".git", ".venv", "venv", "__pycache__", "*.egg-info", ".pytest_cache", "htmlcov"]
+
+[tool.coverage.run]
+source = ["src/oda_data"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
 
 [tool.codespell]
 # NotIn is a filter class in _model.py; Programm is a deliberate typo that

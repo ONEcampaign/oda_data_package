@@ -29,7 +29,20 @@ from oda_data._resolve import resolve_entity, resolve_group, resolve_selection
         ("recipient", "Kosovo", 57),
         ("recipient", "XKX", 57),
         ("recipient", "Cote d'Ivoire", 247),
-        ("recipient", "Turkey", 55),
+        ("recipient", "Turkey", 55),  # renamed Türkiye; resolvekit knows it
+        ("recipient", "Türkiye", 55),
+        ("provider", "Gates Foundation", 1601),
+        ("provider", "Bill & Melinda Gates Foundation", 1601),  # former names
+        ("provider", "United Nations Office on Drugs and Crime", 1040),
+        ("provider", "Bernard van Leer Foundation", 1609),
+        ("provider", "Arcadia Fund", 1637),
+        ("sector", "Clean cooking appliances manufacturing", 32174),
+        (
+            "channel",
+            "Integrated Framework for Trade-Related Technical Assistance to "
+            "Least Developed Countries",
+            47116,
+        ),
         ("recipient", "South of Sahara, regional", 289),
         ("sector", 12220, 12220),
         ("sector", "Basic health care", 12220),
@@ -200,3 +213,47 @@ def test_the_resolver_is_built_once_across_threads(monkeypatch) -> None:
     with ThreadPoolExecutor(max_workers=8) as pool:
         built = list(pool.map(lambda _: _resolve.resolver(), range(16)))
     assert len({id(resolver) for resolver in built}) == 1
+
+
+def test_a_sector_heading_resolves_to_every_code_under_it() -> None:
+    selection = resolve_selection("sector", 122, years=[2023])
+    assert 122 in selection.codes
+    assert 12220 in selection.codes
+    assert all(str(code).startswith("122") for code in selection.codes)
+
+
+def test_a_heading_means_the_same_in_a_group_as_in_sectors() -> None:
+    group = resolve_group(oda.SectorGroup("x", [151]), "sector", years=[2023])
+    assert group.members[2023] == resolve_selection("sector", 151, years=[2023]).codes
+
+
+def test_reported_at_reads_the_rows_the_built_in_groups_list() -> None:
+    built_in = resolve_group(
+        oda.sectors.conflict_peace_and_security, "sector", years=[2023]
+    ).members[2023]
+    own = oda.SectorGroup("x", [oda.sectors.reported_at(151)])
+    assert resolve_group(own, "sector", years=[2023]).members[2023] == {151}
+    assert 151 in built_in
+    assert 15110 not in built_in  # government, not conflict
+    selection = resolve_selection("sector", oda.sectors.reported_at(151), years=[2023])
+    assert selection.codes == {151}
+
+
+def test_a_group_rebuilt_from_a_built_in_groups_members_reads_the_same_codes() -> None:
+    scope = {"reported_at": oda.sectors.reported_at}
+    for slug, group in oda.sectors.items():
+        rebuilt = oda.SectorGroup(slug, eval(repr(group.members), scope))
+        assert resolve_group(rebuilt, "sector", years=[2023]) == resolve_group(
+            group, "sector", years=[2023]
+        ), slug
+
+
+@pytest.mark.parametrize("code", [12220, 1000, 199, 0])
+def test_reported_at_takes_only_a_dac5_heading(code: int) -> None:
+    with pytest.raises(ValueError, match="DAC5 heading"):
+        oda.sectors.reported_at(code)
+
+
+def test_reported_at_reads_only_in_a_sector_filter() -> None:
+    with pytest.raises(oda.UnknownEntityError, match="sector heading"):
+        resolve_selection("provider", oda.sectors.reported_at(151), years=[2023])

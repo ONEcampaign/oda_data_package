@@ -140,7 +140,7 @@ def test_every_sector_group_resolves_to_named_purpose_codes(name: str) -> None:
 def test_broad_sector_holds_its_narrower_sectors() -> None:
     health = set(oda.sectors.health.members)
     assert set(oda.sectors.basic_health.members) <= health
-    assert 120 in health
+    assert oda.sectors.reported_at(120) in health
     assert oda.sectors.health.label == "Health"
 
 
@@ -163,7 +163,8 @@ def test_broad_sectors_cover_every_purpose_code_once() -> None:
 def test_broad_sector_groups_match_the_broad_sector_mapping() -> None:
     mapping = broad_sectors()
     for slug in names("broad_sector"):
-        assert set(oda.sectors[slug].members) == {
+        group = resolve_group(oda.sectors[slug], "sector", years=[2023])
+        assert group.members[2023] == {
             code for code, broad in mapping.items() if broad == slug
         }
 

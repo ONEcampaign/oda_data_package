@@ -1,0 +1,35 @@
+name: Codelists
+
+# The OECD revises its codelists without notice. This job checks every code the
+# package uses against the latest ones and fails, listing the codes that are
+# unknown, renamed, or new.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Cache uv
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Set up Python 3.12
+        run: uv python install '3.12'
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Check the codelists
+        run: uv run python scripts/check_codelists.py

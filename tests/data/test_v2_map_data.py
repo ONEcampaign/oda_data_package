@@ -1,11 +1,12 @@
 """The 2.x map's calls against the cached DAC1, DAC2A and CRS tables.
 
-2.8.1: oda-data 2.8.1's ``OECDClient(..., use_bulk_download=True)
+2.8.2: oda-data 2.8.2's ``OECDClient(**arguments, use_bulk_download=True)
 .get_indicators(code)``, with its bulk readers fed the same cached Parquet
-files (DAC1 ``DAC1_RELEASE``, DAC2A ``DAC2A_RELEASE``, CRS ``CRS_RELEASE``),
-gave the yearly sums in ``V2_8_1`` for the providers and recipients of
-``ARGUMENTS``. A sampled row whose status is ``exact`` must give the same
-sums. A ``changes`` row differs by design, and its reason says why.
+files (the releases in ``goldens.json``'s ``v2_map_releases``), gave the
+yearly sums in ``goldens.json``'s ``v2_map`` section, for the providers and
+recipients of ``ARGUMENTS``. A sampled row whose status is ``exact`` must give
+the same sums. A ``changes`` row differs by design, and its reason says why.
+``scripts/refresh_goldens.py`` recomputes the sums on a new release.
 
 The data facts the generator holds as constants are checked here too.
 """
@@ -13,6 +14,7 @@ The data facts the generator holds as constants are checked here too.
 import ast
 import hashlib
 import importlib.util
+import json
 import sys
 import types
 from collections.abc import Iterator
@@ -43,9 +45,8 @@ def _generator() -> types.ModuleType:
 
 generator = _generator()
 
-DAC1_RELEASE = "0x8DF2539D20A32DF"
-DAC2A_RELEASE = "0x8DF2539E5D52F9D"
-CRS_RELEASE = "0x8DF2533665E7CB7"  # label v20261006
+_GOLDENS = json.loads((Path(__file__).parent / "goldens.json").read_text())
+RELEASES: dict[str, str] = _GOLDENS["v2_map_releases"]
 
 #: Rows sampled from each table's 2.x codes, and the two ONE codes with a 2.x
 #: function that runs.
@@ -66,30 +67,11 @@ ARGUMENTS: dict[str, dict[str, list[int]]] = {
     "ONE": {"years": [2015, 2017, 2018, 2022], "providers": [4, 12, 302]},
 }
 
-#: 2.8.1's sums by year, in current USD millions, for each sampled exact row.
+#: 2.8.2's sums by year, in current USD millions, for each sampled exact row.
 #: Grant-equivalent rows read 2018 in place of 2015.
-V2_8_1: dict[str, dict[int, float]] = {
-    "DAC1.22.3200": {2015: 10499.8, 2022: 4857.83},
-    "DAC1.10.11015": {2018: 49288.36, 2022: 73454.33},
-    "DAC1.10.1903": {2015: 9332.27, 2022: 10582.07},
-    "DAC1.10.1616": {2015: 63.54},
-    "DAC1.10.1820": {2015: 1955.96, 2022: 13864.93},
-    "DAC1.30.425": {2015: 28816.0, 2022: 48008.03},
-    "DAC1.37.7530": {2015: -32350.39, 2022: 6196.37},
-    "DAC1.21.210": {2015: 919.0, 2022: 2304.51},
-    "DAC1.10.12000": {2018: 16397.25, 2022: 18846.14},
-    "DAC1.21.2225": {2022: 2416.14},
-    "DAC1.10.1810": {2015: 6.99, 2022: 16.21},
-    "DAC1.21.300": {2015: 333.28},
-    "DAC2A.10.208": {},
-    "ONE.10.1010_11010": {
-        2015: 58577.69,
-        2017: 64156.18,
-        2018: 65685.61,
-        2022: 92300.47,
-    },
-    # 2.8.2, which rounds each row to two decimals.
-    "ONE.10.1010C": {2015: 55541.12, 2017: 60418.03, 2018: 61890.47, 2022: 78652.93},
+V2_8_2: dict[str, dict[int, float]] = {
+    code: {int(year): value for year, value in row["expected"].items()}
+    for code, row in _GOLDENS["v2_map"].items()
 }
 
 
@@ -110,10 +92,7 @@ SAMPLE = _sample()
 
 @pytest.fixture(scope="module")
 def pinned() -> Iterator[oda.Context]:
-    context = oda.Context(
-        offline=True,
-        releases={"dac1": DAC1_RELEASE, "dac2a": DAC2A_RELEASE, "crs": CRS_RELEASE},
-    )
+    context = oda.Context(offline=True, releases=RELEASES)
     try:
         for indicator in (
             "oecd.dac1.lines",
@@ -123,8 +102,8 @@ def pinned() -> Iterator[oda.Context]:
             context.get(indicator, years=2022, providers=4)
     except (OfflineCacheMissError, ReleaseMismatchError):
         pytest.skip(
-            "the 2.8.1 comparison needs DAC1, DAC2A and CRS at the pinned "
-            "releases; rerun 2.8.1 on the new releases and update V2_8_1"
+            "the 2.8.2 comparison needs DAC1, DAC2A and CRS at the pinned "
+            "releases; run scripts/refresh_goldens.py on the new releases"
         )
     yield context
     context.close()
@@ -175,11 +154,11 @@ def test_the_sample_covers_thirty_rows_across_tables() -> None:
     assert len(SAMPLE) == len(set(SAMPLE)) == 30
     assert {code.split(".")[0] for code in SAMPLE} == {"DAC1", "DAC2A", "CRS", "ONE"}
     exact = [c for c in SAMPLE if _compat.v2_map()[c].status == "exact"]
-    assert sorted(exact) == sorted(V2_8_1)
+    assert sorted(exact) == sorted(V2_8_2)
 
 
 @pytest.mark.parametrize("code", SAMPLE)
-def test_a_sampled_call_runs_and_an_exact_one_matches_2_8_1(
+def test_a_sampled_call_runs_and_an_exact_one_matches_2_8_2(
     pinned: oda.Context, code: str
 ) -> None:
     row = _compat.v2_map()[code]
@@ -188,7 +167,7 @@ def test_a_sampled_call_runs_and_an_exact_one_matches_2_8_1(
     if row.status != "exact":
         assert row.reason
         return
-    expected = V2_8_1[code]
+    expected = V2_8_2[code]
     assert {int(year) for year in sums.index} == set(expected)
     for year, value in expected.items():
         assert sums[year] == pytest.approx(value, rel=1e-9, abs=1e-6)

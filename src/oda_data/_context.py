@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     import polars as pl
     from duckdb import DuckDBPyConnection
 
-    from oda_data._groups import SectorGroup
+    from oda_data._groups import ReportedAt, SectorGroup
     from oda_data._model import Factors, Indicator
     from oda_data._provenance import Release
     from oda_data._types import (
@@ -797,7 +797,7 @@ class Context:
         years: Years | None = None,
         providers: Many[Entity] | None = None,
         recipients: Many[Entity] | None = None,
-        sectors: Many[int | str | SectorGroup] | None = None,
+        sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
         finance_types: Many[int | str] | None = None,
@@ -837,7 +837,7 @@ class Context:
         years: Years | None = None,
         providers: Many[Entity] | None = None,
         recipients: Many[Entity] | None = None,
-        sectors: Many[int | str | SectorGroup] | None = None,
+        sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
         finance_types: Many[int | str] | None = None,
@@ -881,7 +881,7 @@ class Context:
         years: Years | None = None,
         providers: Many[Entity] | None = None,
         recipients: Many[Entity] | None = None,
-        sectors: Many[int | str | SectorGroup] | None = None,
+        sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
         channels: Many[int | str] | None = None,
         modalities: Many[str] | None = None,
         finance_types: Many[int | str] | None = None,
@@ -1371,7 +1371,7 @@ def get(
     years: Years | None = None,
     providers: Many[Entity] | None = None,
     recipients: Many[Entity] | None = None,
-    sectors: Many[int | str | SectorGroup] | None = None,
+    sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
     finance_types: Many[int | str] | None = None,
@@ -1459,7 +1459,7 @@ def query(
     years: Years | None = None,
     providers: Many[Entity] | None = None,
     recipients: Many[Entity] | None = None,
-    sectors: Many[int | str | SectorGroup] | None = None,
+    sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
     finance_types: Many[int | str] | None = None,
@@ -1502,7 +1502,7 @@ def records(
     years: Years | None = None,
     providers: Many[Entity] | None = None,
     recipients: Many[Entity] | None = None,
-    sectors: Many[int | str | SectorGroup] | None = None,
+    sectors: Many[int | str | ReportedAt | SectorGroup] | None = None,
     channels: Many[int | str] | None = None,
     modalities: Many[str] | None = None,
     finance_types: Many[int | str] | None = None,

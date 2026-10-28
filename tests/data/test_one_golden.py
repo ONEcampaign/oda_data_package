@@ -5,7 +5,8 @@ queried here straight from the table views: the DAC1 lines core ODA is built
 from, EU Institutions' (918) total ODA and its funders' line 2102, the EU
 members' GNI, and the CRS rows tagged #COVID-19. The DAC2A and CRS-plus-
 Multisystem sums are checked against their named parts. A revision by the
-OECD moves both sides at once.
+OECD moves both sides at once. ``test_goldens.py`` pins 2.8.2's EU
+Institutions ratios and the Cyprus GNI gaps to a DAC1 release.
 """
 
 import math
@@ -204,54 +205,6 @@ def test_eu_institutions_oda_gni_uses_the_gni_of_that_years_members(
 
     assert df["value"].tolist() == [pytest.approx(100 * oda_ge / eu_gni)]
     assert (12 in members) == (year <= 2020)
-
-
-@pytest.mark.parametrize("year", [2016, 2019])
-def test_eu_institutions_fixed_eu27_ratio_is_the_2x_arithmetic(
-    tables: OecdTables, year: int
-) -> None:
-    """Expected: oda-data 2.x's ``add_gni_share_column`` arithmetic, 100 x
-    918's line 1010 (flow 1140) over the summed line 1 of the EU27 countries
-    that reported GNI, today's 27 in every year. Cyprus has no 2016 GNI, so
-    2016 sums the other 26; 2.8.2 gives 918 a GNI of 13,777,454.19 then and
-    15,633,437.53 in 2019."""
-    df = oda.get(
-        "one.dac1.oda_gni_ratio_fixed_eu27",
-        years=year,
-        providers=EU_INSTITUTIONS,
-        basis="net_disbursement",
-    )
-    gni = _line(tables, line=1, flow=1140)
-    eu27 = resolve_group(oda.groups.eu27, "provider", years=[year]).members[year]
-    eu_gni = sum(gni.get((code, year), 0.0) for code in eu27)
-    oda_net = _line(tables, line=1010, flow=1140)[(EU_INSTITUTIONS, year)]
-
-    assert ((30, year) in gni) == (year != 2016)
-    assert df["value"].tolist() == [pytest.approx(100 * oda_net / eu_gni)]
-
-
-def test_eu_institutions_dated_ratio_counts_the_united_kingdom_to_2020() -> None:
-    """918's headline 2019 ratio over the members of 2019, the United Kingdom
-    included, is about 0.081%; over today's EU27 it is about 0.096%."""
-    call = {"years": 2019, "providers": EU_INSTITUTIONS}
-    dated = oda.get("one.dac1.oda_gni_ratio", **call)["value"].item()
-    fixed = oda.get("one.dac1.oda_gni_ratio_fixed_eu27", **call)["value"].item()
-
-    assert round(dated, 3) == 0.081
-    assert round(fixed, 3) == 0.096
-
-
-def test_eu_institutions_gni_keeps_cyprus_gap_years(tables: OecdTables) -> None:
-    """Cyprus has no GNI for 2016, 2017 or 2025, the table's last year. 2016
-    and 2017 sum the other members; 2025 is null and named in explain()."""
-    query = oda.query("one.dac1.gni", years=range(2015, 2026), providers=918)
-    df = query.to_pandas()
-    found = dict(zip(df["year"], df["value"], strict=True))
-
-    assert sorted(found) == list(range(2015, 2026))
-    assert all(not math.isnan(found[year]) for year in (2016, 2017))
-    assert math.isnan(found[2025])
-    assert "Cyprus (30)" in query.explain()
 
 
 def test_members_oda_gni_matches_the_oecd_ratio(tables: OecdTables) -> None:

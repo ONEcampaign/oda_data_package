@@ -5,6 +5,49 @@ All notable changes to the oda_data package are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - Unreleased
+
+oda-data 3.0 replaces the 2.x API with named indicators. One call, `oda.get("oecd.dac1.total_oda", years=..., providers=..., unit=...)`, returns one table with fixed columns, and `oda.search()` gives the 3.0 call for any 2.x indicator code. [Migrating from 2.x](migration.md) maps every 2.x code and lists the numbers that change.
+
+### Breaking
+
+- The default basis is `headline`, which is net flows to 2017 and grant equivalents from 2018 on DAC1, and net disbursements on DAC2A. 2.x defaulted to `measure="net_disbursement"` in every year, so every 2.x call that took the default gives a different number from 2018 on. Pass `basis="net_disbursement"` for the 2.x series.
+- The 2.x top-level names raise `RemovedIn3Error`, a subclass of `ImportError` whose message names the replacement: `OECDClient`, `ODAData`, `DAC1Data`, `DAC2AData`, `CRSData`, `MultiSystemData`, `AidDataData`, `add_names_columns`, `add_sectors`, `add_broad_sectors`, `add_gni_share_column`, `bilateral_policy_marker`, `provider_groupings`, `recipient_groupings`, `sector_imputations`, `imputation_quality_report`, `cache`, `clear_cache`, `disable_cache`, `enable_cache`, `set_cache_root`, and `set_data_path`.
+- The 2.x catalogue of 3,049 indicator codes is gone. `oda.get()` with a 2.x code raises `UnknownIndicatorError` carrying the 3.0 call.
+- `measure=` is `basis=`, and `currency=` with `base_year=` is `unit=oda.current(...)` or `unit=oda.constant(...)`. Providers' own currencies (`currency="LCU"`) have no single unit. Ask for each currency by its code.
+- Results have the columns `provider`, `provider_name`, `recipient`, `recipient_name`, and the other `by` dimensions, then `indicator`, `indicator_version`, `basis`, `currency`, `prices`, `base_year`, `scale`, `is_aggregate`, and `value`. 2.x's `donor_code` and `ODASchema` constants are gone.
+- DAC1 indicators default to `oda.groups.dac_countries`, and DAC2A and CRS indicators to every official provider with aggregates and private donors left out. 2.x read every provider in the table. OECD aggregate rows appear only when a filter names them.
+- Python 3.12 or later is required.
+- Downloading, caching, and cleaning the OECD tables moved to oda-reader 1.14. `oda.Context(cache_dir=..., offline=..., releases=...)` sets the cache folder, offline mode, and release pins.
+
+### Added
+
+- 46 indicators over DAC1, DAC2A, the CRS, and the Multisystem table, among them `oecd.dac1.lines` and `oecd.dac2a.lines` for any published line, one indicator per CRS policy marker with a `score` dimension, `oecd.crs.bilateral_oof`, `oecd.crs.multilateral_oof`, `oecd.crs.private_development_finance`, `oecd.multisystem.core_contributions`, `oecd.dac1.population`, and ONE's `one.dac1.core_oda`, `one.dac1.total_oda_eu_attributed`, `one.crs.imputed_multilateral_oda`, and `one.crs.covid_oda`.
+- `oda.query()` returns a `Query` with `explain()`, `provenance`, `to_pandas()`, `to_arrow()`, `to_polars()`, and `to_parquet()`. `oda.provenance(path)` reads the record back from a Parquet file.
+- `oda.records()` returns the rows behind a summed indicator, with extra table columns through `columns=`.
+- `oda.groups`, `oda.sectors`, `oda.Group`, and `oda.total()` for groups and their totals, and `group.dated()` for membership by year.
+- `oda.search()`, `oda.describe()`, `oda.indicators()`, and `oda.add_names()`.
+- `oda.sectors.reported_at(code)`, which returns an importable `oda.ReportedAt`, for the CRS activities filed at a DAC5 heading with no finer purpose code, such as `sectors=oda.sectors.reported_at(151)`.
+- `scripts/check_codelists.py`, run every Monday, compares the codes the package uses with the OECD's latest codelists. It fails on a code the codelists lack, a code the package names differently, and an active CRS purpose code, channel, finance type, or modality the package has no name for.
+- `finance_types=` and a `finance_type` dimension on CRS indicators, and a `flow` dimension and `flows=` on DAC1.
+- Errors with stable codes, each a subclass of `OdaDataError`, and `OdaDataWarning` for caveats such as a partial last year.
+
+### Changed
+
+- CRS indicators count bilateral rows only (`bi_multi` 1, 3, 7, and 8), category 10 on cash bases, and categories 10 and 60 on grant equivalents. Their gross disbursements match DAC1 bilateral ODA for DAC countries to within USD 1 million in 2016 and 2023.
+- 2.x CRS sector codes compared five-digit purpose codes with three-digit headings. On today's CRS, 2.8.2 returns no rows for 2,290 of the 2,740 codes and raises an error for 286 more. In 3.0 a three-digit code is a DAC5 heading in `sectors=` and in every group, and reads every purpose code under it, so `sectors=151` and `oda.SectorGroup("x", [151])` read the same rows. The built-in `oda.sectors` groups list their heading-level codes as `reported_at(151)`, so a group built from their printed members reads the same rows.
+- Channels 11000 and 11004 carry the OECD's current names, "Donor Government" and "Other public entities in donor country". Their former names, "Provider Government" and "Other public entities in provider country", still resolve.
+- DAC2A indicators leave out multilateral organisations as recipients (98, 816, 878, and 900 to 996) and recipient totals that no filter names, so a sum over recipients counts each flow once.
+- A sum of EU Institutions (918) with EU members on DAC1 or Multisystem raises `UnsupportedQueryError`, since members report their EU contributions as their own multilateral ODA.
+- A group total is null in a year in which a member that reported before has stopped reporting, unless the call passes `allow_partial=True`.
+- Money converts with each provider's own DAC deflator, read from the same DAC1 release as the ODA figures, before any sum.
+
+### Removed
+
+- The research functions of `oda_data.indicators.research`. `one.crs.imputed_multilateral_oda` reproduces `imputed_multilateral_by_purpose` row for row, and `oda.records()` with `allocation_status` replaces `imputation_quality_report`.
+- AidData access, which stays in oda-reader as `oda_reader.download_aiddata()`.
+- The `oda_data.logger` module and its `setup_logger` function. oda-data 3.0 writes no log records and configures no logging.
+
 ## [2.9.0] - 2026-10-27
 
 ### Changed
@@ -160,7 +203,7 @@ This release reorganises how `oda_data` stores downloaded data on disk.
 Caches now live in a standard per-user location instead of inside your
 project folder, and a new `oda_data.cache.*` namespace gives you a clear,
 typed way to inspect and manage them. Existing caches are migrated
-automatically on first run. See [CACHING.md](CACHING.md) for the full
+automatically on first run. See `CACHING.md` in that release for the full
 walkthrough.
 
 ### Added
@@ -199,7 +242,7 @@ walkthrough.
 ### Changed
 
 - **`set_data_path()` no longer controls the cache.** It now only sets where
-  the package writes parquet *exports* (data you explicitly save out). If you
+  the package writes parquet _exports_ (data you explicitly save out). If you
   used it to redirect cache storage, switch to `set_cache_root()` or
   `ODA_DATA_CACHE_DIR` — the package will print a one-time deprecation
   warning to remind you. The old call still works through 2.x and is removed

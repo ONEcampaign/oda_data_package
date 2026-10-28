@@ -1,436 +1,90 @@
-# Contributing to ODA Data Package
+# Contributing to oda-data
 
-Thank you for your interest in contributing to the ODA Data Package! This guide will help you get started with development.
+Bug reports, questions, and pull requests go to the [issue tracker](https://github.com/ONEcampaign/oda_data_package/issues) and the repository. This page covers setting up, where the code lives, adding an indicator, and the checks a pull request must pass.
 
-## Table of Contents
+## Set up
 
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Development Workflow](#development-workflow)
-- [Continuous Integration](#continuous-integration)
-- [Code Quality](#code-quality)
-- [Running Tests](#running-tests)
-- [Adding New Features](#adding-new-features)
-- [Submitting Changes](#submitting-changes)
-- [Project Structure](#project-structure)
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.12 or higher
-- [uv](https://github.com/astral-sh/uv) package manager
-- Git
-
-### Fork and Clone
-
-1. Fork the repository on GitHub
-
-1. Clone your fork locally:
-
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/oda_data_package.git
-   cd oda_data_package
-   ```
-
-1. Add the upstream repository:
-
-   ```bash
-   git remote add upstream https://github.com/ONEcampaign/oda_data_package.git
-   ```
-
-## Development Setup
-
-### 1. Install Dependencies
-
-Install all dependencies including development and test dependencies:
+You need Python 3.12 or later and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+git clone https://github.com/ONEcampaign/oda_data_package.git
+cd oda_data_package
 uv sync --all-groups
-```
-
-This will install:
-
-- Core package dependencies
-- Development tools (pre-commit, etc.)
-- Testing dependencies (pytest, etc.)
-
-### 2. Install Pre-commit Hooks
-
-Pre-commit hooks automatically check your code before each commit:
-
-```bash
 uv run pre-commit install
 ```
 
-The hooks will:
+The hooks run ruff, ty, codespell, mdformat, and JSON and YAML checks on every commit. Keep what mdformat writes, since it reflows Markdown tables and lists.
 
-- Format code with Ruff
-- Check for common Python mistakes
-- Validate JSON/YAML files
-- Detect accidentally committed secrets
-- Remove trailing whitespace
-- Ensure files end with newlines
+## Where the code lives
 
-### 3. Configure Data Path (Optional)
+Every public name is defined in a private module under `src/oda_data/` and loaded on first use by `src/oda_data/__init__.py`, so `import oda_data` stays light.
 
-For testing with real data:
+- `_registry/`: the indicators, one module per source (`dac1.py`, `dac2a.py`, `crs.py`, `multisystem.py`, `one.py`). Each module defines its bindings, such as `DAC1` in `dac1.py`, and an `INDICATORS` tuple. `_registry/__init__.py` maps every id to its indicator.
+- `_model.py`: `Indicator`, `Binding`, the bases (`Value`, `Flow`, `Line`, `Headline`), the filters (`In`, `NotIn`, `IsNull`, `NotNull`, `Between`, `HasTag`, `AnyOf`), and the kinds (`Sum`, `Ratio`, `Derived`, `Method`).
+- `_compile.py` and `_combine.py`: turn an indicator and a resolved call into DuckDB SQL, then apply groups, totals, ratios, and the partial-year rules.
+- `_context.py`: `Context`, `Query`, `get`, `query`, `records`, and `explain()`.
+- `_tables.py`, `_factors.py`, `_provenance.py`: table views over oda-reader's `scan()`, conversion factors from pydeflate, and provenance records.
+- `_resolve.py`, `_names.py`, `_groups.py`: names and codes, and the built-in groups.
+- `_methods/`: the code behind `Method` indicators, such as the imputation of multilateral sectors.
+- `_discover.py`: `indicators`, `search`, `describe`, and `add_names`.
+- `_compat.py` and `_data/v2_map.json`: the 3.0 call for every 2.x code, and the replacements of removed 2.x names.
+- `_data/`: bundled reference data (groups, names, sector groups, the channel crosswalk and proxy shares).
 
-```python
-from oda_data import set_data_path
+## Add or change an indicator
 
-set_data_path("/path/to/your/data/cache")
-```
+1. Define the `Indicator` in the module of the table it reads, on that table's binding, and add it to the module's `INDICATORS`. An indicator of ONE's own goes in `one.py` with an id that starts `one.`.
 
-## Development Workflow
+1. Add a conformance case to the module's unit test in `tests/unit/test_registry_*.py`. It is a small input table and the output the indicator must give.
 
-### Creating a Branch
+1. Regenerate the files built from the registry:
 
-Create a new branch for your feature or fix:
+   ```bash
+   uv run python scripts/generate_ids.py
+   uv run python scripts/generate_indicator_docs.py
+   uv run python scripts/generate_v2_map.py
+   ```
 
-```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-description
-```
+   `generate_ids.py` writes the `IndicatorId` literal in `src/oda_data/_ids.py`. `generate_indicator_docs.py` writes `docs/docs/reference/indicators.md`. `generate_v2_map.py` rewrites `src/oda_data/_data/v2_map.json` from the 2.x sources at tag `v2.8.2` (run `git fetch --tags` first), and matters when a change moves a 2.x code's call. Each takes `--check`, which CI runs.
 
-Use descriptive branch names:
+1. A change to the rows an existing indicator counts changes its published numbers. Bump its `version` and state the size of the effect in `CHANGELOG.md`.
 
-- `feature/add-new-indicator`
-- `fix/caching-bug`
-- `docs/update-readme`
-
-### Making Changes
-
-1. Make your changes in the appropriate files
-1. Add tests for new functionality
-1. Update documentation if needed
-1. Run tests locally (see below)
-
-### Committing Changes
-
-When you commit, pre-commit hooks will automatically run:
+## Run the tests
 
 ```bash
-git add .
-git commit -m "Add feature: description of your changes"
+uv run pytest -q -m "not data"
 ```
 
-#### What Happens During Commit
-
-The pre-commit hooks will:
-
-1. **Format your code** with Ruff (auto-fixes)
-1. **Lint your code** with Ruff (auto-fixes when possible)
-1. **Check file quality** (trailing whitespace, EOF, line endings)
-1. **Validate JSON/YAML** files
-1. **Check for secrets** (private keys, etc.)
-
-**Note:** Tests are NOT run during commit to keep commits fast. Instead, tests run automatically in CI when you open or update a pull request.
-
-If any hook fails:
-
-- Review the error messages
-- Make necessary fixes
-- Stage the fixes: `git add .`
-- Commit again
-
-#### Skipping Hooks (Use Sparingly)
-
-In rare cases, you may need to skip hooks:
+The unit tests need no network and no data. Tests marked `data` read the real OECD tables through oda-reader's cache. Warm a cache once, then point the tests at it:
 
 ```bash
-git commit --no-verify -m "Your message"
+export ODA_READER_CACHE_DIR=~/Library/Caches/oda-data-v3-shared
+uv run python scripts/warm_cache.py
+ODA_DATA_REQUIRE_DATA=1 uv run pytest -q -m data
 ```
 
-**Only skip hooks when:**
+A cold cache makes data tests skip. `ODA_DATA_REQUIRE_DATA=1` turns those skips into failures, so a run that should have read the data cannot pass without it. `scripts/warm_cache.py` downloads about 1.4 GB, most of it the CRS.
 
-- You're committing work-in-progress that you'll fix later
-- You're reverting a commit
-- The hook is incorrectly flagging something (and you'll fix the hook later)
+`tests/data/goldens.json` holds the expected values of the golden tests and the releases they were computed on. After a new OECD release, `uv run python scripts/refresh_goldens.py` recomputes them and prints the values that moved.
 
-**Never skip hooks when:**
+## Docs
 
-- Submitting a pull request
-- Committing to main/master
-- The failure indicates a real issue with your code
+The docs site lives in `docs/docs/` with its navigation in `docs/mkdocs.yml`. Build it with `uv run mkdocs build --strict -f docs/mkdocs.yml`.
 
-### Running Pre-commit Manually
+Every fenced `python` block in `README.md` and the docs is an example. `tests/docs/test_examples.py` checks that each one names real functions, groups, and indicator ids, and under the `data` marker runs each page's examples in order against the cached tables. A `py` block is a signature listing and only compiles. Callouts use the `/// note`, `/// warning | Heads up`, `/// info | Why`, and `/// details | Under the hood` blocks, which survive mdformat.
 
-Run all hooks on all files:
+## Checks a pull request must pass
 
 ```bash
 uv run pre-commit run --all-files
+uv run pytest -q
+uv run python scripts/generate_ids.py --check
+uv run python scripts/generate_indicator_docs.py --check
+uv run python scripts/generate_v2_map.py --check
 ```
 
-Run a specific hook:
+CI runs the same checks. A workflow runs `scripts/check_codelists.py` every Monday and compares every code the package uses with the OECD's latest codelists. It exits 1 and lists the codes that are unknown (no codelist holds them, in any status), renamed (`names.json` or the channel list names them differently from the codelist), or new (an active CRS purpose code, channel, finance type, or modality the package has no name for). A withdrawn code passes, since older data still carries it. Codes the codelists never held, such as the DAC5 headings 100 and 200, sit in the script's `UNLISTED`.
 
-```bash
-uv run pre-commit run ruff --all-files
-```
+## Maintenance scripts
 
-Update hooks to latest versions:
-
-```bash
-uv run pre-commit autoupdate
-```
-
-### Continuous Integration
-
-Tests run automatically via GitHub Actions when you open or update a pull request. The test suite runs on:
-
-The full suite runs on Ubuntu with Python 3.12, 3.13 and 3.14. The fast tests also run on macOS and Windows with Python 3.13.
-
-You can view test results in the "Checks" tab of your pull request. All tests must pass before your PR can be merged.
-
-**Coverage reports** are generated and uploaded to Codecov (if configured) for the Ubuntu + Python 3.12 combination, helping track test coverage over time.
-
-## Code Quality
-
-### Code Style
-
-We use **Ruff** for both linting and formatting:
-
-```bash
-# Format code
-uv run ruff format .
-
-# Lint and auto-fix
-uv run ruff check --fix .
-
-# Lint without auto-fix
-uv run ruff check .
-```
-
-Ruff replaces Black, isort, flake8, and other tools with a single fast tool.
-
-### Type Hints
-
-While not strictly enforced, type hints are encouraged:
-
-```python
-def get_indicators(
-    self,
-    indicators: str | list[str],
-    base_year: int | None = None
-) -> pd.DataFrame:
-    ...
-```
-
-### Docstrings
-
-Use clear docstrings for public functions and classes:
-
-```python
-def add_gni_share_column(client: OECDClient, indicator: str) -> pd.DataFrame:
-    """Add GNI share percentage column to ODA data.
-
-    Args:
-        client: Configured OECDClient instance
-        indicator: Indicator code to fetch
-
-    Returns:
-        DataFrame with 'gni_share_pct' column added
-    """
-```
-
-## Running Tests
-
-### Run All Tests
-
-```bash
-uv run pytest
-```
-
-### Run Specific Tests
-
-```bash
-# Run a specific test file
-uv run pytest tests/test_api.py
-
-# Run a specific test function
-uv run pytest tests/test_api.py::test_oecd_client
-
-# Run tests matching a pattern
-uv run pytest -k "test_indicator"
-```
-
-### Run Tests by Marker
-
-```bash
-# Skip slow tests (useful during development)
-uv run pytest -m "not slow"
-
-# Run only slow tests
-uv run pytest -m "slow"
-```
-
-### Test Coverage
-
-Check test coverage:
-
-```bash
-uv run pytest --cov=oda_data --cov-report=html
-```
-
-Then open `htmlcov/index.html` in your browser.
-
-### Writing Tests
-
-Place tests in the `tests/` directory:
-
-```python
-import pytest
-from oda_data import OECDClient
-
-def test_oecd_client_initialization():
-    """Test that OECDClient initializes correctly."""
-    client = OECDClient(years=range(2020, 2023))
-    assert client.years == range(2020, 2023)
-
-@pytest.mark.slow
-def test_bulk_download():
-    """Test bulk download functionality (slow)."""
-    # Mark slow tests that hit external APIs
-    ...
-```
-
-## Adding New Features
-
-### Adding a New Indicator
-
-1. **Add indicator definition** to the appropriate JSON file:
-
-   - DAC1: `src/oda_data/indicators/dac1/dac1_indicators.json`
-   - DAC2A: `src/oda_data/indicators/dac2a/dac2a_indicators.json`
-   - CRS: `src/oda_data/indicators/crs/crs_indicators.json`
-
-1. **If custom processing is needed**, add a function:
-
-   - DAC1: `src/oda_data/indicators/dac1/dac1_functions.py`
-   - DAC2A: `src/oda_data/indicators/dac2a/dac2a_functions.py`
-   - CRS: `src/oda_data/indicators/crs/crs_functions.py`
-
-1. **Reference the function** in the indicator's `custom_function` field
-
-1. **Add tests** for the new indicator
-
-Example indicator definition:
-
-```json
-{
-  "code": "DAC1.NEW.INDICATOR",
-  "name": "My New Indicator",
-  "description": "Description of what this indicator measures",
-  "sources": ["DAC1"],
-  "filters": {
-    "DAC1": {
-      "measure": "net_disbursement",
-      "flow_type": ["1010"]
-    }
-  },
-  "custom_function": "process_new_indicator"
-}
-```
-
-### Modifying Data Sources
-
-When modifying source classes in `src/oda_data/api/sources.py`:
-
-1. **Override methods** as needed:
-
-   - `__init__()` - Define filter parameters
-   - `_create_bulk_fetcher()` - Bulk download logic
-   - `download()` - API-based retrieval
-
-1. **Use `_init_filters()`** for standard filters (years, providers, recipients)
-
-1. **Test with both API and bulk downloads**
-
-1. **Update documentation** if the API changes
-
-## Submitting Changes
-
-### Before Submitting a Pull Request
-
-- [ ] All tests pass locally
-- [ ] Pre-commit hooks pass
-- [ ] New features have tests
-- [ ] Documentation is updated
-- [ ] CHANGELOG.md is updated (if applicable)
-- [ ] Code follows project conventions
-
-### Creating a Pull Request
-
-1. **Push your branch** to your fork:
-
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-1. **Create a pull request** on GitHub
-
-1. **Describe your changes**:
-
-   - What does this PR do?
-   - Why is this change needed?
-   - How has it been tested?
-   - Are there any breaking changes?
-
-1. **Link related issues** if applicable
-
-### PR Review Process
-
-- Maintainers will review your PR
-- Address any feedback or requested changes
-- Once approved, a maintainer will merge your PR
-
-## Project Structure
-
-```
-oda_data_package/
-├── src/oda_data/              # Main package code
-│   ├── api/                   # API clients and data sources
-│   │   ├── oecd.py           # OECDClient (main entry point)
-│   │   └── sources.py        # Data source classes
-│   ├── indicators/           # Indicator definitions
-│   │   ├── dac1/            # DAC1 indicators and functions
-│   │   ├── dac2a/           # DAC2A indicators and functions
-│   │   └── crs/             # CRS indicators and functions
-│   ├── clean_data/          # Data cleaning and schema
-│   │   ├── schema.py        # Column mappings
-│   │   ├── common.py        # Cleaning functions
-│   │   └── validation.py    # Input validation
-│   ├── settings/            # Configuration and reference data
-│   ├── tools/               # Utility functions
-│   │   ├── cache.py        # Caching system
-│   │   ├── groupings.py    # Provider/recipient groupings
-│   │   ├── gni.py          # GNI calculations
-│   │   └── names/          # Name mapping utilities
-│   └── __init__.py         # Package exports
-├── tests/                   # Test files
-├── .github/workflows/       # GitHub Actions
-├── .pre-commit-config.yaml  # Pre-commit hooks configuration
-├── pyproject.toml          # Project metadata and dependencies
-├── CLAUDE.md               # AI assistant guidance
-├── CONTRIBUTING.md         # This file
-└── README.md               # User documentation
-```
-
-### Key Components
-
-- **OECDClient**: High-level API for users (in `api/oecd.py`)
-- **Data Sources**: DAC1Data, DAC2AData, CRSData classes (in `api/sources.py`)
-- **Indicators**: JSON definitions + custom processing functions
-- **Caching**: 3-tier system (memory, query cache, bulk cache)
-- **Schema**: Column name normalization and mappings
-
-## Getting Help
-
-- **Issues**: Check existing [issues](https://github.com/ONEcampaign/oda_data_package/issues) or create a new one
-- **Discussions**: Start a discussion for questions or ideas
-- **Documentation**: See [README.md](README.md)
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+- `scripts/refresh_channel_crosswalk.py` refreshes the OECD channel list and proposes crosswalk rows for new provider and agency pairs. It needs `uv sync --group maintenance`. Proposed rows stay `reviewed=false`, and the imputation ignores them until someone reviews them.
+- `scripts/imputation_delta.py` compares oda-data 2.8.2 and 3.0 on a fixed set of calls over the same cached tables, and prints a Markdown table for the migration guide.

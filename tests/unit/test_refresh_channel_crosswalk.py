@@ -200,6 +200,36 @@ class TestLoadOecdChannelCodelist:
             script.load_oecd_channel_codelist(tmp_path / "does_not_exist")
 
 
+class TestUseLiveChannelNames:
+    def test_the_live_crs_label_wins_over_the_snapshot_name(
+        self, codelist_snapshot: Path
+    ):
+        frame, _ = script.load_oecd_channel_codelist(codelist_snapshot)
+        codelist = pd.DataFrame(
+            {
+                "codelist_id": ["3", "3", "3", "3"],
+                "code": ["46015", "11000", "11000", "99999"],
+                "label": [
+                    "European Bank for Reconstruction and Development (renamed)",
+                    "Donor Government",
+                    "Provider Government",
+                    "Another codelist's channel",
+                ],
+                "crs": ["1", "1", "0", "1"],
+                "activation_date": [None, "2015-01-01", None, None],
+            }
+        )
+
+        named = script.use_live_channel_names(frame, codelist=codelist)
+
+        assert dict(zip(named["channel_code"], named["channel_name"], strict=True)) == {
+            11000: "Donor Government",  # the CRS row, not the TOSSD row
+            44002: "IDA",  # not in the live codelist: the snapshot name stays
+            46015: "European Bank for Reconstruction and Development (renamed)",
+        }
+        assert named["en_acronym"].tolist() == frame["en_acronym"].tolist()
+
+
 class TestRefreshCrsChannelMapping:
     def test_writes_csv_and_vintage_sidecar_with_withdrawn_channels(
         self, codelist_snapshot: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -216,6 +246,7 @@ class TestRefreshCrsChannelMapping:
                 "codelist_id": ["3"],
                 "code": ["47999"],
                 "label": ["Withdrawn fund (codelist)"],
+                "crs": ["1"],
                 "activation_date": [None],
             }
         )

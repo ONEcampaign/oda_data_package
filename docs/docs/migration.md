@@ -1,516 +1,193 @@
-# Migration from v1.x to v2.x
+# Migrating from 2.x
 
-Version 2.0 is a major refactor with significant improvements in performance, stability, and organization. This guide helps you migrate existing code from v1.x to v2.x.
+oda-data 3.0 replaces the 2.x API. Every 2.x indicator code has a 3.0 call, and `oda.search()` gives it. This guide assumes you have 2.x code to move. 2.x stays installable with `pip install "oda-data<3"`, and 3.0 needs Python 3.12 or later.
 
-## What's Changed
+## The default basis changed
 
-Version 2.x includes:
+The change that moves the most numbers is the default basis. 2.x defaulted to `measure="net_disbursement"` in every year. 3.0 defaults to `headline`, which follows the OECD's own series: net flows to 2017 and grant equivalents from 2018. Every 2.x call that took the default gives a different number from 2018 on.
 
-- ✅ **Faster**: Improved caching and bulk download performance
-- ✅ **More stable**: Better error handling and thread safety
-- ✅ **Better organized**: Clearer API structure
-- ⚠️ **Breaking changes**: New API requires code updates
-
-## Quick Migration Path
-
-If you need to keep using v1.x syntax temporarily:
-
-### Option 1: Use Compatibility Layer
-
-```python title="Compatibility with v1.x Code"
-from oda_data import ODAData  # v1.x compatible interface
-
-# Old v1.x code works unchanged
-oda = ODAData(years=range(2018, 2022), donors=[4, 302])
-data = oda.load_indicator("total_oda_flow_net")
-
-# This uses v2.x under the hood but maintains v1.x syntax
+```text
+   year             basis          value
+0  2017  net_disbursement  147502.810000
+1  2018  net_disbursement  150440.750000
+2  2023  net_disbursement  226734.741184
+   year             basis          value
+0  2017  net_disbursement  147502.810000
+1  2018  grant_equivalent  153878.490000
+2  2023  grant_equivalent  223921.171184
 ```
-
-!!! warning "Compatibility Layer Limitations"
-The compatibility layer supports basic v1.x patterns but may not include all features. Migrate to v2.x API for full functionality.
-
-### Option 2: Stay on v1.5.x
-
-Version 1.5.x remains available and supported until at least November 2025:
-
-```bash
-# Install specific v1.x version
-pip install oda-data==1.5.0
-```
-
-## Core API Changes
-
-### Main Class Rename
-
-**v1.x:**
 
 ```python
-from oda_data import ODAData
+import oda_data as oda
 
-oda = ODAData(years=range(2020, 2023))
+dac_total = oda.total(oda.groups.dac_countries)
+years = [2017, 2018, 2023]
+
+as_in_2x = oda.get("oecd.dac1.total_oda", years=years, providers=dac_total, by=["provider", "year"], basis="net_disbursement")
+headline = oda.get("oecd.dac1.total_oda", years=years, providers=dac_total, by=["provider", "year"])
+
+print(as_in_2x[["year", "basis", "value"]])
+print(headline[["year", "basis", "value"]])
 ```
 
-**v2.x:**
+Pass `basis="net_disbursement"` to keep the 2.x series. The `basis` column of every result says which basis each row holds. [Counting rules](explanation/counting-rules.md#the-headline-basis) explains the headline basis.
+
+## Find the 3.0 call for a 2.x code
+
+`oda.search()` takes a 2.x indicator code, or a slug from 2.x's `settings/indicators.json`, and returns the call as its first row. `use` holds the call and `note` says why its number differs from 2.x, if it does.
+
+```text
+oda.get("oecd.dac2a.recipient_oda", by=["provider", "recipient", "year"])
+3.0 leaves out DAC2A rows to multilateral organisations as recipients (98, 816, 878, 900-996), because they are core contributions, which the organisations' own rows carry on to the recipients they reach; 2.x's rows also held DAC2A recipient totals, such as developing countries (10001), which 3.0 returns only when recipients= names them, so 2.x's rows summed by provider count each flow more than once.
+```
 
 ```python
+import oda_data as oda
+
+found = oda.search("DAC2A.10.206")
+print(found.use.iloc[0])
+print(found.note.iloc[0])
+```
+
+`oda.get()` with a 2.x code raises `UnknownIndicatorError` whose message carries the same call:
+
+```text
+'CRS.P.10.100.A' is an oda-data 2.x code. In 3.0:
+    oda.get("oecd.crs.bilateral_oda", finance_types=[110, 210], modalities=["A01", "A02"])
+The number differs from 2.x: 3.0 counts bi_multi 1, 3, 7 and 8 only, ... [unknown_indicator]
+```
+
+The map covers the 3,049 codes of the 2.x catalogue and the 108 slugs of `settings/indicators.json`, 3,157 entries in all.
+
+| Status         | Entries | Meaning                                                                 |
+| -------------- | ------- | ----------------------------------------------------------------------- |
+| `exact`        | 156     | the call gives 2.x's number for the same provider, recipient, and year  |
+| `changes`      | 2,893   | a counting rule, a 2.x defect, or a unit differs, and `note` says which |
+| `no_2x_number` | 93      | 2.x computed no number to compare with, as for every slug               |
+| `no_data`      | 15      | the OECD no longer publishes what the code read                         |
+
+## Move a 2.x call
+
+A 2.x `OECDClient` call becomes one `oda.get()` call. The arguments map one to one, except the currency, which becomes a unit.
+
+```py
+# 2.x
 from oda_data import OECDClient
 
-client = OECDClient(years=range(2020, 2023))
+client = OECDClient(years=[2020, 2021], providers=[4, 302], measure="grant_equivalent", currency="EUR", base_year=2019)
+data = client.get_indicators("DAC1.10.11015")
 ```
 
-### Method Rename
-
-**v1.x:**
-
 ```python
-data = oda.load_indicator("total_oda_flow_net")
-```
+import oda_data as oda
 
-**v2.x:**
-
-```python
-data = client.get_indicators("DAC1.10.1010")  # New indicator code format
-```
-
-### Parameter Changes
-
-| v1.x        | v2.x            | Notes                             |
-| ----------- | --------------- | --------------------------------- |
-| `donors`    | `providers`     | More accurate terminology         |
-| `base_year` | `base_year`     | Unchanged                         |
-| `currency`  | `currency`      | Unchanged                         |
-| `prices`    | Use `base_year` | Set base_year for constant prices |
-
-## Indicator Code Changes
-
-v2.x uses explicit indicator codes instead of named indicators.
-
-### Finding New Codes
-
-**v1.x named indicators** → **v2.x codes:**
-
-```python
-# v1.x: Named indicators
-oda.load_indicator("total_oda_flow_net")
-oda.load_indicator("bilateral_oda_flow_net")
-oda.load_indicator("multilateral_oda_flow_net")
-
-# v2.x: Get equivalent codes
-from oda_data import OECDClient
-
-# Find available indicators
-indicators = OECDClient.available_indicators()
-
-# Search for what you need
-for code, info in indicators.items():
-    if "total oda" in info["name"].lower():
-        print(f"{code}: {info['name']}")
-
-# Use explicit codes
-client = OECDClient(years=range(2020, 2023))
-data = client.get_indicators("DAC1.10.1010")  # Total ODA
-```
-
-### Common v1.x to v2.x Mappings
-
-| v1.x Indicator Name         | v2.x Code      | Description                  |
-| --------------------------- | -------------- | ---------------------------- |
-| `total_oda_flow_net`        | `DAC1.10.1010` | Total ODA, net disbursements |
-| `bilateral_oda_flow_net`    | `DAC1.10.1015` | Bilateral ODA                |
-| `multilateral_oda_flow_net` | `DAC1.10.1210` | Multilateral ODA             |
-| `total_oda_ge`              | `DAC1.20.1010` | Total ODA, grant equivalent  |
-
-## Parameter Migration
-
-### Donors → Providers
-
-**v1.x:**
-
-```python
-oda = ODAData(
-    years=range(2020, 2023),
-    donors=[4, 302]  # Old parameter name
+data = oda.get(
+    "oecd.dac1.bilateral_oda",
+    years=[2020, 2021],
+    providers=[4, 302],
+    basis="grant_equivalent",
+    unit=oda.constant("EUR", 2019),
 )
 ```
 
-**v2.x:**
+The first block is 2.x code. On 3.0 its import raises `RemovedIn3Error`, whose message names the replacement.
 
-```python
-client = OECDClient(
-    years=range(2020, 2023),
-    providers=[4, 302]  # New parameter name
-)
-```
+| 2.x                                        | 3.0                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| `OECDClient(...).get_indicators(code)`     | `oda.get(indicator, ...)`                                              |
+| `years=`, `providers=`, `recipients=`      | the same arguments, which also take names and groups                   |
+| `measure=`                                 | `basis=`                                                               |
+| `currency=`, `base_year=`                  | `unit=oda.current(currency)` or `unit=oda.constant(currency, year)`    |
+| `currency="LCU"`                           | each provider's currency as its own unit, such as `oda.current("JPY")` |
+| `use_bulk_download=True`                   | nothing: 3.0 always reads the bulk files                               |
+| `set_data_path(path)`                      | `oda.Context(cache_dir=path)`                                          |
+| columns `donor_code`, `donor_name`         | `provider`, `provider_name`                                            |
+| columns `recipient_code`, `recipient_name` | `recipient`, `recipient_name`                                          |
+| column `one_indicator` or the 2.x code     | `indicator`, the 3.0 id                                                |
 
-### Prices Parameter
+Two defaults also differ. A 2.x call without `providers=` read every provider in the table. A DAC1 call in 3.0 reads `oda.groups.dac_countries`, and a DAC2A or CRS call every official provider with aggregates and private donors left out. And 2.x returned the OECD's aggregate rows beside their members, which 3.0 returns only when a filter names them. Name a group, or pass `oda.total(group)`, to get a total.
 
-**v1.x:**
+## Removed names
 
-```python
-oda = ODAData(
-    years=range(2020, 2023),
-    prices="constant",
-    base_year=2020
-)
-```
+Each 2.x top-level name raises `RemovedIn3Error`, an `ImportError`, whose message gives its replacement.
 
-**v2.x:**
+| 2.x name                                                                  | In 3.0                                                                                                                                        |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OECDClient`                                                              | `oda.get(indicator, years=..., providers=..., basis=..., unit=...)`                                                                           |
+| `ODAData`                                                                 | `oda.get()`; `oda.indicators()` lists the indicators                                                                                          |
+| `DAC1Data`, `DAC2AData`, `CRSData`, `MultiSystemData`                     | `oda_reader.download_dac1()` and its siblings, or `oda_reader.scan("dac1")`, for the raw tables; `oda.records()` for the rows behind a number |
+| `AidDataData`                                                             | `oda_reader.download_aiddata()`                                                                                                               |
+| `add_names_columns`                                                       | `oda.add_names(df)`; every result already has its name columns                                                                                |
+| `add_sectors`, `add_broad_sectors`                                        | `by=["sector"]` or `by=["broad_sector"]` on a CRS indicator                                                                                   |
+| `add_gni_share_column`                                                    | `oecd.dac1.oda_gni_ratio`; `one.dac1.oda_gni_ratio_fixed_eu27` for EU Institutions as 2.x computed them                                       |
+| `bilateral_policy_marker`                                                 | one indicator per marker, such as `oecd.crs.gender_marker`, with `by=["score"]`                                                               |
+| `provider_groupings`, `recipient_groupings`                               | `oda.groups`, and `oda.total(group)` for a total                                                                                              |
+| `sector_imputations`                                                      | `one.crs.imputed_multilateral_oda` with `by=["sector"]`                                                                                       |
+| `imputation_quality_report`                                               | `oda.records("one.crs.imputed_multilateral_oda", ...)`, grouped by `allocation_status`                                                        |
+| `cache`, `clear_cache`, `disable_cache`, `enable_cache`, `set_cache_root` | `oda.Context(cache_dir=...)`, and `oda_reader.cache_info()` and its siblings to manage the cache                                              |
+| `set_data_path`                                                           | `oda.Context(cache_dir=...)`; `Query.to_parquet(path)` writes a result                                                                        |
 
-```python
-client = OECDClient(
-    years=range(2020, 2023),
-    base_year=2020  # base_year alone indicates constant prices
-)
-```
+The 2.x groups `dac_members`, `eu27_total`, `all_official`, and `dac1_aggregates` have no 3.0 group. Pass 918 or the OECD aggregate code itself, since a group holding 918 and EU members would count EU money twice.
 
-### Currency Conversion
+## Numbers that change
 
-**v1.x:**
+A `changes` entry gives a different number from 2.x for one or more of these reasons. An entry can carry several, so the counts overlap.
 
-```python
-oda = ODAData(
-    years=range(2020, 2023),
-    currency="EUR"
-)
-```
+3.0 also leaves out rows whose value is exactly zero, which 2.x returned, so a 3.0 result can have fewer rows with the same totals.
 
-**v2.x:**
+### 2.x CRS sector codes returned nothing
 
-```python
-# Same syntax!
-client = OECDClient(
-    years=range(2020, 2023),
-    currency="EUR"
-)
-```
+2,740 CRS codes filter on a sector. 2.x compared the CRS's five-digit purpose codes with three-digit sector headings, so it found only the activities reported at heading level. On today's CRS, 2.8.2 returns no rows for 2,290 of those codes, and raises an error for the 286 that also select rows with no modality or purpose code, which leaves 164 codes with a number. 3.0 reads every purpose code under each heading. Every 2.x sector figure is too low or missing.
 
-## Data Source Access
+### CRS rows that count
 
-Direct database access has a cleaner API in v2.x.
+- 1,908 codes: 3.0 counts bilateral rows only (`bi_multi` 1, 3, 7, and 8). 2.x also counted rows with no `bi_multi` and multilateral organisations' own outflows. A multilateral provider's ODA is `oecd.crs.multilateral_oda`.
+- 1,908 codes: on grant equivalents 3.0 adds private sector instruments (category 60) to category 10, which brings CRS bilateral grant equivalents within USD 30 million of DAC1 in 2023.
+- 948 codes: 2.x summed every CRS category. 3.0 sums ODA (category 10) or other official flows (category 21), and private development finance (category 30) is `oecd.crs.private_development_finance`. Each of these codes also filters on a sector or on a missing modality, so 2.8.2 reads only rows reported at heading level or raises an error, and the category rule shows only beside the sector fix.
+- 578 codes: the same bilateral rule for other official flows, with `oecd.crs.multilateral_oof` for multilateral providers.
+- 198 codes: private development finance defaults to the private foundations in `oda.groups.private_donors`. The category 30 rows that Denmark, Japan, Korea, Hungary, and Finland report, USD 2.7 billion in all years, count only when a call names them.
 
-### DAC1 Access
+### DAC2A rows that count
 
-**v1.x:**
+- 19 codes: 2.x's rows held DAC2A recipient totals, such as developing countries, so 2.x summed by provider counted each flow more than once. 3.0 returns a total only when `recipients=` names it.
+- 18 codes: 3.0 leaves out multilateral organisations as DAC2A recipients (98, 816, 878, and 900 to 996), whose rows are core contributions.
+- 2 codes: line 106 leaves out multilateral providers and the totals that hold them (20002, 20004, 20005), since the imputed shares are their own flows.
 
-```python
-from oda_data import read_dac1
+### DAC1 and ONE figures
 
-data = read_dac1(
-    years=range(2020, 2023),
-    donors=[4, 302]
-)
-```
+- 3 codes: 2.x returned no rows on today's DAC1 (`DAC1.40.3`, `DAC1.40.4`, `DAC1.40.11002`). 3.0 gives line 3 as a per cent of GNI, population in millions of people through `oecd.dac1.population`, and ODA/GNI computed from ODA and GNI, which differs from the published per cent by up to 0.005 points of rounding.
+- `ONE.40.1010_11010_1` and `ONE.40.1010_1`: ODA/GNI is in per cent, where 2.x gave a fraction, and EU Institutions' ratio divides by the GNI of today's EU27 in every year, as 2.x's `add_gni_share_column` did. 2.x shipped no function for the second code.
+- `ONE.P.40.T.T.S_M`: 2.x gave three-year rolling shares of ODA and other official flows by channel. The 3.0 call gives single-year shares of ODA, and `one.crs.imputed_multilateral_oda` applies the three-year shares itself.
 
-**v2.x:**
+The 15 `no_data` entries are COVID-19 slugs that read DAC1 lines 8852 to 8856, which the OECD publishes in no year. `one.crs.covid_oda` counts bilateral ODA the CRS tags `#COVID-19`.
 
-```python
-from oda_data import DAC1Data
+### Size of the changes
 
-dac1 = DAC1Data(
-    years=range(2020, 2023),
-    providers=[4, 302]
-)
+Each row runs one call in oda-data 2.8.2 and in 3.0 on the same OECD releases, so a difference comes from a counting rule. Values are current USD millions, and ODA/GNI is in per cent.
 
-data = dac1.read(using_bulk_download=True)
-```
+| Call                                                                  | 2.x code                  | Year |     2.8.2 |       3.0 | Why it moves                                                                                    |
+| --------------------------------------------------------------------- | ------------------------- | ---: | --------: | --------: | ----------------------------------------------------------------------------------------------- |
+| Headline total ODA, France                                            | `ONE.10.1010_11010`       | 2022 | 16,016.25 | 16,016.25 | Same number                                                                                     |
+| ODA/GNI, EU Institutions                                              | `ONE.40.1010_11010_1`     | 2022 |      null |    0.1355 | 3.0 divides by the EU27's GNI                                                                   |
+| DAC2A bilateral ODA, France, summed over recipients                   | `DAC2A.10.206`            | 2022 | 99,704.52 | 10,535.47 | 2.x's rows held recipient totals and multilateral recipients                                    |
+| DAC2A imputed multilateral ODA, France, summed over recipients        | `DAC2A.10.106`            | 2022 | 50,586.66 |  6,504.19 | 2.x's rows held recipient totals                                                                |
+| CRS bilateral ODA, IDA                                                | `CRS.P.10`                | 2022 | 23,610.30 |   no rows | IDA's rows are its own outflows (`bi_multi` 4), which 3.0 counts in `oecd.crs.multilateral_oda` |
+| CRS bilateral ODA, grant equivalents, France                          | `CRS.P.10`                | 2023 |  8,268.05 |  8,488.86 | 3.0 adds France's private sector instruments (category 60), USD 220.81 million                  |
+| CRS ODA and other official flows to education, every category, France | `CRS.P.T.T.T.110`         | 2022 |     79.77 |  1,600.22 | 2.x read only the rows reported at heading level, in every category                             |
+| CRS private development finance, all recipients                       | `CRS.R.30`                | 2022 | 11,279.10 | 10,735.08 | 3.0 leaves out the category 30 rows of official providers                                       |
+| CRS bilateral ODA grants to education projects, France                | `CRS.P.10.100.C.110`      | 2022 |   no rows |    190.00 | 2.x sector codes returned nothing                                                               |
+| CRS bilateral ODA grants to health projects, France                   | `CRS.P.10.100.C.120`      | 2022 |   no rows |    472.12 | 2.x sector codes returned nothing                                                               |
+| Gender marker, principal, Norway                                      | `bilateral_policy_marker` | 2022 |    190.74 |    190.74 | Same number, as in every marker sample                                                          |
+| Core ODA, 3.0 headline basis against 2.x net flows, France            | `ONE.10.1010C`            | 2022 | 14,999.35 | 13,495.02 | The default basis is grant equivalents from 2018                                                |
 
-### CRS Access
+Releases: dac1 `0x8DF2539D20A32DF`, dac2a `0x8DF2539E5D52F9D`, crs `0x8DF2533665E7CB7`, multisystem `0x8DF2522071A444B`. oda-data 2.8.2 against 3.0.0.
 
-**v1.x:**
+The marker indicators give the same numbers as 2.x's `bilateral_policy_marker` for ten DAC members, three scores, and 2012, 2018, and 2022, since that function already screened modalities B031 to B033. The marker entries in the map are ONE slugs that 2.x computed no number for.
 
-```python
-from oda_data import read_crs
+`scripts/imputation_delta.py` builds the full comparison, with the 2.x map's reason for each row.
 
-data = read_crs(
-    years=[2022],
-    donors=[4]
-)
-```
+## See also
 
-**v2.x:**
-
-```python
-from oda_data import CRSData
-
-crs = CRSData(
-    years=[2022],
-    providers=[4]
-)
-
-data = crs.read(using_bulk_download=True)
-```
-
-## Utility Functions
-
-### Adding Names
-
-**v1.x:**
-
-```python
-from oda_data import add_names
-
-data = add_names(data)
-```
-
-**v2.x:**
-
-```python
-from oda_data import add_names_columns
-
-# More explicit: specify which columns
-data = add_names_columns(data, ["donor_code", "recipient_code"])
-```
-
-### GNI Calculations
-
-**v1.x:**
-
-```python
-oda = ODAData(years=range(2020, 2023))
-data = oda.load_indicator("total_oda_flow_net")
-data = oda.add_share_indicator(data, "gni")
-```
-
-**v2.x:**
-
-```python
-from oda_data import OECDClient, add_gni_share_column
-
-client = OECDClient(years=range(2020, 2023))
-data = add_gni_share_column(client, "DAC1.10.1010")
-
-# Result has 'gni_share_pct' column
-```
-
-## Cache Management
-
-### Data Path Setting
-
-**v1.x:**
-
-```python
-from oda_data import set_data_path
-
-# Used to control where downloads were cached
-set_data_path("path/to/data")
-```
-
-**v2.x (2.6 and later):**
-
-```python
-# Cache is now per-user by default — no setup required for most users.
-# To override the cache location:
-from oda_data import set_cache_root
-
-set_cache_root("path/to/cache")
-
-# Or set the environment variable before starting Python:
-#   export ODA_DATA_CACHE_DIR=/path/to/cache
-```
-
-`set_data_path()` still exists but, as of 2.6, only governs where the package
-writes parquet *exports* (data you explicitly save out) — not where downloads
-are cached. Calling it for cache purposes prints a one-time deprecation
-warning. See [Cache Management](caching.md) for the full picture.
-
-### Cache Clearing
-
-**v1.x and v2.x (back-compat):**
-
-```python
-from oda_data import clear_cache
-
-clear_cache()  # still works, clears everything
-```
-
-**v2.x preferred (2.6 and later):**
-
-```python
-from oda_data import cache
-
-cache.clear()           # clear everything (same as clear_cache())
-cache.clear("raw")      # clear only the raw OECD zips
-cache.invalidate("CRSData")  # forget a single dataset
-```
-
-## Complete Migration Example
-
-Here's a complete v1.x script and its v2.x equivalent:
-
-### v1.x Code
-
-```python title="Old v1.x Script"
-from oda_data import ODAData, set_data_path, add_names
-
-set_data_path("data")
-
-# Create ODA object
-oda = ODAData(
-    years=range(2018, 2023),
-    donors=[4, 12, 302],
-    currency="EUR",
-    prices="constant",
-    base_year=2020
-)
-
-# Load indicator
-data = oda.load_indicator("total_oda_flow_net")
-
-# Add names
-data = add_names(data)
-
-# Add GNI share
-data = oda.add_share_indicator(data, "gni")
-
-print(data.head())
-```
-
-### v2.x Equivalent
-
-```python title="New v2.x Script"
-from oda_data import OECDClient, add_names_columns, add_gni_share_column
-
-# Create client
-client = OECDClient(
-    years=range(2018, 2023),
-    providers=[4, 12, 302],  # donors → providers
-    currency="EUR",
-    base_year=2020  # No need for prices="constant"
-)
-
-# Get indicator (use new code format)
-data = client.get_indicators("DAC1.10.1010")  # Total ODA
-
-# Add names (specify columns explicitly)
-data = add_names_columns(data, ["donor_code"])
-
-# Add GNI share (different function)
-data = add_gni_share_column(client, "DAC1.10.1010")
-
-print(data.head())
-```
-
-## Migration Checklist
-
-Use this checklist to migrate your code:
-
-- [ ] Update imports: `ODAData` → `OECDClient`
-- [ ] Rename parameters: `donors` → `providers`
-- [ ] Change method calls: `load_indicator()` → `get_indicators()`
-- [ ] Update indicator names to codes (use `available_indicators()`)
-- [ ] Remove `prices` parameter (use `base_year` only for constant prices)
-- [ ] Update `add_names()` to `add_names_columns()` with column specification
-- [ ] Update GNI functions: use `add_gni_share_column()`
-- [ ] Test with small dataset first
-- [ ] Check data output matches expectations
-- [ ] Update documentation and comments
-
-## Testing Your Migration
-
-After migrating, verify your results:
-
-```python title="Verify Migration Results"
-# Compare v1.x and v2.x outputs
-
-# Using compatibility layer (v1.x style)
-from oda_data import ODAData
-oda_v1 = ODAData(years=[2022], donors=[4])
-data_v1 = oda_v1.load_indicator("total_oda_flow_net")
-
-# Using new v2.x API
-from oda_data import OECDClient
-client_v2 = OECDClient(years=[2022], providers=[4])
-data_v2 = client_v2.get_indicators("DAC1.10.1010")
-
-# Compare totals (should be very close)
-total_v1 = data_v1["value"].sum()
-total_v2 = data_v2["value"].sum()
-
-print(f"v1.x total: ${total_v1:,.0f}")
-print(f"v2.x total: ${total_v2:,.0f}")
-print(f"Difference: {abs(total_v1 - total_v2) / total_v1 * 100:.2f}%")
-```
-
-## Troubleshooting
-
-### Issue: Indicator name not found
-
-**v1.x worked, v2.x doesn't:**
-
-```python
-# v1.x: This worked
-data = oda.load_indicator("bilateral_oda_flow_net")
-
-# v2.x: Named indicators removed
-# Find the equivalent code:
-from oda_data import OECDClient
-
-indicators = OECDClient.available_indicators()
-for code, info in indicators.items():
-    if "bilateral" in info["name"].lower() and "oda" in info["name"].lower():
-        print(f"{code}: {info['name']}")
-
-# Use the code
-data = client.get_indicators("DAC1.10.1015")
-```
-
-### Issue: Different column names
-
-v2.x uses standardized column names. Check the actual columns:
-
-```python
-# See what columns are available
-print(data.columns.tolist())
-
-# Common mappings:
-# v1.x → v2.x
-# 'donor_code' → 'provider_code'
-# 'donor_name' → 'provider_name'
-```
-
-### Issue: Import errors
-
-**If you see:**
-
-```
-ImportError: cannot import name 'ODAData'
-```
-
-**Solution:**
-
-```python
-# Old import (v1.x only):
-from oda_data import ODAData  # Won't work in v2.x default
-
-# New import for compatibility:
-from oda_data import ODAData  # Works via compatibility layer
-
-# Or migrate fully to:
-from oda_data import OECDClient
-```
-
-## Getting Help
-
-If you encounter migration issues:
-
-1. **Check available indicators**: Use `OECDClient.available_indicators()` to find codes
-1. **Use compatibility layer**: Import `ODAData` for gradual migration
-1. **Review examples**: See other documentation pages for v2.x patterns
-1. **Report issues**: [Open an issue on GitHub](https://github.com/ONEcampaign/oda_data_package/issues)
-
-## Version Support Timeline
-
-- **v1.5.x**: Supported until at least November 2025
-- **v2.x**: Current stable version, recommended for new projects
-- **Compatibility layer**: Available in v2.x for gradual migration
-
-## Benefits of Migrating
-
-Why upgrade to v2.x:
-
-- **Performance**: 2-5x faster queries with improved caching
-- **Stability**: Better error handling and thread safety
-- **Features**: New capabilities like policy markers, sector imputations
-- **Future-proof**: Active development focuses on v2.x
-- **Better docs**: Comprehensive documentation and examples
+- [Counting rules](explanation/counting-rules.md) gives the reason for every rule above.
+- [Indicators](reference/indicators.md) lists the 3.0 indicators.
+- [Changelog](changelog.md) lists every change in 3.0.0.

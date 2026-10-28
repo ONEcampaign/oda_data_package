@@ -4,13 +4,19 @@ Every filter takes a code or an exact name. Providers, recipients, and sectors
 also take groups. A name matches when its normalised text (``_names.normalise``)
 equals one of:
 
-1. a name in the bundled reference data for the dimension, or an OECD
-   aggregate's name without its ``", Total"`` suffix (``"DAC Countries"``);
+1. a name in the bundled reference data for the dimension, a name the OECD
+   gave the code before a rename (``"Bill & Melinda Gates Foundation"``), or
+   an OECD aggregate's name without its ``", Total"`` suffix
+   (``"DAC Countries"``);
 2. a built-in group's name or label (``"g7"``, ``"G7 countries"``);
 3. for providers and recipients only, a name, alias, three-letter code
    (``oecd:dotstat`` or ISO 3166 alpha-3), or DAC code of the entity
    resolvekit finds, which must carry a code in the dimension's system
    (``oecd:provider`` or ``oecd:recipient``).
+
+A sector code below 1000 is a DAC5 heading and stands for every code under it
+(``_names.purpose_codes``), so ``sectors=122`` reads 122 and 12220 to 12281.
+``oda.sectors.reported_at(122)`` reads code 122 alone.
 
 A name that matches both a code and a group, or several codes, raises
 ``AmbiguousEntityError``. resolvekit matches typos silently ("Frnace" gives
@@ -38,14 +44,17 @@ from oda_data._errors import (
     UnknownEntityError,
     UnsupportedQueryError,
 )
-from oda_data._groups import Group, GroupTotal, groups, sectors
+from oda_data._groups import Group, GroupTotal, ReportedAt, groups, sectors
 from oda_data._model import ResolvedGroup
 from oda_data._names import (
+    SECTOR_HEADING_BELOW,
     aggregate_codes,
     channel_acronyms,
+    former_names,
     is_aggregate,
     names,
     normalise,
+    purpose_codes,
 )
 
 if TYPE_CHECKING:
@@ -160,10 +169,13 @@ def resolve_selection(
     for value in _as_values(values):
         as_total = isinstance(value, GroupTotal)
         target = value.group if isinstance(value, GroupTotal) else value
+        if isinstance(target, ReportedAt):
+            rows |= _reported_at(dimension, target)
+            continue
         if not isinstance(target, Group):
             target = resolve_entity(dimension, target, table=table)
         if not isinstance(target, Group):
-            rows.add(target)
+            rows |= _codes(dimension, target)
             continue
 
         known = sources.get(target.name)
@@ -247,6 +259,9 @@ def _member_codes(
         raise ValueError(f"group {group.name!r} contains itself")
     codes: set[Code] = set()
     for member in group.members:
+        if isinstance(member, ReportedAt):
+            codes |= _reported_at(dimension, member)
+            continue
         target = (
             member
             if isinstance(member, Group)
@@ -257,8 +272,26 @@ def _member_codes(
                 target, dimension, table=table, seen=(*seen, group.name)
             )
         else:
-            codes.add(target)
+            codes |= _codes(dimension, target)
     return frozenset(codes)
+
+
+def _codes(dimension: Dimension, code: Code) -> frozenset[Code]:
+    """The codes one resolved code reads: a sector heading's codes, or itself."""
+    if dimension == "sector" and isinstance(code, int) and code < SECTOR_HEADING_BELOW:
+        return purpose_codes(code)
+    return frozenset({code})
+
+
+def _reported_at(dimension: Dimension, heading: ReportedAt) -> frozenset[Code]:
+    """The one code a ``reported_at`` heading reads, in a sector filter only."""
+    if dimension != "sector":
+        raise UnknownEntityError(
+            f"{heading!r} is a sector heading; {dimension} filters take "
+            f"{dimension} codes",
+            system=dimension,
+        )
+    return frozenset({heading.code})
 
 
 def _check_aggregates(
@@ -309,7 +342,7 @@ def _known_code(dimension: Dimension, code: int, *, table: TableName | None) -> 
     if system is not None and _resolvekit_knows(code, system):
         return code
     hint = (
-        "; sector filters take five-digit CRS purpose codes or oda.sectors groups"
+        "; sector filters take CRS purpose codes, DAC5 headings, or oda.sectors groups"
         if dimension == "sector"
         else ""
     )
@@ -425,7 +458,7 @@ def _names_for(dimension: Dimension, table: TableName | None) -> Mapping[Code, s
 def _name_index(
     dimension: Dimension, table: TableName | None
 ) -> Mapping[str, frozenset[Code]]:
-    """Normalised name to codes, from the bundled names and aggregate aliases."""
+    """Normalised name to codes: bundled names, former names, aggregate aliases."""
     entries: list[tuple[str, Code]] = []
     if dimension == "line" and table is None:
         for line_table in ("dac1", "dac2a"):
@@ -438,6 +471,11 @@ def _name_index(
         name = names(dimension).get(code, "")
         if name.endswith(", Total"):
             entries.append((name.removesuffix(", Total"), code))
+    entries += [
+        (name, code)
+        for code, former in former_names(dimension).items()
+        for name in former
+    ]
     if dimension == "channel":
         entries += [
             (acronym, code)
@@ -491,7 +529,7 @@ def _check_dimension(dimension: str) -> None:
 
 
 def _as_values(values: object) -> tuple[object, ...]:
-    if isinstance(values, str | int | Group | GroupTotal):
+    if isinstance(values, str | int | Group | GroupTotal | ReportedAt):
         return (values,)
     if isinstance(values, Iterable):
         return tuple(values)

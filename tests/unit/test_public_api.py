@@ -3,6 +3,7 @@
 import pickle
 import subprocess
 import sys
+from importlib.resources import files
 
 import pytest
 
@@ -47,6 +48,7 @@ PUBLIC_NAMES = sorted(
         "Group",
         "GroupTotal",
         "SectorGroup",
+        "ReportedAt",
         "total",
         "groups",
         "sectors",
@@ -104,7 +106,12 @@ def test_a_2x_name_names_its_replacement_on_import_and_attribute_read(
 
 
 def test_version_is_the_package_version() -> None:
-    assert oda_data.__version__ == "3.0.0.dev0"
+    assert oda_data.__version__ == "3.0.0"
+
+
+def test_the_package_ships_type_information() -> None:
+    """The PEP 561 marker, which type checkers need to read the annotations."""
+    assert files("oda_data").joinpath("py.typed").is_file()
 
 
 @pytest.mark.parametrize("name", [n for n in PUBLIC_NAMES if n != "__version__"])
@@ -139,6 +146,12 @@ def test_public_names_report_the_package_module_before_any_attribute_read(
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert result.stdout.strip() == "[]"
+
+
+def test_reported_at_is_the_type_sectors_reported_at_returns() -> None:
+    from oda_data import ReportedAt
+
+    assert isinstance(oda_data.sectors.reported_at(151), ReportedAt)
 
 
 def test_indicator_id_is_the_generated_literal() -> None:

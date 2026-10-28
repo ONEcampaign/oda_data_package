@@ -1,10 +1,10 @@
 ﻿channel_code,en_acronym,fr_acronym,channel_name
 10000,,,Public Sector Institutions
-11000,,,Provider Government
+11000,,,Donor Government
 11001,,,Central Government (donor govt.)
 11002,,,Local Government (donor govt.)
 11003,,,Public corporations (donor govt.)
-11004,,,Other public entities in provider country
+11004,,,Other public entities in donor country
 12000,,,Recipient Government
 12001,,,Central Government (recipient govt.)
 12002,,,Local Government (recipient govt.)
@@ -365,7 +365,7 @@
 47112,CEI-Climate Fund,CEI-Climate Fund,Central European Initiative - Special Fund for Climate and Environmental Protection
 47113,CEMAC,CEMAC,Economic and Monetary Community of Central Africa
 47114,AFoCO,AFoCO,Asian Forest Cooperation Organisation
-47116,IF,IF,Integrated Framework for Trade-Related Technical Assistance to Least Developed Countries
+47116,IF,IF,Enhanced Integrated Framework for Trade-Related Technical Assistance to Least Developed Countries
 47117,NEPAD,NEPAD,New Partnership for Africa's Development
 47118,CREFIAF,CREFIAF,Regional Organisation for the Strengthening of Supreme Audit Institutions of Francophone Sub-Saharan Countries
 47119,OSS,OSS,Sahara and Sahel Observatory
