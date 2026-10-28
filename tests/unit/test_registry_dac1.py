@@ -10,6 +10,7 @@ other unit, so a sum that deflates after adding shows.
 import importlib.util
 import warnings
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -28,7 +29,7 @@ from oda_data._errors import (
 )
 from oda_data._factors import FACTOR_SCHEMA
 from oda_data._groups import groups, total
-from oda_data._model import FactorTable, Indicator, Sum
+from oda_data._model import Derived, FactorTable, Indicator, Ratio, Sum
 from oda_data._provenance import Release
 from oda_data._registry import dac1
 from oda_data._units import Unit, constant, current
@@ -66,6 +67,7 @@ ROWS = [
     (GERMANY, 2017, 2, 1140, "A", 0.6),
     (FRANCE, 2018, 11002, 1160, "A", 0.55),
     (FRANCE, 2017, 4, 1140, "A", 67.0),
+    (GERMANY, 2017, 4, 1140, "A", 83.0),
 ]
 
 #: The factor each provider takes for any unit other than current USD.
@@ -164,12 +166,13 @@ def test_ids_module_matches_the_registry() -> None:
 def test_named_line_indicators_have_a_line_on_every_basis_they_offer(
     indicator: Indicator,
 ) -> None:
-    """GNI offers net flows only; every other named line indicator offers all
-    four concrete bases, so the headline basis always resolves."""
+    """GNI and population offer net flows only; every other named line
+    indicator offers all four concrete bases, so the headline basis always
+    resolves."""
     assert isinstance(indicator.kind, Sum)
     concrete = (
         {"net_disbursement"}
-        if indicator is dac1.GNI
+        if indicator in (dac1.GNI, dac1.POPULATION)
         else {
             "net_disbursement",
             "gross_disbursement",
@@ -529,3 +532,67 @@ def test_constant_prices_deflate_each_provider_before_the_sum(ctx: Context) -> N
 def test_the_ratio_refuses_a_unit(ctx: Context) -> None:
     with pytest.raises(UnsupportedQueryError):
         ctx.get("oecd.dac1.oda_gni_ratio", years=2017, unit=constant("USD", 2023))
+
+
+# Population is a count of people, never converted or combined with money ---------
+
+
+class RefusingFactors(FakeFactors):
+    def table(self, keys: pa.Table, units: tuple[Unit, ...], /) -> FactorTable:
+        raise AssertionError("a count asked for conversion factors")
+
+
+def test_population_sums_a_group_without_asking_for_factors() -> None:
+    with Context._from_parts(FakeTables(), RefusingFactors()) as context:
+        df = context.get(
+            "oecd.dac1.population",
+            years=2017,
+            providers=[FRANCE, GERMANY, total(groups.dac_countries)],
+        )
+
+    assert _rows(df, "provider", "basis", "scale", "value") == [
+        (str(FRANCE), "net_disbursement", "millions", 67.0),
+        (str(GERMANY), "net_disbursement", "millions", 83.0),
+        ("dac_countries", "net_disbursement", "millions", 150.0),
+    ]
+    assert df[["currency", "prices", "base_year"]].isna().all().all()
+
+
+@pytest.mark.parametrize("unit", [USD, constant("USD", 2023)], ids=str)
+def test_population_refuses_a_unit(ctx: Context, unit: Unit) -> None:
+    with pytest.raises(UnsupportedQueryError, match="count of people"):
+        ctx.get("oecd.dac1.population", years=2017, unit=unit)
+
+
+def test_population_records_carry_no_unit() -> None:
+    with Context._from_parts(FakeTables(), RefusingFactors()) as context:
+        df = context.records("oecd.dac1.population", years=2017, providers=FRANCE)
+
+    assert df["value"].tolist() == [67.0]
+    assert df["currency"].isna().all()
+
+
+def test_describe_says_population_is_a_count() -> None:
+    assert "millions of people, a count that takes no unit=" in repr(
+        describe("oecd.dac1.population")
+    )
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        Derived(plus=(dac1.TOTAL_ODA, dac1.POPULATION)),
+        Ratio(numerator=dac1.TOTAL_ODA, denominator=dac1.POPULATION),
+    ],
+    ids=["derived", "ratio"],
+)
+def test_population_cannot_be_combined_with_money(kind: Derived | Ratio) -> None:
+    with pytest.raises(ValueError, match=r"oecd\.dac1\.population"):
+        replace(dac1.TOTAL_ODA, id="test.mixed", kind=kind)
+
+
+def test_every_dac1_indicator_on_a_line_that_is_not_money_is_not_money() -> None:
+    for indicator in dac1.INDICATORS:
+        if isinstance(indicator.kind, Sum) and indicator.kind.lines:
+            reads = set(indicator.kind.lines.values()) & set(dac1.NON_MONEY_LINES)
+            assert bool(reads) == (not indicator.is_money), indicator.id

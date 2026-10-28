@@ -26,11 +26,11 @@ Two independent jobs, run via subcommands:
     reported again and not rewritten, so a second run keeps a reviewer's
     in-progress edits.
 
-This script sits outside ``src/oda_data`` because ``resolvekit`` is a
-maintenance-only tool (the ``maintenance`` dependency group, installed with
-``uv sync --group maintenance``, Python 3.12 or later) and no runtime code
-path may import it. Every import of ``resolvekit`` or ``yaml`` in this module
-is lazy and guarded, so importing the module needs neither package.
+This script sits outside ``src/oda_data`` because it maintains the package's
+bundled reference data. Reading the ResolveKit
+snapshot needs ``pyyaml`` from the ``maintenance`` dependency group (``uv sync
+--group maintenance``). Its import is lazy and guarded, so importing the
+module does not need it.
 
 Apart from the codelist fetch in ``refresh-codelist``, only
 ``review --download`` makes a network call. The default ``review`` path reads
@@ -55,6 +55,7 @@ DATA_DIR = REPO_ROOT / "src" / "oda_data" / "_data"
 CRS_CHANNEL_MAPPING_CSV = DATA_DIR / "crs_channel_mapping.csv"
 CRS_CHANNEL_MAPPING_VINTAGE_JSON = DATA_DIR / "crs_channel_mapping_vintage.json"
 CROSSWALK_CSV = DATA_DIR / "multilateral_channel_crosswalk.csv"
+PROVIDER_GROUPINGS_JSON = DATA_DIR / "provider_groupings.json"
 
 #: OECD DAC codelist id of "Channel of delivery".
 CHANNEL_CODELIST_ID = "3"
@@ -73,28 +74,7 @@ CROSSWALK_COLUMNS: tuple[str, ...] = (
 
 
 class MissingMaintenanceDependencyError(ImportError):
-    """resolvekit (or a dependency of the maintenance path) is not installed."""
-
-
-def _require_resolvekit() -> Any:
-    """Import and return the ``resolvekit`` module.
-
-    Raises:
-        MissingMaintenanceDependencyError: ``resolvekit`` is not installed.
-
-    Guards the only import site of resolvekit in this repository. Nothing in
-    ``src/oda_data`` may import it.
-    """
-    try:
-        import resolvekit
-    except ImportError as exc:
-        raise MissingMaintenanceDependencyError(
-            "resolvekit is required for this operation but is not installed. "
-            "Install the maintenance dependency group with "
-            "`uv sync --group maintenance` (requires Python >=3.12; it is "
-            "never a runtime dependency of the oda_data package itself)."
-        ) from exc
-    return resolvekit
+    """A dependency of the maintenance path, pyyaml, is not installed."""
 
 
 def _require_yaml() -> Any:
@@ -125,9 +105,8 @@ def _dedupe_channel_records(records: list[dict]) -> list[dict]:
     duplicates (re-parsed language rows) and a handful differ (an old "donor
     country" phrasing beside the "provider country" one). Keep, per code, the
     record with the longest ``name_en`` (the more descriptive, typically more
-    recent OECD text), breaking ties
-    in favour of a record whose ``name_fr`` is an actual translation rather
-    than a copy of ``name_en``.
+    recent OECD text), breaking ties in favour of a record whose ``name_fr``
+    is an actual translation rather than a copy of ``name_en``.
 
     Args:
         records: Raw ``channels:`` list from the codelist snapshot, each a
@@ -350,6 +329,12 @@ def load_crosswalk(path: Path = CROSSWALK_CSV) -> pd.DataFrame:
     return df
 
 
+def multilateral_providers() -> list[int]:
+    """Return the provider codes of the bundled ``multilateral`` group."""
+    groupings = json.loads(PROVIDER_GROUPINGS_JSON.read_text(encoding="utf-8"))
+    return sorted(int(code) for code in groupings["multilateral"])
+
+
 def load_crs_multilateral_pairs(
     multilateral_providers: Iterable[int],
     crs_source: Path | None = None,
@@ -359,13 +344,13 @@ def load_crs_multilateral_pairs(
 
     Args:
         multilateral_providers: Provider codes to restrict to (normally
-            ``oda_data.provider_groupings()["multilateral"]``).
-        crs_source: Path to a local CRS extract (parquet or csv) in
-            oda_data's cleaned column names, as ``CRSData(...).read()``
-            returns them, to read instead of downloading.
-            When ``None``, downloads via oda_data's own bulk-download path
-            (a network call).
-        years: Years to filter to. ``None`` reads all years in the source.
+            :func:`multilateral_providers`).
+        crs_source: Path to a local CRS extract (parquet or csv) with
+            oda-reader's column names (``donor_code``, ``agency_code``,
+            ``donor_name``, ``agency_name``, ``usd_disbursement``), as the file
+            ``oda_reader.scan("crs")`` returns. When ``None``, scans CRS through
+            oda-reader, which downloads it unless it is cached.
+        years: Years to keep. ``None`` keeps every year in the source.
 
     Returns:
         DataFrame with columns ``provider_code``, ``agency_code``,
@@ -373,37 +358,37 @@ def load_crs_multilateral_pairs(
         per pair, restricted to pairs whose total is nonzero and whose
         provider is in ``multilateral_providers``.
     """
-    from oda_data.clean_data.schema import ODASchema
+    if crs_source is None:
+        import oda_reader
 
-    if crs_source is not None:
-        df = (
-            pd.read_parquet(crs_source)
-            if crs_source.suffix == ".parquet"
-            else pd.read_csv(crs_source)
-        )
+        crs_source = oda_reader.scan("crs").path
+
+    columns = [
+        "year",
+        "donor_code",
+        "agency_code",
+        "donor_name",
+        "agency_name",
+        "usd_disbursement",
+    ]
+    if crs_source.suffix == ".parquet":
+        df = pd.read_parquet(crs_source, columns=columns)
     else:
-        from oda_data.api.sources import CRSData
+        df = pd.read_csv(crs_source, usecols=columns)
 
-        crs = CRSData(years=list(years) if years else None)
-        df = crs.read(using_bulk_download=True)
-
-    providers = set(multilateral_providers)
-    df = df[df[ODASchema.PROVIDER_CODE].isin(providers)]
+    df = df[df["donor_code"].isin(set(multilateral_providers))]
+    if years:
+        df = df[df["year"].isin(set(years))]
 
     grouped = (
-        df.groupby([ODASchema.PROVIDER_CODE, ODASchema.AGENCY_CODE], dropna=False)
+        df.groupby(["donor_code", "agency_code"], dropna=False)
         .agg(
-            provider_name=(ODASchema.PROVIDER_NAME, "first"),
-            agency_name=(ODASchema.AGENCY_NAME, "first"),
-            total_disbursement=(ODASchema.USD_DISBURSEMENT, "sum"),
+            provider_name=("donor_name", "first"),
+            agency_name=("agency_name", "first"),
+            total_disbursement=("usd_disbursement", "sum"),
         )
         .reset_index()
-        .rename(
-            columns={
-                ODASchema.PROVIDER_CODE: "provider_code",
-                ODASchema.AGENCY_CODE: "agency_code",
-            }
-        )
+        .rename(columns={"donor_code": "provider_code"})
     )
     return grouped[grouped["total_disbursement"] != 0].reset_index(drop=True)
 
@@ -454,7 +439,8 @@ def build_resolver(mapping: pd.DataFrame) -> Any:
         A ``resolvekit.Resolver`` resolving free-text agency/provider names
         to channel codes.
     """
-    resolvekit = _require_resolvekit()
+    import resolvekit
+
     mapping = _dedupe_acronyms_for_resolver(mapping)
     return resolvekit.Resolver.from_records(
         mapping,
@@ -732,15 +718,12 @@ def _cmd_refresh_codelist(args: argparse.Namespace) -> None:
 
 
 def _cmd_review(args: argparse.Namespace) -> None:
-    from oda_data import provider_groupings
-
     crosswalk = load_crosswalk(Path(args.crosswalk))
     mapping = pd.read_csv(Path(args.mapping), encoding="utf-8-sig")
     resolver = build_resolver(mapping)
 
-    multilateral_providers = list(provider_groupings()["multilateral"])
     crs_pairs = load_crs_multilateral_pairs(
-        multilateral_providers,
+        multilateral_providers(),
         crs_source=Path(args.crs_source) if args.crs_source else None,
         years=args.years,
     )
@@ -820,8 +803,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--download",
         action="store_true",
         help=(
-            "Allow downloading CRS via oda_data's bulk-download path "
-            "(network call) when --crs-source is not given. Off by default."
+            "Scan CRS through oda-reader when --crs-source is not given; it "
+            "downloads CRS unless cached (a network call). Off by default."
         ),
     )
     review.add_argument("--years", nargs="*", type=int, default=None)

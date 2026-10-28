@@ -194,6 +194,8 @@ def test_registry_maps_every_crs_indicator_by_id() -> None:
         "oecd.crs.bilateral_oda",
         "oecd.crs.multilateral_oda",
         "oecd.crs.bilateral_oof",
+        "oecd.crs.multilateral_oof",
+        "oecd.crs.private_development_finance",
         *(f"oecd.crs.{marker}_marker" for marker in CRS_MARKERS),
     ]
     assert all(_registry.INDICATORS[i.id] is i for i in crs.INDICATORS)
@@ -212,10 +214,15 @@ _IN_INDICATOR: dict[str, tuple[dict[str, object], int]] = {
     "oecd.crs.bilateral_oda": ({}, FRANCE),
     "oecd.crs.multilateral_oda": ({"bi_multi": 4}, IDA),
     "oecd.crs.bilateral_oof": ({"category": 21, "flow": 14}, FRANCE),
+    "oecd.crs.multilateral_oof": ({"category": 21, "flow": 14, "bi_multi": 4}, IDA),
 }
 
 
-@pytest.mark.parametrize("indicator", crs.INDICATORS, ids=lambda i: i.id)
+@pytest.mark.parametrize(
+    "indicator",
+    [i for i in crs.INDICATORS if i is not crs.PRIVATE_DEVELOPMENT_FINANCE],
+    ids=lambda i: i.id,
+)
 def test_crs_indicators_default_to_every_official_provider(
     indicator: Indicator,
 ) -> None:
@@ -380,7 +387,67 @@ def test_bilateral_oof_reads_category_21_bilateral_rows(
 
 
 @pytest.mark.parametrize(
-    "indicator", ["oecd.crs.bilateral_oof", "oecd.crs.multilateral_oda"]
+    ("basis", "expected"),
+    [("gross_disbursement", 300.0), ("commitment", 0.0), ("net_disbursement", 300.0)],
+)
+def test_multilateral_oof_reads_category_21_multilateral_outflows(
+    ctx: Context, basis: str, expected: float
+) -> None:
+    assert _value(ctx, "oecd.crs.multilateral_oof", basis=basis) == expected
+
+
+#: Private development finance from Gates (a private donor) and France, beside
+#: rows of other categories that it leaves out.
+_PRIVATE_ROWS = [
+    _row(
+        provider=GATES,
+        category=30,
+        flow=30,
+        bi_multi=6,
+        disbursement=40.0,
+        commitment=50.0,
+        received=1.0,
+    ),
+    _row(provider=GATES, category=30, flow=30, bi_multi=2, disbursement=5.0),
+    _row(provider=GATES, disbursement=100.0),
+    _row(provider=FRANCE, category=30, flow=30, bi_multi=6, disbursement=7.0),
+    _row(provider=FRANCE, disbursement=9.0),
+]
+
+
+@pytest.mark.parametrize(
+    ("basis", "expected"),
+    [("gross_disbursement", 45.0), ("commitment", 50.0), ("net_disbursement", 44.0)],
+)
+def test_private_development_finance_reads_category_30_from_private_donors(
+    basis: str, expected: float
+) -> None:
+    with Context._from_parts(FakeTables(_PRIVATE_ROWS), FakeFactors()) as context:
+        query = context.query(
+            "oecd.crs.private_development_finance",
+            years=2023,
+            by=["provider"],
+            basis=basis,
+        )
+        df = query.to_pandas()
+        named = context.get(
+            "oecd.crs.private_development_finance", years=2023, providers=FRANCE
+        )
+
+    # France's category 30 row counts only when a call names France.
+    assert _rows(df, "provider", "value") == [(str(GATES), expected)]
+    assert query.provenance.defaults["providers"] == "private_donors"
+    assert named["value"].tolist() == [7.0]
+
+
+@pytest.mark.parametrize(
+    "indicator",
+    [
+        "oecd.crs.bilateral_oof",
+        "oecd.crs.multilateral_oda",
+        "oecd.crs.multilateral_oof",
+        "oecd.crs.private_development_finance",
+    ],
 )
 def test_flows_without_a_grant_equivalent_offer_cash_bases_only(
     ctx: Context, indicator: str

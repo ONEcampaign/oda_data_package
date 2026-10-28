@@ -14,6 +14,9 @@ Each CRS row is one activity a provider reports for one year. Which rows count:
   co-operation). Code 2 is providers' core contributions to multilaterals,
   which DAC1 counts as multilateral ODA, and code 4 is the multilateral
   organisations' own outflows.
+- Other official flows are category 21, and private development finance,
+  the flows of private foundations, is category 30. The CRS gives neither a
+  grant equivalent, so both have the cash bases only.
 - Net disbursements are disbursements minus amounts received.
 
 On these rules, category 10 gross disbursements match DAC1 bilateral gross
@@ -43,6 +46,10 @@ ODA_ROWS: tuple[Filter, ...] = (In("category", (10,)),)
 ODA_ROWS_WITH_PSI: tuple[Filter, ...] = (In("category", (10, 60)),)
 #: CRS rows that are other official flows.
 OOF_ROWS: tuple[Filter, ...] = (In("category", (21,)),)
+#: CRS rows that are private development finance, the flows of private
+#: foundations (``bi_multi`` 6, and 2 for their core contributions to
+#: multilateral organisations).
+PRIVATE_ROWS: tuple[Filter, ...] = (In("category", (30,)),)
 
 #: Flows a provider directs itself: bilateral (1), core contributions to NGOs
 #: and other private bodies (3), ex-post reporting on NGOs' activities funded
@@ -96,6 +103,12 @@ CRS = Binding(table="crs", dimensions=_DIMENSIONS, bases=_ODA_BASES)
 
 #: The binding of other official flows, which have no grant equivalent.
 CRS_OOF = Binding(table="crs", dimensions=_DIMENSIONS, bases=_cash_bases(OOF_ROWS))
+
+#: The binding of private development finance. The CRS gives it no grant
+#: equivalent in any year, so it has the cash bases only.
+CRS_PRIVATE = Binding(
+    table="crs", dimensions=_DIMENSIONS, bases=_cash_bases(PRIVATE_ROWS)
+)
 
 #: The binding of multilateral organisations' outflows (``bi_multi`` 4). The
 #: CRS gives them no grant equivalent in any year, so they have the cash bases
@@ -155,13 +168,45 @@ BILATERAL_OOF = Indicator(
     rows=(BILATERAL_FLOWS,),
 )
 
+MULTILATERAL_OOF = Indicator(
+    id="oecd.crs.multilateral_oof",
+    name="Multilateral other official flows",
+    description="Other official flows multilateral organisations give from "
+    "their own resources, such as loans on market terms, reported activity by "
+    "activity. They are category 21 with bi_multi 4 and have no grant "
+    "equivalent. The providers are the organisations.",
+    binding=CRS_OOF,
+    kind=Sum(),
+    dimensions=_INDICATOR_DIMENSIONS,
+    default_basis="gross_disbursement",
+    default_providers=None,
+    rows=(MULTILATERAL_OUTFLOWS,),
+)
+
+PRIVATE_DEVELOPMENT_FINANCE = Indicator(
+    id="oecd.crs.private_development_finance",
+    name="Private development finance",
+    description="Development finance from private foundations, reported "
+    "activity by activity. It is CRS category 30, mostly bi_multi 6, with the "
+    "foundations' core contributions to multilateral organisations (bi_multi "
+    "2) included, and has no grant equivalent. By default the providers are "
+    "the private foundations in oda.groups.private_donors; a few official "
+    "providers report category 30 rows of their own country's private flows, "
+    "which a call that names them reads.",
+    binding=CRS_PRIVATE,
+    kind=Sum(),
+    dimensions=_INDICATOR_DIMENSIONS,
+    default_basis="gross_disbursement",
+    default_providers="private_donors",
+)
+
 #: The first year of the marker indicators. Before 2010 the CRS leaves the aid
 #: type of bilateral ODA blank (31% to 53% of it by value in 2006 to 2009, and
 #: 97% or more before), so the screened-modality filter would drop those
 #: activities. From 2010 it is filled on at least 99.7% of rows.
 MARKERS_FROM = 2010
 
-#: The bases of the marker indicators: the ODA bases from ``MARKERS_FROM``.
+#: The marker indicators use the ODA bases from ``MARKERS_FROM``.
 _MARKER_BASES: dict[Basis, Value] = {
     name: replace(rule, from_year=max(rule.from_year or 0, MARKERS_FROM))
     for name, rule in _ODA_BASES.items()
@@ -216,5 +261,7 @@ INDICATORS: tuple[Indicator, ...] = (
     BILATERAL_ODA,
     MULTILATERAL_ODA,
     BILATERAL_OOF,
+    MULTILATERAL_OOF,
+    PRIVATE_DEVELOPMENT_FINANCE,
     *MARKERS,
 )

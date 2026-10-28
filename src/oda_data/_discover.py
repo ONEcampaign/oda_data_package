@@ -17,9 +17,17 @@ from functools import cache
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from oda_data import _context
+from oda_data import _compat, _context
 from oda_data._groups import groups, sectors
-from oda_data._model import Caveat, Headline, Indicator, Ratio, Sum, line_basis
+from oda_data._model import (
+    Caveat,
+    Headline,
+    Indicator,
+    NotIn,
+    Ratio,
+    Sum,
+    line_basis,
+)
 from oda_data._names import names, normalise
 
 if TYPE_CHECKING:
@@ -44,7 +52,7 @@ INDICATORS_SCHEMA: Mapping[str, str] = MappingProxyType(
 )
 
 #: The columns of ``search()`` and their pandas dtypes. ``table`` is null for
-#: groups and sector groups.
+#: groups and sector groups, and ``note`` is null except on a 2.x code.
 SEARCH_SCHEMA: Mapping[str, str] = MappingProxyType(
     {
         "kind": "string",
@@ -52,6 +60,7 @@ SEARCH_SCHEMA: Mapping[str, str] = MappingProxyType(
         "name": "string",
         "table": "string",
         "use": "string",
+        "note": "string",
     }
 )
 
@@ -101,6 +110,8 @@ class IndicatorInfo:
             basis or years, shown after it in brackets, also warns when a call
             reads that basis in those years.
         example: A call that returns the indicator.
+        measure: What the values count: ``money``, or ``people`` for a count
+            such as population, which takes no ``unit=``.
     """
 
     id: str
@@ -115,16 +126,19 @@ class IndicatorInfo:
     default_providers: str | None
     caveats: tuple[str, ...]
     example: str
+    measure: str = "money"
 
     def __repr__(self) -> str:
         bases = ", ".join(_basis_text(self, *pair) for pair in self.bases)
-        values = (
-            "per cent"
-            if self.kind == "ratio"
-            else "USD millions unless unit= says otherwise"
-        )
+        if self.kind == "ratio":
+            values = "per cent"
+        elif self.measure != "money":
+            values = f"millions of {self.measure}, a count that takes no unit="
+        else:
+            values = "USD millions unless unit= says otherwise"
         lines = [
-            f"{self.id}  (version {self.version}, table {self.table.upper()})",
+            f"{self.id}  (version {self.version}, table "
+            f"{_context.TABLE_LABELS[self.table]})",
             self.description,
             f"Dimensions: {', '.join(self.dimensions)}",
             f"Bases: {bases}",
@@ -167,6 +181,7 @@ def _info(indicator: Indicator) -> IndicatorInfo:
         default_providers=indicator.default_providers,
         caveats=tuple(_caveat_text(c) for c in indicator.caveats),
         example=_example(indicator),
+        measure=indicator.measure,
     )
 
 
@@ -283,6 +298,7 @@ class _Entry:
     table: str | None
     use: str
     detail: str = ""
+    note: str | None = None
 
 
 #: The order kinds appear in among results that match equally well.
@@ -297,16 +313,22 @@ _GROUP_ARGUMENT: Mapping[str, str] = MappingProxyType(
 def search(text: str) -> pd.DataFrame:
     """Find indicators, groups, sector groups, and DAC lines that match ``text``.
 
+    When ``text`` is an oda-data 2.x indicator code or ``settings`` slug, such
+    as ``"DAC1.10.1010"``, the first row is of kind ``code``: ``use`` holds the
+    3.0 call, its statements separated by ``"; "``, and ``note`` says why its
+    number differs from 2.x's, if it does.
+
     A row matches when every word of ``text`` appears, in any case and
     accent, in the id or name, or for an indicator also in its description.
     Rows come best match first: the id or name equals ``text``, then starts
     with it, then contains every word, then only the description does.
 
-    The columns and dtypes are ``SEARCH_SCHEMA``: ``kind`` (``indicator``,
-    ``group``, ``sector_group``, or ``line``), ``key`` (the indicator id, the
-    name in ``oda.groups`` or ``oda.sectors``, or the line code), ``name``,
-    ``table`` (null for groups), and ``use``, the argument or call that puts
-    the row to work, such as ``providers=oda.groups.g7`` or ``lines=1010``.
+    The columns and dtypes are ``SEARCH_SCHEMA``: ``kind`` (``code``,
+    ``indicator``, ``group``, ``sector_group``, or ``line``), ``key`` (the 2.x
+    code, the indicator id, the name in ``oda.groups`` or ``oda.sectors``, or
+    the line code), ``name``, ``table`` (null for groups), ``use``, the
+    argument or call that puts the row to work, such as
+    ``providers=oda.groups.g7`` or ``lines=1010``, and ``note``.
     A line that only a non-default basis reads names the basis too, such as
     ``lines=240, basis="gross_disbursement"``. DAC1 and DAC2A number lines
     separately, so a line appears once for each table that has it.
@@ -338,6 +360,7 @@ def search(text: str) -> pd.DataFrame:
                 "name": row.name,
                 "table": row.table,
                 "use": row.use,
+                "note": row.note,
             }
             for row in rows
         ],
@@ -346,13 +369,25 @@ def search(text: str) -> pd.DataFrame:
 
 
 def _legacy_rows(text: str) -> list[_Entry]:
-    """Rows of kind ``code`` for a 2.x code in ``text``, each with the 3.0 call
-    that gives the same number in ``use``.
+    """The row of kind ``code`` when ``text`` is a 2.x code or slug, with its
+    3.0 call in ``use``. ``search`` puts it above every other match.
 
-    This is the hook for the 2.x translator and returns no rows. ``search``
-    puts what it returns above every other match.
+    A code 3.0 has no call for keeps ``use`` empty and says why in ``note``.
     """
-    return []
+    row = _compat.find(text)
+    if row is None:
+        return []
+    indicator = _context.INDICATORS.get(row.indicator or "")
+    return [
+        _Entry(
+            "code",
+            row.code,
+            row.name,
+            indicator.binding.table if indicator is not None else None,
+            row.call_text,
+            note=row.reason or None,
+        )
+    ]
 
 
 def _tier(entry: _Entry, query: str, tokens: list[str]) -> int | None:
@@ -395,8 +430,10 @@ def _entries() -> Iterator[_Entry]:
         )
     for table in _LINE_TABLES:
         reader = _lines_indicator(table)
+        refused = _refused_lines(reader)
         for code, name in names("line", table=table).items():
-            yield _Entry("line", str(code), name, table, _line_use(reader, code))
+            if code not in refused:
+                yield _Entry("line", str(code), name, table, _line_use(reader, code))
 
 
 def _lines_indicator(table: TableName) -> Indicator | None:
@@ -411,6 +448,20 @@ def _lines_indicator(table: TableName) -> Indicator | None:
             and not indicator.kind.lines
         ),
         None,
+    )
+
+
+def _refused_lines(reader: Indicator | None) -> frozenset[Code]:
+    """The lines ``reader`` refuses in every call, such as lines that are not
+    money: the values of its unscoped ``NotIn`` rules on the line column."""
+    if reader is None:
+        return frozenset()
+    column = reader.binding.dimensions["line"]
+    return frozenset(
+        code
+        for rule in (*reader.binding.rows, *reader.rows)
+        if isinstance(rule, NotIn) and rule.column == column and rule.when is None
+        for code in rule.values
     )
 
 

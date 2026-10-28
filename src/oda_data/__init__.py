@@ -99,6 +99,13 @@ __all__ = [
 
 def __getattr__(name: str) -> object:
     if name not in _LAZY:
+        from oda_data._compat import REMOVED
+        from oda_data._errors import RemovedIn3Error
+
+        if name in REMOVED:
+            raise RemovedIn3Error(
+                f"oda_data.{name} was removed in oda-data 3.0: {REMOVED[name]}"
+            )
         raise AttributeError(f"module 'oda_data' has no attribute {name!r}")
     obj = getattr(importlib.import_module(_LAZY[name]), name)
     globals()[name] = obj

@@ -12,7 +12,13 @@ import duckdb
 import pyarrow as pa
 import pytest
 
-from oda_data._compile import BROAD_SECTORS, aggregated, converted, filtered
+from oda_data._compile import (
+    BROAD_SECTORS,
+    _condition,
+    aggregated,
+    converted,
+    filtered,
+)
 from oda_data._errors import (
     BasisRangeError,
     DimensionError,
@@ -673,3 +679,8 @@ def test_compile_imports_no_registry_module() -> None:
         "assert not loaded, loaded"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_an_unknown_row_filter_raises_type_error() -> None:
+    with pytest.raises(TypeError, match="unknown row filter"):
+        _condition(object())  # type: ignore[arg-type]  # outside the Filter union

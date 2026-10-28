@@ -68,6 +68,7 @@ def _crs_table() -> pa.Table:
         "aid_t": ["C01"],
         "purpose_code": [12220],
         "channel_code": [11000],
+        "keywords": ["#COVID-19"],
         "usd_commitment": [2.0],
         "usd_disbursement": [1.5],
         "usd_received": [0.25],

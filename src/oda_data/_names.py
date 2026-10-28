@@ -176,3 +176,10 @@ def eu_members(years: Iterable[int] | None) -> frozenset[int]:
         if wanted is None
         or any(start <= year and (end is None or year <= end) for year in wanted)
     )
+
+
+def eu27() -> frozenset[int]:
+    """Return today's 27 EU members, the ``eu27`` group's codes."""
+    return frozenset(
+        int(code) for code in load_json("provider_groupings.json")["eu27_countries"]
+    )

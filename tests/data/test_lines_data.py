@@ -2,7 +2,8 @@
 
 A named indicator on one line is a filter on that line of ``oecd.dac1.lines``
 or ``oecd.dac2a.lines``, with the same row exclusions, so both calls give the
-same number on every basis they share.
+same number on every basis they share. Population is the exception: it is
+not money, so the lines indicator refuses its line.
 """
 
 from collections.abc import Iterator
@@ -39,7 +40,7 @@ def _cases() -> list[tuple[str, str, str, int]]:
         for indicator in module.INDICATORS
         for lines in [module.LINES]
         for basis, line in basis_lines(indicator).items()
-        if indicator is not lines
+        if indicator is not lines and indicator.is_money
     ]
 
 

@@ -674,6 +674,36 @@ def test_a_headline_of_one_basis_reads_as_one_span(
     assert _context._basis_text(indicator, "headline", years) == expected
 
 
+@pytest.mark.parametrize(
+    ("codes", "expected"),
+    [
+        ({4}, "2018 rows are null for France (4), which reported"),
+        (
+            {1, 2, 3, 4, 5, 6, 7},
+            "2018 rows are null for Austria (1), Belgium (2), Denmark (3), "
+            "France (4), Germany (5) and 2 more, which reported",
+        ),
+    ],
+)
+def test_explain_names_nulled_members_up_to_the_listed_cap(
+    ctx: Context, monkeypatch: pytest.MonkeyPatch, codes: set[int], expected: str
+) -> None:
+    combine = _context.combine
+
+    def nulling(*args: object, **kwargs: object) -> object:
+        found = combine(*args, **kwargs)
+        return dataclasses.replace(found, nulled=(2018, frozenset(codes)))
+
+    monkeypatch.setattr(_context, "combine", nulling)
+
+    text = ctx.query("oecd.dac1.total_oda").explain().splitlines()
+
+    nulled = [line for line in text if line.startswith("2018 rows are null")]
+    assert len(nulled) == 1
+    assert nulled[0].startswith(expected)
+    assert nulled[0].endswith("allow_partial=True returns the partial values.")
+
+
 def test_explain_states_defaults_and_fallback_deflators(tables: FakeTables) -> None:
     ctx = Context._from_parts(tables, FakeFactors(fallback=frozenset({918})))
     q = ctx.query("oecd.crs.bilateral_oda", unit=constant("USD", 2023))
@@ -699,6 +729,17 @@ def test_unknown_indicator_suggests_near_ids(ctx: Context) -> None:
         ctx.query("oecd.dac1.total_odaa")
 
     assert error.value.suggestions[0] == "oecd.dac1.total_oda"
+
+
+def test_a_2x_code_raises_with_its_3_0_call_before_reading_a_table(
+    ctx: Context, tables: FakeTables
+) -> None:
+    with pytest.raises(UnknownIndicatorError) as error:
+        ctx.get("DAC1.10.1010", years=2017)
+
+    call = 'oda.get("oecd.dac1.total_oda", basis="net_disbursement")'
+    assert error.value.suggestions == (call,)
+    assert tables.cursors == 0
 
 
 @pytest.mark.parametrize(

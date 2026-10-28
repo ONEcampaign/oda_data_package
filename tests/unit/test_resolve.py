@@ -158,7 +158,6 @@ def test_a_user_group_resolves_names_and_nested_groups() -> None:
 @pytest.mark.parametrize(
     ("group", "dimension", "error"),
     [
-        (oda.Group("eu", [918, "France"]), "provider", oda.UnsupportedQueryError),
         (oda.Group("agg", [20001, 4]), "provider", oda.UnsupportedQueryError),
         (oda.groups.g7, "recipient", oda.UnknownEntityError),
         (oda.Group("odd", ["Frnace"]), "provider", oda.UnknownEntityError),
@@ -170,20 +169,12 @@ def test_a_group_that_cannot_be_summed_raises(group, dimension, error) -> None:
         resolve_group(group, dimension, years=[2023])
 
 
-@pytest.mark.parametrize(
-    ("years", "raises"),
-    [([2020], True), ([2021, 2022], False), ([2019, 2021], True)],
-    ids=["a-member", "after-it-left", "a-member-in-one-year"],
-)
-def test_eu_institutions_clash_with_the_uk_while_it_was_an_eu_member(
-    years: list[int], raises: bool
-) -> None:
-    uk = oda.Group("uk", [918, 12])
-    if raises:
-        with pytest.raises(oda.UnsupportedQueryError, match=r"\[12\]"):
-            resolve_group(uk, "provider", years=years)
-    else:
-        assert resolve_group(uk, "provider", years=years).members[years[0]] == {918, 12}
+def test_eu_institutions_with_eu_members_resolve_for_providers() -> None:
+    # Whether 918 sums with its members depends on the indicator's table, so
+    # _combine decides; the group itself resolves.
+    eu = oda.Group("eu", [*oda.groups.eu27.members, 12, 918])
+    resolved = resolve_group(eu, "provider", years=[2020])
+    assert {918, 4, 12} <= resolved.members[2020]
 
 
 def test_eu_institutions_with_eu_members_is_fine_for_recipients() -> None:
